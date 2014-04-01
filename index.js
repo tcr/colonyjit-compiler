@@ -42,7 +42,9 @@ var autoDefaults = {
   options: '{}',
   match: 'RegExpVector()',
   word: '""',
-  sourceFile: '""'
+  sourceFile: '""',
+  tokType: '{ }',
+  labels: 'std::vector<int>()'
 };
 
 // function makeregexp (a) {
@@ -75,6 +77,9 @@ out = falafel(out, function (node) {
       }
     }
   }
+  if (node.type == 'SwitchCase') {
+    node.update(node.source().replace(/:/, ':{') + '}');
+  }
   if (node.type == 'FunctionExpression') {
     node.update(node.source().replace(/^function\s*(\w+\s*)?\(([^)]*)\)/, function (_, w, a) {
       return 'auto ' + (w||'') + '(' + a.split(/\s*,\s*/).map(function (arg) {
@@ -94,9 +99,9 @@ out = falafel(out, function (node) {
   if (node.value instanceof RegExp) {
     node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
   }
-  // if (typeof node.value == 'string' && node.value == '') {
-  //   node.update('std::string(' + JSON.stringify(node.value) + ')');
-  // }
+  if (typeof node.value == 'string' && node.parent.type == 'BinaryExpression' && node.parent.operator == '+') {
+    node.update('std::string(' + JSON.stringify(node.value) + ')');
+  }
   if (node.type.match(/^ForStatement/)) {
     node.update((node.init ? node.init.source() : '') + '; for (; ' + (node.test ? node.test.source() : '') +';' +
       (typeof node.update == 'function' ? '' : node.update.source()) + ')\n'
@@ -141,87 +146,6 @@ out = falafel(out, function (node) {
     }).join(', ') + '}')
   }
 }).toString()
-
-// out = out.replace(/((?!\/).)\/([^\/]+?)\//gm, '$1new RegExp("$2")');
-
-// function explodeauto (a) {
-//       if (!a.match(/\b(var|auto)\b/)) {
-//             return a;
-//       }
-//       return a.replace(/(var|auto)\s*/g, '').replace(/;\s*$/, '').split(/\s*,\s*/).map(function (a) {
-//             return 'auto ' + (a.match(/=/) ? a : a + ' = ' + this[a.replace(/^\s*|\s*$/, '')]) + ';';
-//       }.bind(this)).join(' ');
-// }
-
-// out = out.replace(/(\.length)\b/, '$1()');
-
-// var protos = [];
-
-// out = out.replace(/\bfunction(\s+\w+)?\s*\((.*?)\)/g, function (_, name, args) {
-//       var ret = 'function ' + (name || '') + ' (' + args.split(/\s*,\s*/).filter(function (a) {
-//             return a.length;
-//       }).map(function (a) {
-//             return 'auto ' + a;
-//       }).join(', ') + ')';
-//       return ret;
-// });
-// out = out.replace(/\bvar\b/g, 'auto');
-// out = out.replace(/exports.(\w+)\s+=\s+(function)?\b/g, 'auto $1 ');
-// out = out.replace(/\bfunction\b/g, 'auto');
-// out.match(/\b(function|auto)\s*\w+\s*\((.*)\)/g).forEach(function (a) {
-//       protos.push(a);
-// });
-// out = out.replace(/\b(auto\s+\w+)\s*=\s*auto\s+\w+\b/g, '$1');
-
-// out = out.replace(/\b(\w+)\:/g, '.$1 = ');
-// out = out.replace(/case \.(\w+)\s*=/g, 'case $1:');
-// out = out.replace(/\.default\s*=/g, 'default:');
-
-// out = out.replace(/\bInfinity\b/, 'INFINITY');
-
-
-// out = infuse(out, 39, 40, explodeauto.bind({
-//       options: '((options_t){})',
-//       input: '((std::string)"")', inputLen: '0', sourceFile: '""'}));
-// out = infuse(out, 922, 923, explodeauto.bind({word: '""'}));
-// out = infuse(out, 912, 913, explodeauto.bind({containsEsc: 'false'}));
-// out = infuse(out, 187, 240, explodeauto.bind({
-//       tokType: 'NULL',
-//       tokVal: 'NULL',
-//       tokRegexpAllowed: 'false',
-//       tokCurLine: '0',
-//       tokLineStart: '0',
-//       lastStart: '0',
-//       lastEnd: '0',
-//       lastEndLoc: '0',
-//       inFunction: 'false',
-//       labels: 'false',
-//       strict: 'false',
-// }));
-// out = infuse(out, 766, 767, explodeauto.bind({
-//       escaped: 'false',
-//       inClass: 'false'
-// }))
-
-
-// // regexp constructor
-// out = out.replace(/new RegExp\((.*?)\)\.(\w+)\(/g, '$2($1, ')
-// out = out.replace(/new RegExp\((.*?)\)/g, 'regexp($1)')
-
-// // no designated initializers,
-// out = out.replace(/\.type\s*=\s*/g, '');
-// out = infuse(out, 265, 267, function (a) {
-//       return a.replace(/\bauto\b/, 'struct general_t');
-// });
-
-// out = out.replace(/(\[\])/, 'std::vector<std::string>()');
-// out = out.replace(/exports.defaultOptions = /, '');
-
-// out = infuse(out, 51, 53, explodeauto.bind({
-//       defaultOptions: 'options_t'
-// }));
-
-// console.log('#include "out-inc.h"\n' + protos.join('; ') + ';' + out.replace(/^\s*?\n/, ''));
 
 out = out.replace(/auto\s+(\w+)\s*=\s*exports.\w+\s*=\s*auto/g, "auto $1 ")
 out = out.replace(/exports.(\w+)\s*=\s*auto/g, "auto $1 ")
@@ -272,12 +196,17 @@ out = out.replace(/.length\b/g, '.length()')
 out = out.replace('tokPos - start != len) return null;', 'tokPos - start != len) return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
 out = out.replace(/THIS\.end = null/g, 'THIS.end = DBL_NULL');
-out = out.replace(/\bnode\.(\w+)/g, 'node->$1');
-out = out.replace(/\bloc\.(\w+)/g, 'loc->$1');
+out = out.replace(/\b(node|loc|lab|label)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|lab|label)\.(\w+)/g, '$1->$2');
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
+out = out.replace("switch (starttype) {", "switch (starttype._id) {")
 out = out.replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
+out = out.replace("keywordTypes[word]", "keywordTypes(word)");
+out = out.replace(/options.behaviors.\w+\([^)]+\)\s*(\|\|)?;?/g, '')
+out = out.replace(/labels\.length/g, 'labels.size')
+out = out.replace("labels = std::vector<int>", 'labels = std::vector<node_t*>')
 
 // typify
 out = out.replace(/auto options/g, 'options_t options')
@@ -301,6 +230,11 @@ out = out.replace(/auto sourceFile/g, 'std::string sourceFile');
 out = out.replace(/auto tokStartLoc/g, 'int tokStartLoc');
 out = out.replace(/auto tokStart/g, 'int tokStart');
 out = out.replace(/auto tokEnd\b/g, 'int tokEnd');
+out = out.replace(/auto tokType\b/g, 'keyword_t tokType');
+out = out.replace(/auto unexpected\b/g, 'void unexpected');
+out = out.replace(/auto parseIdent\b/g, 'node_t* parseIdent');
+out = out.replace(/auto liberal\b/g, 'bool liberal');
+out = out.replace(/auto finishNode.*/m, 'node_t* finishNode(node_t* node, std::string type) {')
 
 
 console.log('#include "out-inc.h"\n' + out);

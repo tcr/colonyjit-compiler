@@ -92,7 +92,8 @@ std::string charAt(std::string input, int idx)
 	return "";
 }
 
-int push(std::vector<int> value, int idx)
+template<class T>
+int push(std::vector<T> value, T idx)
 {
 	return 0;
 }
@@ -147,6 +148,8 @@ bool operator== (struct regexp_t & left, std::nullptr_t n){
     return false;
 }
 
+
+
 struct keyword_t {
 	int _id;
 	int atomValue;
@@ -160,6 +163,14 @@ struct keyword_t {
 	bool prefix;
 	char* type;
 };
+
+bool operator== (struct keyword_t & left, struct keyword_t & right){
+    return false;
+}
+
+bool operator!= (struct keyword_t & left, struct keyword_t & right){
+    return false;
+}
 
 struct regexp_t RegExp(std::string str) {
 	return { str };
@@ -208,6 +219,10 @@ void onComment(options_t options, bool what, std::string code, int start, int to
 
 }
 
+void unexpected();
+
+
+keyword_t keywordTypes (std::string key);
 
 
 extern int tokStart;
@@ -237,40 +252,40 @@ class node_t {
 
 std::string sourceFile;
 std::vector<int> range;
-// body
-// label
-// test
-// consequent
-// alternate
-// argument
-// discriminant
-// cases
-// block
-// handler
-// guardedHandlers
-// finalizer
-// object
-// expression
-// init
-// update
-// left
-// right
-// declarations
-// kind
-// expressions
-// operator
-// prefix
-// property
+node_t* body;
+node_t* label;
+node_t* test;
+node_t* consequent;
+node_t* alternate;
+node_t* argument;
+node_t* discriminant;
+node_t* cases;
+node_t* block;
+node_t* handler;
+node_t* guardedHandlers;
+node_t* finalizer;
+node_t* object;
+node_t* expression;
+node_t* init;
+node_t* update;
+node_t* left;
+node_t* right;
+node_t* declarations;
+node_t* kind;
+node_t* expressions;
+// node_t* operator;
+node_t* prefix;
+node_t* property;
 bool computed;
-// callee
-// arguments
-// value
-// raw
-// elements
-// properties
+node_t* callee;
+node_t* arguments;
+node_t* value;
+node_t* raw;
+node_t* elements;
+node_t* properties;
 std::string id;
-// params
-// name
+node_t* params;
+node_t* name;
 
     node_t ();
 };
@@ -280,6 +295,14 @@ node_t::node_t () {
 	this->start = tokStart;
 	this->end = DBL_NULL;
 	this->loc = nullptr;
+}
+
+node_t* parseIdent(bool liberal);
+node_t* parseIdent() { parseIdent(false); }
+
+bool ISNULL (node_t* t)
+{
+	return t == nullptr;
 }
 
 extern struct regexp_t lineBreak;
