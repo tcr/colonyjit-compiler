@@ -44,7 +44,8 @@ var autoDefaults = {
   word: '""',
   sourceFile: '""',
   tokType: '{ }',
-  labels: 'std::vector<int>()'
+  labels: 'std::vector<int>()',
+  kind: '""',
 };
 
 // function makeregexp (a) {
@@ -98,6 +99,10 @@ out = falafel(out, function (node) {
         return 'auto ' + arg;
       }).join(', ') + ')';
     }));
+  }
+  if (node.type == 'IfStatement') {
+    // make sure if statement bodies are enclosed
+    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}');
   }
   if (node.value instanceof RegExp) {
     node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
@@ -194,13 +199,16 @@ out.match(/_(\w+) = \{_id: (\d+)/g).forEach(function (a) {
 });
 
 // manual hacks
+out = out.replace(/\boperator\b/g, 'opr');
 out = out.replace(/auto content = slice/g, 'content = slice')
 out = out.replace(/.length\b/g, '.length()')
 out = out.replace('tokPos - start != len) return null;', 'tokPos - start != len) return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
+out = out.replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
 out = out.replace(/THIS\.end = null/g, 'THIS.end = DBL_NULL');
-out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr)\.(\w+)/g, '$1->$2');
-out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body)\.(\w+)/g, '$1->$2');
+out = out.replace(/(j\])\.(\w+)/g, '$1->$2');
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
@@ -208,10 +216,11 @@ out = out.replace("switch (starttype) {", "switch (starttype._id) {")
 out = out.replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
 out = out.replace("keywordTypes[word]", "keywordTypes(word)");
 out = out.replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
-out = out.replace(/(labels|declarations)\.length/g, '$1.size')
+out = out.replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
 out = out.replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
-out = out.replace(/(cases|consequents|empty) = std::vector<int>/g, '$1 = std::vector<node_t*>')
+out = out.replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params) = std::vector<int>/g, '$1 = std::vector<node_t*>')
 out = out.replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
+out = out.replace(/auto prop\b/, 'node_t prop');
 
 // typify
 out = out.replace(/auto options/g, 'options_t options')
@@ -242,13 +251,30 @@ out = out.replace(/auto liberal\b/g, 'bool liberal');
 out = out.replace(/auto finishNode.*/m, 'node_t* finishNode(node_t* node, std::string type) {')
 out = out.replace(/auto loopLabel\b/, 'label_t loopLabel');
 out = out.replace(/auto switchLabel\b/, 'label_t switchLabel');
+out = out.replace(/auto kind\b/g, 'std::string kind');
+
 out = out.replace(/auto parseParenExpression/, 'node_t* parseParenExpression');
 out = out.replace(/auto parseFor\b.*/m, 'node_t* parseFor(node_t* node, node_t* init) {')
 out = out.replace(/auto parseVar\b.*/m, 'node_t* parseVar(node_t* node, bool noIn) {')
 out = out.replace(/auto parseForIn\b.*/m, 'node_t* parseForIn(node_t* node, node_t* init) {')
 out = out.replace(/auto parseExpression\b.*/m, 'node_t* parseExpression(bool noComma, bool noIn) {')
-out = out.replace(/auto parseFunction\b.*/m, 'node_t* parseFunction(node_t node, bool isStatement) {')
-out = out.replace(/auto parseBlock\b.*/m, 'node_t* parseBlock(bool allowStrict) {')
+out = out.replace(/auto parseFunction\b.*/m, 'node_t* parseFunction(node_t* node, bool isStatement) {')
+out = out.replace(/auto parseBlock\b.*/m, 'node_t* parseBlock(bool allowStrict) {');
+out = out.replace(/auto parseMaybeAssign\b.*/m, 'node_t* parseMaybeAssign(bool noIn) {');
+out = out.replace(/auto parseMaybeConditional\b.*/m, 'node_t* parseMaybeConditional(bool noIn) {');
+out = out.replace(/auto parseExprOps\b.*/m, 'node_t* parseExprOps(bool noIn) {');
+out = out.replace(/auto parseMaybeUnary\b.*/m, 'node_t* parseMaybeUnary() {');
+out = out.replace(/auto parseExprOp\b.*/m, 'node_t* parseExprOp(node_t* left, double minPrec, bool noIn) {');
+out = out.replace(/auto parseExprSubscripts\b.*/m, 'node_t* parseExprSubscripts() {');
+out = out.replace(/auto parseExprAtom\b.*/m, 'node_t* parseExprAtom() {');
+out = out.replace(/auto parseSubscripts\b.*/m, 'node_t* parseSubscripts(node_t* base, bool noCalls) {');
+out = out.replace(/auto parseExprList\b.*/m, 'node_t* parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {');
+out = out.replace(/auto parseObj\b.*/m, 'node_t* parseObj() {');
+out = out.replace(/auto parseNew\b.*/m, 'node_t* parseNew() {');
+out = out.replace(/auto parsePropertyName\b.*/m, 'node_t* parsePropertyName() {');
 
+out = out.replace("push(node->properties, prop", "push(node->properties, &prop")
+
+out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
 
 console.log('#include "out-inc.h"\n' + out);

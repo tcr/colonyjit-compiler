@@ -99,6 +99,12 @@ int push(std::vector<T> value, T idx)
 }
 
 template<class T>
+int push(std::vector<T> value, std::nullptr_t)
+{
+	return 0;
+}
+
+template<class T>
 T pop(std::vector<T> value)
 {
 	return nullptr;
@@ -277,6 +283,7 @@ class node_t {
 std::string sourceFile;
 std::vector<int> range;
 node_t* body;
+std::vector<node_t*> bodyarr;
 node_t* label;
 node_t* test;
 node_t* consequent;
@@ -296,20 +303,22 @@ node_t* update;
 node_t* left;
 node_t* right;
 std::vector<node_t*> declarations;
-node_t* kind;
-node_t* expressions;
-// node_t* operator;
-node_t* prefix;
+std::string kind;
+std::vector<node_t*> expressions;
+node_t* opr;
+bool prefix;
 node_t* property;
 bool computed;
 node_t* callee;
 node_t* arguments;
+node_t* key;
 node_t* value;
-node_t* raw;
+std::string raw;
 node_t* elements;
-node_t* properties;
-std::string id;
+std::vector<node_t*> properties;
+node_t* id;
 node_t* param;
+std::vector<node_t*> params;
 node_t* guard;
 std::string name;
 
@@ -336,6 +345,20 @@ node_t* parseExpression() { return parseExpression(false, false); }
 node_t* parseFunction(node_t*, bool);
 node_t* parseBlock(bool allowStrict);
 node_t* parseBlock() { return parseBlock(false); }
+node_t* parseMaybeAssign(bool noIn);
+node_t* parseMaybeConditional(bool noIn);
+node_t* parseExprOps(bool noIn);
+node_t* parseMaybeUnary();
+node_t* parseExprOp(node_t* left, double minPrec, bool noIn);
+node_t* parseExprSubscripts();
+node_t* parseExprAtom();
+node_t* parseSubscripts(node_t* base, bool noCalls);
+node_t* parseSubscripts(node_t* base) { return parseSubscripts(base, false); }
+node_t* parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
+node_t* parseExprList(keyword_t close, bool allowTrailingComma) { return parseExprList(close, allowTrailingComma, false); }
+node_t* parseObj();
+node_t* parseNew();
+node_t* parsePropertyName();
 
 bool ISNULL (node_t* t)
 {

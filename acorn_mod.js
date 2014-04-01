@@ -1385,11 +1385,11 @@
 
   function parseBlock(allowStrict) {
     var node = startNode(), first = true, strict = false, oldStrict;
-    node.body = [];
+    node.bodyarr = [];
     expect(_braceL);
     while (!eat(_braceR)) {
       var stmt = parseStatement();
-      node.body.push(stmt);
+      node.bodyarr.push(stmt);
       if (first && allowStrict && isUseStrict(stmt)) {
         oldStrict = strict;
         setStrict(strict = true);
@@ -1738,7 +1738,7 @@
     // If this is a strict mode function, verify that argument names
     // are not repeated, and it does not try to bind the words `eval`
     // or `arguments`.
-    if (strict || node.body.body.length && isUseStrict(node.body.body[0])) {
+    if (strict || node.body.bodyarr.length && isUseStrict(node.body.bodyarr[0])) {
       for (var i = node.id ? -1 : 0; i < node.params.length; ++i) {
         var id = i < 0 ? node.id : node.params[i];
         if (isStrictReservedWord(id.name) || isStrictBadIdWord(id.name))

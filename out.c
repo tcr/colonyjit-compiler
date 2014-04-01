@@ -71,9 +71,11 @@
       lineBreak.lastIndex = cur;
       RegExpVector match = exec(lineBreak, input); 
       if (match && match.index < offset) {
+{
         ++line;
         cur = match.index + match[0].length();
-      } else break;
+      }
+}
     }
     return {line: line, column: offset - cur};
   }; 
@@ -135,10 +137,10 @@
   // The type and value of the current token. Token types are objects,
   // named by variables against which they can be compared, and
   // holding properties that describe them (indicating, for example,
-  // the precedence of an infix operator, and the original name of a
+  // the precedence of an infix opr, and the original name of a
   // keyword token). The kind of value that's held in `tokVal` depends
   // on the type of the token. For literals, it is the literal value,
-  // for operators, the operator name, and so on.
+  // for operators, the opr name, and so on.
 
   keyword_t tokType = { };  auto tokVal = 0; 
 
@@ -146,7 +148,7 @@
   // operators and regular expressions, it remembers whether the last
   // token was one that is allowed to be followed by an expression.
   // (If it is, a slash is probably a regexp, if it isn't it's a
-  // division operator. See the `parseStatement` function for a
+  // division opr. See the `parseStatement` function for a
   // caveat.)
 
   auto tokRegexpAllowed = 0; 
@@ -259,12 +261,12 @@
   // parser use them properly (the presence of these properties is
   // what categorizes them as operators).
   //
-  // `binop`, when present, specifies that this operator is a binary
-  // operator, and will refer to its precedence.
+  // `binop`, when present, specifies that this opr is a binary
+  // opr, and will refer to its precedence.
   //
-  // `prefix` and `postfix` mark the operator as a prefix or postfix
-  // unary operator. `isUpdate` specifies that the node produced by
-  // the operator should be of type UpdateExpression rather than
+  // `prefix` and `postfix` mark the opr as a prefix or postfix
+  // unary opr. `isUpdate` specifies that the node produced by
+  // the opr should be of type UpdateExpression rather than
   // simply UnaryExpression (`++` and `--`).
   //
   // `isAssign` marks all of `=`, `+=`, `-=` etcetera, which act as
@@ -387,22 +389,42 @@
   // Test whether a given character code starts an identifier.
 
   auto isIdentifierStart  (auto code) {
-    if (code < 65) return code == 36;
-    if (code < 91) return true;
-    if (code < 97) return code == 95;
-    if (code < 123)return true;
+    if (code < 65) {
+return code == 36;
+}
+    if (code < 91) {
+return true;
+}
+    if (code < 97) {
+return code == 95;
+}
+    if (code < 123) {
+return true;
+}
     return code >= 0xaa && test(nonASCIIidentifierStart, fromCharCode(code));
   }; 
 
   // Test whether a given character is part of an identifier.
 
   auto isIdentifierChar  (auto code) {
-    if (code < 48) return code == 36;
-    if (code < 58) return true;
-    if (code < 65) return false;
-    if (code < 91) return true;
-    if (code < 97) return code == 95;
-    if (code < 123)return true;
+    if (code < 48) {
+return code == 36;
+}
+    if (code < 58) {
+return true;
+}
+    if (code < 65) {
+return false;
+}
+    if (code < 91) {
+return true;
+}
+    if (code < 97) {
+return code == 95;
+}
+    if (code < 123) {
+return true;
+}
     return code >= 0xaa && test(nonASCIIidentifier, fromCharCode(code));
   }; 
 
@@ -431,7 +453,9 @@
 
   void finishToken(keyword_t type, auto val) {
     tokEnd = tokPos;
-    if (options.locations) tokEndLoc = line_loc_t;
+    if (options.locations) {
+tokEndLoc = line_loc_t;
+}
     tokType = type;
     skipSpace();
     tokVal = val;
@@ -441,9 +465,12 @@
   auto skipBlockComment() {
     auto startLoc = options.onComment && options.locations && line_loc_t; 
     auto start = tokPos;  auto end = indexOf(input, "*/", tokPos += 2); 
-    if (end == -1) raise(tokPos - 2, "Unterminated comment");
+    if (end == -1) {
+raise(tokPos - 2, "Unterminated comment");
+}
     tokPos = end + 2;
     if (options.locations) {
+{
       lineBreak.lastIndex = start;
       RegExpVector match = RegExpVector(); 
       while ((match = exec(lineBreak, input)) && match.index < tokPos) {
@@ -451,9 +478,11 @@
         tokLineStart = match.index + match[0].length();
       }
     }
-    if (options.onComment)
-      onComment(options, true, slice(input, start + 2, end), start, tokPos,
+}
+    if (options.onComment) {
+onComment(options, true, slice(input, start + 2, end), start, tokPos,
                         startLoc, options.locations && line_loc_t);
+}
   }
 
   auto skipLineComment() {
@@ -464,9 +493,10 @@
       ++tokPos;
       ch = charCodeAt(input, tokPos);
     }
-    if (options.onComment)
-      onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
+    if (options.onComment) {
+onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
                         startLoc, options.locations && line_loc_t);
+}
   }
 
   // Called at the start of the parse and after every token. Skips
@@ -475,40 +505,11 @@
   void skipSpace() {
     while (tokPos < inputLen) {
       auto ch = charCodeAt(input, tokPos); 
-      if (ch == 32) { // ' '
+      if (ch == 32) {
+{ // ' '
         ++tokPos;
-      } else if (ch == 13) {
-        ++tokPos;
-        auto next = charCodeAt(input, tokPos); 
-        if (next == 10) {
-          ++tokPos;
-        }
-        if (options.locations) {
-          ++tokCurLine;
-          tokLineStart = tokPos;
-        }
-      } else if (ch == 10 || ch == 8232 || ch == 8233) {
-        ++tokPos;
-        if (options.locations) {
-          ++tokCurLine;
-          tokLineStart = tokPos;
-        }
-      } else if (ch > 8 && ch < 14) {
-        ++tokPos;
-      } else if (ch == 47) { // '/'
-        auto next = charCodeAt(input, tokPos + 1); 
-        if (next == 42) { // '*'
-          skipBlockComment();
-        } else if (next == 47) { // '/'
-          skipLineComment();
-        } else break;
-      } else if (ch == 160) { // '\xa0'
-        ++tokPos;
-      } else if (ch >= 5760 && test(nonASCIIwhitespace, fromCharCode(ch))) {
-        ++tokPos;
-      } else {
-        break;
       }
+}
     }
   }
 
@@ -516,7 +517,7 @@
 
   // This is the function that is called to fetch the next token. It
   // is somewhat obscure, because it works in character codes rather
-  // than characters, and because operator parsing has been inlined
+  // than characters, and because opr parsing has been inlined
   // into it.
   //
   // All in the name of speed.
@@ -526,79 +527,108 @@
 
   auto readToken_dot() {
     auto next = charCodeAt(input, tokPos + 1); 
-    if (next >= 48 && next <= 57) return readNumber(true);
+    if (next >= 48 && next <= 57) {
+return readNumber(true);
+}
     ++tokPos;
-    return finishToken(_dot);
+    finishToken(_dot);
   }
 
   auto readToken_slash() { // '/'
     auto next = charCodeAt(input, tokPos + 1); 
-    if (tokRegexpAllowed) {++tokPos; return readRegexp();}
-    if (next == 61) return finishOp(_assign, 2);
-    return finishOp(_slash, 1);
+    if (tokRegexpAllowed) {
+{++tokPos; readRegexp();}
+}
+    if (next == 61) {
+finishOp(_assign, 2);
+}
+    finishOp(_slash, 1);
   }
 
   auto readToken_mult_modulo() { // '%*'
     auto next = charCodeAt(input, tokPos + 1); 
-    if (next == 61) return finishOp(_assign, 2);
-    return finishOp(_multiplyModulo, 1);
+    if (next == 61) {
+finishOp(_assign, 2);
+}
+    finishOp(_multiplyModulo, 1);
   }
 
   auto readToken_pipe_amp(auto code) { // '|&'
     auto next = charCodeAt(input, tokPos + 1); 
-    if (next == code) return finishOp(code == 124 ? _logicalOR : _logicalAND, 2);
-    if (next == 61) return finishOp(_assign, 2);
-    return finishOp(code == 124 ? _bitwiseOR : _bitwiseAND, 1);
+    if (next == code) {
+finishOp(code == 124 ? _logicalOR : _logicalAND, 2);
+}
+    if (next == 61) {
+finishOp(_assign, 2);
+}
+    finishOp(code == 124 ? _bitwiseOR : _bitwiseAND, 1);
   }
 
   auto readToken_caret() { // '^'
     auto next = charCodeAt(input, tokPos + 1); 
-    if (next == 61) return finishOp(_assign, 2);
-    return finishOp(_bitwiseXOR, 1);
+    if (next == 61) {
+finishOp(_assign, 2);
+}
+    finishOp(_bitwiseXOR, 1);
   }
 
   auto readToken_plus_min(auto code) { // '+-'
     auto next = charCodeAt(input, tokPos + 1); 
     if (next == code) {
+{
       if (next == 45 && charCodeAt(input, tokPos + 2) == 62 &&
           test(newline, slice(input, lastEnd, tokPos))) {
+{
         // A `-->` line comment
         tokPos += 3;
         skipLineComment();
         skipSpace();
         return readToken();
       }
-      return finishOp(_incDec, 2);
+}
+      finishOp(_incDec, 2);
     }
-    if (next == 61) return finishOp(_assign, 2);
-    return finishOp(_plusMin, 1);
+}
+    if (next == 61) {
+finishOp(_assign, 2);
+}
+    finishOp(_plusMin, 1);
   }
 
   auto readToken_lt_gt(auto code) { // '<>'
     auto next = charCodeAt(input, tokPos + 1); 
     int size = 1; 
     if (next == code) {
+{
       size = code == 62 && charCodeAt(input, tokPos + 2) == 62 ? 3 : 2;
-      if (charCodeAt(input, tokPos + size) == 61) return finishOp(_assign, size + 1);
-      return finishOp(_bitShift, size);
+      if (charCodeAt(input, tokPos + size) == 61) {
+finishOp(_assign, size + 1);
+}
+      finishOp(_bitShift, size);
     }
+}
     if (next == 33 && code == 60 && charCodeAt(input, tokPos + 2) == 45 &&
         charCodeAt(input, tokPos + 3) == 45) {
+{
       // `<!--`, an XML-style comment that should be interpreted as a line comment
       tokPos += 4;
       skipLineComment();
       skipSpace();
       return readToken();
     }
-    if (next == 61)
-      size = charCodeAt(input, tokPos + 2) == 61 ? 3 : 2;
-    return finishOp(_relational, size);
+}
+    if (next == 61) {
+size = charCodeAt(input, tokPos + 2) == 61 ? 3 : 2;
+}
+    finishOp(_relational, size);
   }
 
   auto readToken_eq_excl(auto code) { // '=!'
     auto next = charCodeAt(input, tokPos + 1); 
-    if (next == 61) return finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
-    return finishOp(code == 61 ? _eq : _prefix, 1);
+    if (next == 61) {
+finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
+}
+    finishOp(code == 61 ? _eq : _prefix, 1);
   }
 
   auto getTokenFromCode(auto code) {
@@ -609,21 +639,23 @@
       return readToken_dot();}
 
       // Punctuation tokens.
-    case 40:{ ++tokPos; return finishToken(_parenL);}
-    case 41:{ ++tokPos; return finishToken(_parenR);}
-    case 59:{ ++tokPos; return finishToken(_semi);}
-    case 44:{ ++tokPos; return finishToken(_comma);}
-    case 91:{ ++tokPos; return finishToken(_bracketL);}
-    case 93:{ ++tokPos; return finishToken(_bracketR);}
-    case 123:{ ++tokPos; return finishToken(_braceL);}
-    case 125:{ ++tokPos; return finishToken(_braceR);}
-    case 58:{ ++tokPos; return finishToken(_colon);}
-    case 63:{ ++tokPos; return finishToken(_question);}
+    case 40:{ ++tokPos; finishToken(_parenL);}
+    case 41:{ ++tokPos; finishToken(_parenR);}
+    case 59:{ ++tokPos; finishToken(_semi);}
+    case 44:{ ++tokPos; finishToken(_comma);}
+    case 91:{ ++tokPos; finishToken(_bracketL);}
+    case 93:{ ++tokPos; finishToken(_bracketR);}
+    case 123:{ ++tokPos; finishToken(_braceL);}
+    case 125:{ ++tokPos; finishToken(_braceR);}
+    case 58:{ ++tokPos; finishToken(_colon);}
+    case 63:{ ++tokPos; finishToken(_question);}
 
       // '0x' is a hexadecimal number.
     case 48:{ // '0'
       auto next = charCodeAt(input, tokPos + 1); 
-      if (next == 120 || next == 88) return readHexNumber();}
+      if (next == 120 || next == 88) {
+return readHexNumber();
+}}
       // Anything else beginning with a digit is an integer, octal
       // number, or float.
     case 49:{} case 50:{} case 51:{} case 52:{} case 53:{} case 54:{} case 55:{} case 56:{} case 57:{ // 1-9
@@ -639,16 +671,16 @@
     // of the type given by its first argument.
 
     case 47:{ // '/'
-      return readToken_slash(code);}
+      readToken_slash(code);}
 
     case 37:{} case 42:{ // '%*'
-      return readToken_mult_modulo();}
+      readToken_mult_modulo();}
 
     case 124:{} case 38:{ // '|&'
       return readToken_pipe_amp(code);}
 
     case 94:{ // '^'
-      return readToken_caret();}
+      readToken_caret();}
 
     case 43:{} case 45:{ // '+-'
       return readToken_plus_min(code);}
@@ -660,33 +692,46 @@
       return readToken_eq_excl(code);}
 
     case 126:{ // '~'
-      return finishOp(_prefix, 1);}
+      finishOp(_prefix, 1);}
     }
 
     return false;
   }
 
   auto readToken(auto forceRegexp) {
-    if (!forceRegexp) tokStart = tokPos;
-    else tokPos = tokStart + 1;
-    if (options.locations) tokStartLoc = line_loc_t;
-    if (forceRegexp) return readRegexp();
-    if (tokPos >= inputLen) return finishToken(_eof);
+    if (!forceRegexp) {
+tokStart = tokPos;
+}
+    if (options.locations) {
+tokStartLoc = line_loc_t;
+}
+    if (forceRegexp) {
+readRegexp();
+}
+    if (tokPos >= inputLen) {
+finishToken(_eof);
+}
 
     auto code = charCodeAt(input, tokPos); 
     // Identifier or keyword. '\uXXXX' sequences are allowed in
     // identifiers, so '\' also dispatches to that.
-    if (isIdentifierStart(code) || code == 92 /* '\' */) return readWord();
+    if (isIdentifierStart(code) || code == 92) {
+readWord();
+}
 
     auto tok = getTokenFromCode(code); 
 
     if (tok == false) {
+{
       // If we are here, we either found a non-ASCII identifier
       // character, or something that's entirely disallowed.
       auto ch = fromCharCode(code); 
-      if (ch == "\\" || test(nonASCIIidentifierStart, ch)) return readWord();
+      if (ch == "\\" || test(nonASCIIidentifierStart, ch)) {
+readWord();
+}
       raise(tokPos, std::string("Unexpected character '") + ch + std::string("'"));
     }
+}
     return tok;
   }
 
@@ -703,15 +748,21 @@
     std::string content = "";  auto escaped = 0;  auto inClass = 0;  auto start = tokPos; 
     ; for (; ;)
 {
-      if (tokPos >= inputLen) raise(start, "Unterminated regular expression");
+      if (tokPos >= inputLen) {
+raise(start, "Unterminated regular expression");
+}
       auto ch = charAt(input, tokPos); 
-      if (test(newline, ch)) raise(start, "Unterminated regular expression");
+      if (test(newline, ch)) {
+raise(start, "Unterminated regular expression");
+}
       if (!escaped) {
-        if (ch == "[") inClass = true;
-        else if (ch == "]" && inClass) inClass = false;
-        else if (ch == "/" && !inClass) break;
+{
+        if (ch == "[") {
+inClass = true;
+}
         escaped = ch == "\\";
-      } else escaped = false;
+      }
+}
       ++tokPos;
     }
     content = slice(input, start, tokPos); 
@@ -719,7 +770,9 @@
     // Need to use `readWord1` because '\uXXXX' sequences are allowed
     // here (don't ask).
     auto mods = readWord1(); 
-    if (mods && !test(RegExp("[object Object]"), mods)) raise(start, "Invalid regexp flag");
+    if (mods && !test(RegExp("[object Object]"), mods)) {
+raise(start, "Invalid regexp flag");
+}
     // try {
     //   var value = RegExp(content, mods);
     // } catch (e) {
@@ -728,9 +781,11 @@
     // }
     auto value = RegExp(content, mods); 
     if (ISNULL(value)) {
+{
       raise(0, 'SyntaxError');
     }
-    return finishToken(_regexp, value);
+}
+    finishToken(_regexp, value);
   }
 
   // Read an integer in the given radix. Return null if zero digits
@@ -742,15 +797,18 @@
     auto i = 0;  auto e = ISNULL(len) ? Infinity : len; ; for (; i < e;)
 {
       auto code = charCodeAt(input, tokPos);  auto val = 0; 
-      if (code >= 97) val = code - 97 + 10; // a
-      else if (code >= 65) val = code - 65 + 10; // A
-      else if (code >= 48 && code <= 57) val = code - 48; // 0-9
-      else val = Infinity;
-      if (val >= radix) break;
+      if (code >= 97) {
+val = code - 97 + 10;
+}
+      if (val >= radix) {
+break;
+}
       ++tokPos;
       total = total * radix + val;
     }
-    if (tokPos == start || ISNOTNULL(len) && tokPos - start != len) return DBL_NULL;
+    if (tokPos == start || ISNOTNULL(len) && tokPos - start != len) {
+return null;
+}
 
     return total;
   }
@@ -758,36 +816,51 @@
   auto readHexNumber() {
     tokPos += 2; // 0x
     auto val = readInt(16); 
-    if (ISNULL(val)) raise(tokStart + 2, "Expected hexadecimal number");
-    if (isIdentifierStart(charCodeAt(input, tokPos))) raise(tokPos, "Identifier directly after number");
-    return finishToken(_num, val);
+    if (ISNULL(val)) {
+raise(tokStart + 2, "Expected hexadecimal number");
+}
+    if (isIdentifierStart(charCodeAt(input, tokPos))) {
+raise(tokPos, "Identifier directly after number");
+}
+    finishToken(_num, val);
   }
 
   // Read an integer, octal integer, or floating-point number.
 
   void readNumber(bool startsWithDot) {
     auto start = tokPos;  auto isFloat = false;  auto octal = charCodeAt(input, tokPos) == 48; 
-    if (!startsWithDot && ISNULL(readInt(10))) raise(start, "Invalid number");
+    if (!startsWithDot && ISNULL(readInt(10))) {
+raise(start, "Invalid number");
+}
     if (charCodeAt(input, tokPos) == 46) {
+{
       ++tokPos;
       readInt(10);
       isFloat = true;
     }
+}
     auto next = charCodeAt(input, tokPos); 
-    if (next == 69 || next == 101) { // 'eE'
+    if (next == 69 || next == 101) {
+{ // 'eE'
       next = charCodeAt(input, ++tokPos);
-      if (next == 43 || next == 45) ++tokPos; // '+-'
-      if (ISNULL(readInt(10))) raise(start, "Invalid number");
+      if (next == 43 || next == 45) {
+++tokPos;
+} // '+-'
+      if (ISNULL(readInt(10))) {
+raise(start, "Invalid number");
+}
       isFloat = true;
     }
-    if (isIdentifierStart(charCodeAt(input, tokPos))) raise(tokPos, "Identifier directly after number");
+}
+    if (isIdentifierStart(charCodeAt(input, tokPos))) {
+raise(tokPos, "Identifier directly after number");
+}
 
     auto str = slice(input, start, tokPos);  auto val = 0; 
-    if (isFloat) val = parseFloat(str);
-    else if (!octal || str.length() == 1) val = parseInt(str, 10);
-    else if (test(RegExp("[object Object]"), str) || strict) raise(start, "Invalid number");
-    else val = parseInt(str, 8);
-    return finishToken(_num, val);
+    if (isFloat) {
+val = parseFloat(str);
+}
+    finishToken(_num, val);
   }
 
   // Read a string value, interpreting backslash-escapes.
@@ -797,46 +870,36 @@
     auto out = ""; 
     ; for (; ;)
 {
-      if (tokPos >= inputLen) raise(tokStart, "Unterminated string constant");
+      if (tokPos >= inputLen) {
+raise(tokStart, "Unterminated string constant");
+}
       auto ch = charCodeAt(input, tokPos); 
       if (ch == quote) {
+{
         ++tokPos;
-        return finishToken(_string, out);
+        finishToken(_string, out);
       }
-      if (ch == 92) { // '\'
+}
+      if (ch == 92) {
+{ // '\'
         ch = charCodeAt(input, ++tokPos);
         auto octal = exec(RegExp("[object Object]"), slice(input, tokPos, tokPos + 3))[0]; 
         while (octal && parseInt(octal, 8) > 255) octal = slice(octal, 0, -1);
-        if (octal == "0") octal = null;
+        if (octal == "0") {
+octal = null;
+}
         ++tokPos;
         if (octal) {
-          if (strict) raise(tokPos - 2, "Octal literal in strict mode");
+{
+          if (strict) {
+raise(tokPos - 2, "Octal literal in strict mode");
+}
           out += fromCharCode(parseInt(octal, 8));
           tokPos += octal.length() - 1;
-        } else {
-          switch (ch) {
-          case 110:{ out += "\n"; break;} // 'n' -> '\n'
-          case 114:{ out += "\r"; break;} // 'r' -> '\r'
-          case 120:{ out += fromCharCode(readHexChar(2)); break;} // 'x'
-          case 117:{ out += fromCharCode(readHexChar(4)); break;} // 'u'
-          case 85:{ out += fromCharCode(readHexChar(8)); break;} // 'U'
-          case 116:{ out += "\t"; break;} // 't' -> '\t'
-          case 98:{ out += "\b"; break;} // 'b' -> '\b'
-          case 118:{ out += "\u000b"; break;} // 'v' -> '\u000b'
-          case 102:{ out += "\f"; break;} // 'f' -> '\f'
-          case 48:{ out += "\0"; break;} // 0 -> '\0'
-          case 13:{ if (charCodeAt(input, tokPos) == 10) ++tokPos;} // '\r\n'
-          case 10:{ // ' \n'
-            if (options.locations) { tokLineStart = tokPos; ++tokCurLine; }
-            break;}
-          default:{ out += fromCharCode(ch); break;}
-          }
         }
-      } else {
-        if (ch == 13 || ch == 10 || ch == 8232 || ch == 8233) raise(tokStart, "Unterminated string constant");
-        out += fromCharCode(ch); // '\'
-        ++tokPos;
+}
       }
+}
     }
   }
 
@@ -844,7 +907,9 @@
 
   auto readHexChar(auto len) {
     auto n = readInt(16, len); 
-    if (ISNULL(n)) raise(tokStart, "Bad character escape sequence");
+    if (ISNULL(n)) {
+raise(tokStart, "Bad character escape sequence");
+}
     return n;
   }
 
@@ -867,23 +932,13 @@
 {
       auto ch = charCodeAt(input, tokPos); 
       if (isIdentifierChar(ch)) {
-        if (containsEsc) word += charAt(input, tokPos);
+{
+        if (containsEsc) {
+word += charAt(input, tokPos);
+}
         ++tokPos;
-      } else if (ch == 92) { // "\"
-        if (!containsEsc) word = slice(input, start, tokPos);
-        containsEsc = true;
-        if (charCodeAt(input, ++tokPos) != 117) // "u"
-          raise(tokPos, "Expecting Unicode escape sequence \\uXXXX");
-        ++tokPos;
-        auto esc = readHexChar(4); 
-        auto escStr = fromCharCode(esc); 
-        if (!escStr) raise(tokPos - 1, "Invalid Unicode escape");
-        if (!(first ? isIdentifierStart(esc) : isIdentifierChar(esc)))
-          raise(tokPos - 4, "Invalid Unicode escape");
-        word += escStr;
-      } else {
-        break;
       }
+}
       first = false;
     }
     return containsEsc ? word : slice(input, start, tokPos);
@@ -895,9 +950,10 @@
   auto readWord() {
     std::string word = readWord1(); 
     keyword_t type = _name; 
-    if (!containsEsc && isKeyword(word))
-      type = keywordTypes(word);
-    return finishToken(type, word);
+    if (!containsEsc && isKeyword(word)) {
+type = keywordTypes(word);
+}
+    finishToken(type, word);
   }
 
   // ## Parser
@@ -910,10 +966,10 @@
   // function that parses unary prefix operators is called first, and
   // in turn calls the function that parses `[]` subscripts — that
   // way, it'll receive the node for `x[1]` already parsed, and wraps
-  // *that* in the unary operator node.
+  // *that* in the unary opr node.
   //
-  // Acorn uses an [operator precedence parser][opp] to handle binary
-  // operator precedence, because it is much more compact than using
+  // Acorn uses an [opr precedence parser][opp] to handle binary
+  // opr precedence, because it is much more compact than using
   // the technique outlined above, which uses different, nesting
   // functions to specify precedence, for all of the ten binary
   // precedence levels that JavaScript defines.
@@ -938,11 +994,13 @@
     strict = strct;
     tokPos = tokStart;
     if (options.locations) {
+{
       while (tokPos < tokLineStart) {
         tokLineStart = lastIndexOf(input, "\n", tokLineStart - 2) + 1;
         --tokCurLine;
       }
     }
+}
     skipSpace();
     readToken();
   }
@@ -963,28 +1021,34 @@
 
   auto startNode() {
     auto node = new node_t(); 
-    if (options.locations)
-      node->loc = new node_loc_t();
-    if (options.directSourceFile.length() > 0)
-      node->sourceFile = options.directSourceFile;
-    if (options.ranges)
-      node->range = std::vector<int>(tokStart, 0);
+    if (options.locations) {
+node->loc = new node_loc_t();
+}
+    if (options.directSourceFile.length() > 0) {
+node->sourceFile = options.directSourceFile;
+}
+    if (options.ranges) {
+node->range = std::vector<int>(tokStart, 0);
+}
     return node;
   }
 
   // Start a node whose start offset information should be based on
-  // the start of another node. For example, a binary operator node is
+  // the start of another node. For example, a binary opr node is
   // only started after its left-hand side has already been parsed.
 
   auto startNodeFrom(auto other) {
     auto node = new node_t(); 
-    node->start = other.start;
+    node->start = other->start;
     if (options.locations) {
+{
       node->loc = new node_loc_t();
-      node->loc->start = other.loc->start;
+      node->loc->start = other->loc->start;
     }
-    if (options.ranges)
-      node->range = std::vector<int>(other.range[0], 0);
+}
+    if (options.ranges) {
+node->range = std::vector<int>(other->range[0], 0);
+}
 
     return node;
   }
@@ -994,10 +1058,12 @@
   node_t* finishNode(node_t* node, std::string type) {
     node->type = type;
     node->end = lastEnd;
-    if (options.locations)
-      node->loc->end = lastEndLoc;
-    if (options.ranges)
-      node->range[1] = lastEnd;
+    if (options.locations) {
+node->loc->end = lastEndLoc;
+}
+    if (options.ranges) {
+node->range[1] = lastEnd;
+}
     return  node;
   }
 
@@ -1013,9 +1079,11 @@
 
   auto eat(keyword_t type) {
     if (tokType == type) {
+{
       next();
       return true;
     }
+}
   }
 
   // Test whether a semicolon can be inserted at the current position.
@@ -1029,15 +1097,18 @@
   // pretend that there is a semicolon at this position.
 
   auto semicolon() {
-    if (!eat(_semi) && !canInsertSemicolon()) unexpected();
+    if (!eat(_semi) && !canInsertSemicolon()) {
+unexpected();
+}
   }
 
   // Expect a token of a given type. If found, consume it, otherwise,
   // raise an unexpected token error.
 
   auto expect(keyword_t type) {
-    if (tokType == type) next();
-    else unexpected();
+    if (tokType == type) {
+next();
+}
   }
 
   // Raise an unexpected token error.
@@ -1050,10 +1121,12 @@
   // to.
 
   auto checkLVal(auto expr) {
-    if (expr->type != "Identifier" && expr->type != "MemberExpression")
-      raise(expr->start, "Assigning to rvalue");
-    if (strict && expr->type == "Identifier" && isStrictBadIdWord(expr->name))
-      raise(expr->start, std::string("Assigning to ") + expr->name + std::string(" in strict mode"));
+    if (expr->type != "Identifier" && expr->type != "MemberExpression") {
+raise(expr->start, "Assigning to rvalue");
+}
+    if (strict && expr->type == "Identifier" && isStrictBadIdWord(expr->name)) {
+raise(expr->start, std::string("Assigning to ") + expr->name + std::string(" in strict mode"));
+}
   }
 
   // ### Statement parsing
@@ -1065,17 +1138,23 @@
 
   auto parseTopLevel(auto program) {
     lastStart = lastEnd = tokPos;
-    if (options.locations) lastEndLoc = line_loc_t;
+    if (options.locations) {
+lastEndLoc = line_loc_t;
+}
     inFunction = strict = null;
     labels = std::vector<label_t>();
     readToken();
 
     auto node = program || startNode();  auto first = true; 
-    if (!program) node->body = std::vector<int>();
+    if (!program) {
+node->body = std::vector<int>();
+}
     while (tokType != _eof) {
       auto stmt = parseStatement(); 
       push(node->body, stmt);
-      if (first && isUseStrict(stmt)) setStrict(true);
+      if (first && isUseStrict(stmt)) {
+setStrict(true);
+}
       first = false;
     }
     return finishNode(node, "Program");
@@ -1085,14 +1164,15 @@
 
   // Parse a single statement.
   //
-  // If expecting a statement and finding a slash operator, parse a
+  // If expecting a statement and finding a slash opr, parse a
   // regular expression literal. This is to handle cases like
   // `if (foo) /blah/.exec(foo);`, where looking at the previous token
   // does not help.
 
   auto parseStatement() {
-    if (tokType == _slash || tokType == _assign && tokVal == "/=")
-      readToken(true);
+    if (tokType == _slash || tokType == _assign && tokVal == "/=") {
+readToken(true);
+}
 
     auto starttype = tokType;  auto node = startNode(); 
 
@@ -1104,12 +1184,9 @@
     case 6:{} case 9:{
       next();
       auto isBreak = starttype == _break; 
-      if (eat(_semi) || canInsertSemicolon()) node->label = null;
-      else if (tokType != _name) unexpected();
-      else {
-        node->label = parseIdent();
-        semicolon();
-      }
+      if (eat(_semi) || canInsertSemicolon()) {
+node->label = null;
+}
 
       // Verify that there is an actual destination to break or
       // continue to.
@@ -1117,11 +1194,19 @@
 {
         auto lab = labels[i]; 
         if (ISNULL(node->label) || lab.name == node->label->name) {
-          if (ISNOTNULL(lab.kind) && (isBreak || lab.kind == "loop")) break;
-          if (node->label && isBreak) break;
+{
+          if (ISNOTNULL(lab.kind) && (isBreak || lab.kind == "loop")) {
+break;
+}
+          if (node->label && isBreak) {
+break;
+}
         }
+}
       }
-      if (i == labels.size()) raise(node->start, std::string("Unsyntactic ") + starttype.keyword);
+      if (i == labels.size()) {
+raise(node->start, std::string("Unsyntactic ") + starttype.keyword);
+}
       return finishNode(node, isBreak ? "BreakStatement" : "ContinueStatement");}
 
     case 10:{
@@ -1141,7 +1226,7 @@
 
       // Disambiguating between a `for` and a `for`/`in` loop is
       // non-trivial. Basically, we have to parse the init `var`
-      // statement or expression, disallowing the `in` operator (see
+      // statement or expression, disallowing the `in` opr (see
       // the second parameter to `parseExpression`), and then check
       // whether the next token is `in`. When there is no init part
       // (semicolon immediately after the opening parenthesis), it is
@@ -1152,18 +1237,25 @@
       next();
       push(labels, loopLabel);
       expect(_parenL);
-      if (tokType == _semi) return parseFor(node, null);
+      if (tokType == _semi) {
+return parseFor(node, null);
+}
       if (tokType == _var) {
+{
         auto init = startNode(); 
         next();
         parseVar(init, true);
         finishNode(init, "VariableDeclaration");
-        if (init->declarations.size() == 1 && eat(_in))
-          return parseForIn(node, init);
+        if (init->declarations.size() == 1 && eat(_in)) {
+return parseForIn(node, init);
+}
         return parseFor(node, init);
       }
+}
       auto init = parseExpression(false, true); 
-      if (eat(_in)) {checkLVal(init); return parseForIn(node, init);}
+      if (eat(_in)) {
+{checkLVal(init); return parseForIn(node, init);}
+}
       return parseFor(node, init);}
 
     case 16:{
@@ -1178,16 +1270,18 @@
       return finishNode(node, "IfStatement");}
 
     case 18:{
-      if (!inFunction && !options.allowReturnOutsideFunction)
-        raise(tokStart, "'return' outside of function");
+      if (!inFunction && !options.allowReturnOutsideFunction) {
+raise(tokStart, "'return' outside of function");
+}
       next();
 
       // In `return` (and `break`/`continue`), the keywords with
       // optional arguments, we eagerly look for a semicolon or the
       // possibility to insert one.
 
-      if (eat(_semi) || canInsertSemicolon()) node->argument = null;
-      else { node->argument = parseExpression(); semicolon(); }
+      if (eat(_semi) || canInsertSemicolon()) {
+node->argument = null;
+}
       return finishNode(node, "ReturnStatement");}
 
     case 19:{
@@ -1204,31 +1298,33 @@
       node_t* cur = nullptr;  auto sawDefault = 0; ; for (; tokType != _braceR;)
 {
         if (tokType == _case || tokType == _default) {
+{
           auto isCase = tokType == _case; 
-          if (cur) finishNode(cur, "SwitchCase");
+          if (cur) {
+finishNode(cur, "SwitchCase");
+}
           push(node->cases, cur = startNode());
           cur->consequents = std::vector<node_t*>();
           next();
-          if (isCase) cur->test = parseExpression();
-          else {
-            if (sawDefault) raise(lastStart, "Multiple default clauses"); sawDefault = true;
-            cur->test = null;
-          }
+          if (isCase) {
+cur->test = parseExpression();
+}
           expect(_colon);
-        } else {
-          if (!cur) unexpected();
-          push(cur->consequents, parseStatement());
         }
+}
       }
-      if (cur) finishNode(cur, "SwitchCase");
+      if (cur) {
+finishNode(cur, "SwitchCase");
+}
       next(); // Closing brace
       pop(labels);
       return finishNode(node, "SwitchStatement");}
 
     case 20:{
       next();
-      if (test(newline, slice(input, lastEnd, tokStart)))
-        raise(lastEnd, "Illegal newline after throw");
+      if (test(newline, slice(input, lastEnd, tokStart))) {
+raise(lastEnd, "Illegal newline after throw");
+}
       node->argument = parseExpression();
       semicolon();
       return finishNode(node, "ThrowStatement");}
@@ -1239,21 +1335,25 @@
       node->block = parseBlock();
       node->handler = null;
       if (tokType == _catch) {
+{
         auto clause = startNode(); 
         next();
         expect(_parenL);
         clause->param = parseIdent();
-        if (strict && isStrictBadIdWord(clause->param->name))
-          raise(clause->param->start, std::string("Binding ") + clause->param->name + std::string(" in strict mode"));
+        if (strict && isStrictBadIdWord(clause->param->name)) {
+raise(clause->param->start, std::string("Binding ") + clause->param->name + std::string(" in strict mode"));
+}
         expect(_parenR);
         clause->guard = null;
         clause->body = parseBlock();
         node->handler = finishNode(clause, "CatchClause");
       }
+}
       node->guardedHandlers = empty;
       node->finalizer = eat(_finally) ? parseBlock() : null;
-      if (!node->handler && !node->finalizer)
-        raise(node->start, "Missing catch or finally clause");
+      if (!node->handler && !node->finalizer) {
+raise(node->start, "Missing catch or finally clause");
+}
       return finishNode(node, "TryStatement");}
 
     case 22:{
@@ -1272,7 +1372,9 @@
       return finishNode(node, "WhileStatement");}
 
     case 24:{
-      if (strict) raise(tokStart, "'with' in strict mode");
+      if (strict) {
+raise(tokStart, "'with' in strict mode");
+}
       next();
       node->object = parseParenExpression();
       node->body = parseStatement();
@@ -1294,20 +1396,20 @@
     default:{
       auto maybeName = tokVal;  auto expr = parseExpression(); 
       if (starttype == _name && expr->type == "Identifier" && eat(_colon)) {
+{
         auto i = 0; ; for (; i < labels.size();)
-if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + maybeName + std::string("' is already declared"));
-        auto kind = tokType.isLoop ? "loop" : tokType == _switch ? "switch" : null; 
+if (labels[i].name == maybeName) {
+raise(expr->start, std::string("Label '") + maybeName + std::string("' is already declared"));
+}
+        std::string kind = tokType.isLoop ? "loop" : tokType == _switch ? "switch" : null; 
         push(labels, {name: maybeName, kind: kind});
         
         node->body = parseStatement();
         pop(labels);
         node->label = expr;
         return finishNode(node, "LabeledStatement");
-      } else {
-        node->expression = expr;
-        semicolon();
-        return finishNode(node, "ExpressionStatement");
-      }}
+      }
+}}
     }
   }
 
@@ -1327,18 +1429,22 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
 
   node_t* parseBlock(bool allowStrict) {
     auto node = startNode();  auto first = true;  auto strict = false;  auto oldStrict = 0; 
-    node->body = std::vector<int>();
+    node->bodyarr = std::vector<node_t*>();
     expect(_braceL);
     while (!eat(_braceR)) {
       auto stmt = parseStatement(); 
-      push(node->body, stmt);
+      push(node->bodyarr, stmt);
       if (first && allowStrict && isUseStrict(stmt)) {
+{
         oldStrict = strict;
         setStrict(strict = true);
       }
+}
       first = false;
     }
-    if (strict && !oldStrict) setStrict(false);
+    if (strict && !oldStrict) {
+setStrict(false);
+}
     return finishNode(node, "BlockStatement");
   }
 
@@ -1372,17 +1478,20 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
   // Parse a list of variable declarations.
 
   node_t* parseVar(node_t* node, bool noIn) {
-    node->declarations = std::vector<int>();
+    node->declarations = std::vector<node_t*>();
     node->kind = "var";
     ; for (; ;)
 {
       auto decl = startNode(); 
-      decl.id = parseIdent();
-      if (strict && isStrictBadIdWord(decl.id.name))
-        raise(decl.id.start, std::string("Binding ") + decl.id.name + std::string(" in strict mode"));
-      decl.init = eat(_eq) ? parseExpression(true, noIn) : null;
+      decl->id = parseIdent();
+      if (strict && isStrictBadIdWord(decl->id->name)) {
+raise(decl->id->start, std::string("Binding ") + decl->id->name + std::string(" in strict mode"));
+}
+      decl->init = eat(_eq) ? parseExpression(true, noIn) : null;
       push(node->declarations, finishNode(decl, "VariableDeclarator"));
-      if (!eat(_comma)) break;
+      if (!eat(_comma)) {
+break;
+}
     }
     return node;
   }
@@ -1397,41 +1506,46 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
 
   // Parse a full expression. The arguments are used to forbid comma
   // sequences (in argument lists, array literals, or object literals)
-  // or the `in` operator (in for loops initalization expressions).
+  // or the `in` opr (in for loops initalization expressions).
 
   node_t* parseExpression(bool noComma, bool noIn) {
     auto expr = parseMaybeAssign(noIn); 
     if (!noComma && tokType == _comma) {
+{
       auto node = startNodeFrom(expr); 
-      node->expressions = std::vector<int>(expr);
+      node->expressions = std::vector<node_t*>(expr);
       while (eat(_comma)) push(node->expressions, parseMaybeAssign(noIn));
       return finishNode(node, "SequenceExpression");
     }
+}
     return expr;
   }
 
   // Parse an assignment expression. This includes applications of
   // operators like `+=`.
 
-  auto parseMaybeAssign(auto noIn) {
+  node_t* parseMaybeAssign(bool noIn) {
     auto left = parseMaybeConditional(noIn); 
     if (tokType.isAssign) {
+{
       auto node = startNodeFrom(left); 
-      node->operator = tokVal;
+      node->opr = tokVal;
       node->left = left;
       next();
       node->right = parseMaybeAssign(noIn);
       checkLVal(left);
       return finishNode(node, "AssignmentExpression");
     }
+}
     return left;
   }
 
-  // Parse a ternary conditional (`?:`) operator.
+  // Parse a ternary conditional (`?:`) opr.
 
-  auto parseMaybeConditional(auto noIn) {
+  node_t* parseMaybeConditional(bool noIn) {
     auto expr = parseExprOps(noIn); 
     if (eat(_question)) {
+{
       auto node = startNodeFrom(expr); 
       node->test = expr;
       node->consequent = parseExpression(true);
@@ -1439,58 +1553,64 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
       node->alternate = parseExpression(true, noIn);
       return finishNode(node, "ConditionalExpression");
     }
+}
     return expr;
   }
 
   // Start the precedence parser.
 
-  auto parseExprOps(auto noIn) {
+  node_t* parseExprOps(bool noIn) {
     return parseExprOp(parseMaybeUnary(), -1, noIn);
   }
 
-  // Parse binary operators with the operator precedence parsing
-  // algorithm. `left` is the left-hand side of the operator.
+  // Parse binary operators with the opr precedence parsing
+  // algorithm. `left` is the left-hand side of the opr.
   // `minPrec` provides context that allows the function to stop and
   // defer further parser to one of its callers when it encounters an
-  // operator that has a lower precedence than the set it is parsing.
+  // opr that has a lower precedence than the set it is parsing.
 
-  auto parseExprOp(auto left, auto minPrec, auto noIn) {
+  node_t* parseExprOp(node_t* left, double minPrec, bool noIn) {
     auto prec = tokType.binop; 
     if (ISNOTNULL(prec) && (!noIn || tokType != _in)) {
+{
       if (prec > minPrec) {
+{
         auto node = startNodeFrom(left); 
         node->left = left;
-        node->operator = tokVal;
+        node->opr = tokVal;
         auto op = tokType; 
         next();
         node->right = parseExprOp(parseMaybeUnary(), prec, noIn);
         auto exprNode = finishNode(node, (op == _logicalOR || op == _logicalAND) ? "LogicalExpression" : "BinaryExpression"); 
         return parseExprOp(exprNode, minPrec, noIn);
       }
+}
     }
+}
     return left;
   }
 
   // Parse unary operators, both prefix and postfix.
 
-  auto parseMaybeUnary() {
+  node_t* parseMaybeUnary() {
     if (tokType.prefix) {
+{
       auto node = startNode();  auto update = tokType.isUpdate; 
-      node->operator = tokVal;
+      node->opr = tokVal;
       node->prefix = true;
       tokRegexpAllowed = true;
       next();
       node->argument = parseMaybeUnary();
-      if (update) checkLVal(node->argument);
-      else if (strict && node->operator == "delete" &&
-               node->argument.type == "Identifier")
-        raise(node->start, "Deleting local variable in strict mode");
+      if (update) {
+checkLVal(node->argument);
+}
       return finishNode(node, update ? "UpdateExpression" : "UnaryExpression");
     }
+}
     auto expr = parseExprSubscripts(); 
     while (tokType.postfix && !canInsertSemicolon()) {
       auto node = startNodeFrom(expr); 
-      node->operator = tokVal;
+      node->opr = tokVal;
       node->prefix = false;
       node->argument = expr;
       checkLVal(expr);
@@ -1502,30 +1622,20 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
 
   // Parse call, dot, and `[]`-subscript expressions.
 
-  auto parseExprSubscripts() {
+  node_t* parseExprSubscripts() {
     return parseSubscripts(parseExprAtom());
   }
 
-  auto parseSubscripts(auto base, auto noCalls) {
+  node_t* parseSubscripts(node_t* base, bool noCalls) {
     if (eat(_dot)) {
+{
       auto node = startNodeFrom(base); 
       node->object = base;
       node->property = parseIdent(true);
       node->computed = false;
       return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
-    } else if (eat(_bracketL)) {
-      auto node = startNodeFrom(base); 
-      node->object = base;
-      node->property = parseExpression();
-      node->computed = true;
-      expect(_bracketR);
-      return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
-    } else if (!noCalls && eat(_parenL)) {
-      auto node = startNodeFrom(base); 
-      node->callee = base;
-      node->arguments = parseExprList(_parenR, false);
-      return parseSubscripts(finishNode(node, "CallExpression"), noCalls);
-    } else return base;
+    }
+}
   }
 
   // Parse an atomic expression — either a single token that is an
@@ -1533,7 +1643,7 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
   // `new`, or an expression wrapped in punctuation like `()`, `[]`,
   // or `{}`.
 
-  auto parseExprAtom() {
+  node_t* parseExprAtom() {
     switch (tokType) {
     case 26:{
       auto node = startNode(); 
@@ -1559,14 +1669,17 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
       int tokStartLoc1 = tokStartLoc;  int tokStart1 = tokStart; 
       next();
       auto val = parseExpression(); 
-      val.start = tokStart1;
-      val.end = tokEnd;
+      val->start = tokStart1;
+      val->end = tokEnd;
       if (options.locations) {
-        val.loc->start = tokStartLoc1;
-        val.loc->end = tokEndLoc;
+{
+        val->loc->start = tokStartLoc1;
+        val->loc->end = tokEndLoc;
       }
-      if (options.ranges)
-        val.range = std::vector<int>(tokStart1, tokEnd);
+}
+      if (options.ranges) {
+val->range = std::vector<int>(tokStart1, tokEnd);
+}
       expect(_parenR);
       return val;}
 
@@ -1596,78 +1709,90 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
   // to be a `[]` or dot subscript expression, but not a call — at
   // least, not without wrapping it in parentheses. Thus, it uses the
 
-  auto parseNew() {
+  node_t* parseNew() {
     auto node = startNode(); 
     next();
     node->callee = parseSubscripts(parseExprAtom(), true);
-    if (eat(_parenL)) node->arguments = parseExprList(_parenR, false);
-    else node->arguments = empty;
+    if (eat(_parenL)) {
+node->arguments = parseExprList(_parenR, false);
+}
     return finishNode(node, "NewExpression");
   }
 
   // Parse an object literal.
 
-  auto parseObj() {
+  node_t* parseObj() {
     auto node = startNode();  auto first = true;  auto sawGetSet = false; 
-    node->properties = std::vector<int>();
+    node->properties = std::vector<node_t*>();
     next();
     while (!eat(_braceR)) {
       if (!first) {
+{
         expect(_comma);
-        if (options.allowTrailingCommas && eat(_braceR)) break;
-      } else first = false;
+        if (options.allowTrailingCommas && eat(_braceR)) {
+break;
+}
+      }
+}
 
-      auto prop = {key: parsePropertyName()};  auto isGetSet = false;  auto kind = 0; 
+      node_t prop = {key: parsePropertyName()};  auto isGetSet = false;  std::string kind = ""; 
       if (eat(_colon)) {
+{
         prop.value = parseExpression(true);
         kind = prop.kind = "init";
-      } else if (options.ecmaVersion >= 5 && prop.key.type == "Identifier" &&
-                 (prop.key.name == "get" || prop.key.name == "set")) {
-        isGetSet = sawGetSet = true;
-        kind = prop.kind = prop.key.name;
-        prop.key = parsePropertyName();
-        if (tokType != _parenL) unexpected();
-        prop.value = parseFunction(startNode(), false);
-      } else unexpected();
+      }
+}
 
       // getters and setters are not allowed to clash — either with
       // each other or with an init property — and in strict mode,
       // init properties are also not allowed to be repeated.
 
-      if (prop.key.type == "Identifier" && (strict || sawGetSet)) {
-        auto i = 0; ; for (; i < node->properties.length();)
+      if (prop.key->type == "Identifier" && (strict || sawGetSet)) {
+{
+        auto i = 0; ; for (; i < node->properties.size();)
 {
           auto other = node->properties[i]; 
-          if (other.key.name == prop.key.name) {
-            auto conflict = kind == other.kind || isGetSet && other.kind == "init" ||
-              kind == "init" && (other.kind == "get" || other.kind == "set"); 
-            if (conflict && !strict && kind == "init" && other.kind == "init") conflict = false;
-            if (conflict) raise(prop.key.start, "Redefinition of property");
+          if (other->key->name == prop.key->name) {
+{
+            auto conflict = kind == other->kind || isGetSet && other->kind == "init" ||
+              kind == "init" && (other->kind == "get" || other->kind == "set"); 
+            if (conflict && !strict && kind == "init" && other->kind == "init") {
+conflict = false;
+}
+            if (conflict) {
+raise(prop.key->start, "Redefinition of property");
+}
           }
+}
         }
       }
-      push(node->properties, prop);
+}
+      push(node->properties, &prop);
     }
     return finishNode(node, "ObjectExpression");
   }
 
-  auto parsePropertyName() {
-    if (tokType == _num || tokType == _string) return parseExprAtom();
+  node_t* parsePropertyName() {
+    if (tokType == _num || tokType == _string) {
+return parseExprAtom();
+}
     return parseIdent(true);
   }
 
   // Parse a function declaration or literal (depending on the
   // `isStatement` parameter).
 
-  node_t* parseFunction(node_t node, bool isStatement) {
-    if (tokType == _name) node->id = parseIdent();
-    else if (isStatement) unexpected();
-    else node->id = null;
-    node->params = std::vector<int>();
+  node_t* parseFunction(node_t* node, bool isStatement) {
+    if (tokType == _name) {
+node->id = parseIdent();
+}
+    node->params = std::vector<node_t*>();
     auto first = true; 
     expect(_parenL);
     while (!eat(_parenR)) {
-      if (!first) expect(_comma); else first = false;
+      if (!first) {
+expect(_comma);
+}
       push(node->params, parseIdent());
     }
     
@@ -1682,17 +1807,23 @@ if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + may
     // If this is a strict mode function, verify that argument names
     // are not repeated, and it does not try to bind the words `eval`
     // or `arguments`.
-    if (strict || node->body.body.length() && isUseStrict(node->body.body[0])) {
-      auto i = node->id ? -1 : 0; ; for (; i < node->params.length();)
+    if (strict || node->body->bodyarr.size() && isUseStrict(node->body->bodyarr[0])) {
+{
+      auto i = node->id ? -1 : 0; ; for (; i < node->params.size();)
 {
         auto id = i < 0 ? node->id : node->params[i]; 
-        if (isStrictReservedWord(id.name) || isStrictBadIdWord(id.name))
-          raise(id.start, std::string("Defining '") + id.name + std::string("' in strict mode"));
-        if (i >= 0) auto j = 0; ; for (; j < i;)
-if (id.name == node->params[j].name)
-          raise(id.start, "Argument name clash in strict mode");
+        if (isStrictReservedWord(id->name) || isStrictBadIdWord(id->name)) {
+raise(id->start, std::string("Defining '") + id->name + std::string("' in strict mode"));
+}
+        if (i >= 0) {
+auto j = 0; ; for (; j < i;)
+if (id->name == node->params[j]->name) {
+raise(id->start, "Argument name clash in strict mode");
+}
+}
       }
     }
+}
 
     return finishNode(node, isStatement ? "FunctionDeclaration" : "FunctionExpression");
   }
@@ -1703,16 +1834,21 @@ if (id.name == node->params[j].name)
   // nothing in between them to be parsed as `null` (which is needed
   // for array literals).
 
-  auto parseExprList(auto close, auto allowTrailingComma, auto allowEmpty) {
+  node_t* parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {
     auto elts = std::vector<int>();  auto first = true; 
     while (!eat(close)) {
       if (!first) {
+{
         expect(_comma);
-        if (allowTrailingComma && options.allowTrailingCommas && eat(close)) break;
-      } else first = false;
+        if (allowTrailingComma && options.allowTrailingCommas && eat(close)) {
+break;
+}
+      }
+}
 
-      if (allowEmpty && tokType == _comma) push(elts, null);
-      else push(elts, parseExpression(true));
+      if (allowEmpty && tokType == _comma) {
+push(elts, null);
+}
     }
     return elts;
   }
@@ -1723,20 +1859,21 @@ if (id.name == node->params[j].name)
 
   node_t* parseIdent(bool liberal) {
     auto node = startNode(); 
-    if (liberal && options.forbidReserved == "everywhere") liberal = false;
+    if (liberal && options.forbidReserved == "everywhere") {
+liberal = false;
+}
     if (tokType == _name) {
+{
       if (!liberal &&
           (options.forbidReserved &&
            (options.ecmaVersion == 3 ? isReservedWord3 : isReservedWord5)(tokVal) ||
            strict && isStrictReservedWord(tokVal)) &&
-          slice(input, tokStart, tokEnd).indexOf("\\") == -1)
-        raise(tokStart, std::string("The keyword '") + tokVal + std::string("' is reserved"));
+          indexOf(slice(input, tokStart, tokEnd), "\\") == -1) {
+raise(tokStart, std::string("The keyword '") + tokVal + std::string("' is reserved"));
+}
       node->name = tokVal;
-    } else if (liberal && tokType.keyword) {
-      node->name = tokType.keyword;
-    } else {
-      unexpected();
     }
+}
     tokRegexpAllowed = false;
     next();
     return finishNode(node, "Identifier");
