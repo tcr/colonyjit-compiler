@@ -167,7 +167,7 @@
   // `break` and `continue` have somewhere to jump to, and `strict`
   // indicates whether strict mode is on.
 
-  auto inFunction = 0;  auto labels = std::vector<node_t*>();  auto strict = 0; 
+  auto inFunction = 0;  auto labels = std::vector<label_t>();  auto strict = 0; 
 
   // This function is used to raise exceptions on parse errors. It
   // takes an offset integer (into the current `input`) to indicate
@@ -750,7 +750,7 @@
       ++tokPos;
       total = total * radix + val;
     }
-    if (tokPos == start || len != null && tokPos - start != len) return DBL_NULL;
+    if (tokPos == start || ISNOTNULL(len) && tokPos - start != len) return DBL_NULL;
 
     return total;
   }
@@ -1067,7 +1067,7 @@
     lastStart = lastEnd = tokPos;
     if (options.locations) lastEndLoc = line_loc_t;
     inFunction = strict = null;
-    labels = std::vector<int>();
+    labels = std::vector<label_t>();
     readToken();
 
     auto node = program || startNode();  auto first = true; 
@@ -1081,7 +1081,7 @@
     return finishNode(node, "Program");
   }
 
-  auto loopLabel = {kind: "loop"};  auto switchLabel = {kind: "switch"}; 
+  label_t loopLabel = {kind: "loop"};  label_t switchLabel = {kind: "switch"}; 
 
   // Parse a single statement.
   //
@@ -1116,8 +1116,8 @@
       auto i = 0; ; for (; i < labels.size();)
 {
         auto lab = labels[i]; 
-        if (ISNULL(node->label) || lab->name == node->label->name) {
-          if (lab->kind != null && (isBreak || lab->kind == "loop")) break;
+        if (ISNULL(node->label) || lab.name == node->label->name) {
+          if (ISNOTNULL(lab.kind) && (isBreak || lab.kind == "loop")) break;
           if (node->label && isBreak) break;
         }
       }
@@ -1148,7 +1148,7 @@
       // a regular `for` loop.
 
     case 15:{
-      options.behaviors.openFor();
+      
       next();
       push(labels, loopLabel);
       expect(_parenL);
@@ -1158,7 +1158,7 @@
         next();
         parseVar(init, true);
         finishNode(init, "VariableDeclaration");
-        if (init.declarations.length() == 1 && eat(_in))
+        if (init->declarations.size() == 1 && eat(_in))
           return parseForIn(node, init);
         return parseFor(node, init);
       }
@@ -1193,7 +1193,7 @@
     case 19:{
       next();
       node->discriminant = parseParenExpression();
-      node->cases = std::vector<int>();
+      node->cases = std::vector<node_t*>();
       expect(_braceL);
       push(labels, switchLabel);
 
@@ -1201,7 +1201,7 @@
       // nodes. `cur` is used to keep the node that we are currently
       // adding statements to.
 
-      auto cur = 0;  auto sawDefault = 0; ; for (; tokType != _braceR;)
+      node_t* cur = nullptr;  auto sawDefault = 0; ; for (; tokType != _braceR;)
 {
         if (tokType == _case || tokType == _default) {
           auto isCase = tokType == _case; 
@@ -1234,7 +1234,7 @@
       return finishNode(node, "ThrowStatement");}
 
     case 21:{
-      options.behaviors.openTry();
+      
       next();
       node->block = parseBlock();
       node->handler = null;
@@ -1263,7 +1263,7 @@
       return finishNode(node, "VariableDeclaration");}
 
     case 23:{
-      options.behaviors.openWhile();
+      
       next();
       node->test = parseParenExpression();
       push(labels, loopLabel);
@@ -1314,7 +1314,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
   // Used for constructs like `switch` and `if` that insist on
   // parentheses around their expression.
 
-  auto parseParenExpression() {
+  node_t* parseParenExpression() {
     expect(_parenL);
     auto val = parseExpression(); 
     expect(_parenR);
@@ -1346,7 +1346,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
   // `parseStatement` will already have parsed the init statement or
   // expression.
 
-  auto parseFor(auto node, auto init) {
+  node_t* parseFor(node_t* node, node_t* init) {
     node->init = init;
     expect(_semi);
     node->test = tokType == _semi ? null : parseExpression();
@@ -1360,7 +1360,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
 
   // Parse a `for`/`in` loop.
 
-  auto parseForIn(auto node, auto init) {
+  node_t* parseForIn(node_t* node, node_t* init) {
     node->left = init;
     node->right = parseExpression();
     expect(_parenR);
@@ -1371,7 +1371,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
 
   // Parse a list of variable declarations.
 
-  auto parseVar(auto node, auto noIn) {
+  node_t* parseVar(node_t* node, bool noIn) {
     node->declarations = std::vector<int>();
     node->kind = "var";
     ; for (; ;)
@@ -1399,7 +1399,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
   // sequences (in argument lists, array literals, or object literals)
   // or the `in` operator (in for loops initalization expressions).
 
-  auto parseExpression(auto noComma, auto noIn) {
+  node_t* parseExpression(bool noComma, bool noIn) {
     auto expr = parseMaybeAssign(noIn); 
     if (!noComma && tokType == _comma) {
       auto node = startNodeFrom(expr); 
@@ -1456,7 +1456,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
 
   auto parseExprOp(auto left, auto minPrec, auto noIn) {
     auto prec = tokType.binop; 
-    if (prec != null && (!noIn || tokType != _in)) {
+    if (ISNOTNULL(prec) && (!noIn || tokType != _in)) {
       if (prec > minPrec) {
         auto node = startNodeFrom(left); 
         node->left = left;
@@ -1659,7 +1659,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
   // Parse a function declaration or literal (depending on the
   // `isStatement` parameter).
 
-  auto parseFunction(auto node, auto isStatement) {
+  node_t* parseFunction(node_t node, bool isStatement) {
     if (tokType == _name) node->id = parseIdent();
     else if (isStatement) unexpected();
     else node->id = null;
@@ -1675,7 +1675,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
     // Start a new scope with regard to labels and the `inFunction`
     // flag (restore them to their old value afterwards).
     auto oldInFunc = inFunction;  auto oldLabels = labels; 
-    inFunction = true; labels = std::vector<int>();
+    inFunction = true; labels = std::vector<label_t>();
     node->body = parseBlock(true);
     inFunction = oldInFunc; labels = oldLabels;
 

@@ -75,6 +75,9 @@ out = falafel(out, function (node) {
       if (node.operator == '==' || node.operator == '===') {
         node.update('ISNULL(' + node.left.source() + ')');
       }
+      if (node.operator == '!=' || node.operator == '!==') {
+        node.update('ISNOTNULL(' + node.left.source() + ')');
+      }
     }
   }
   if (node.type == 'SwitchCase') {
@@ -196,17 +199,19 @@ out = out.replace(/.length\b/g, '.length()')
 out = out.replace('tokPos - start != len) return null;', 'tokPos - start != len) return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
 out = out.replace(/THIS\.end = null/g, 'THIS.end = DBL_NULL');
-out = out.replace(/\b(node|loc|lab|label)\.(\w+)/g, '$1->$2');
-out = out.replace(/\b(node|loc|lab|label)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init)\.(\w+)/g, '$1->$2');
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
 out = out.replace("switch (starttype) {", "switch (starttype._id) {")
 out = out.replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
 out = out.replace("keywordTypes[word]", "keywordTypes(word)");
-out = out.replace(/options.behaviors.\w+\([^)]+\)\s*(\|\|)?;?/g, '')
-out = out.replace(/labels\.length/g, 'labels.size')
-out = out.replace("labels = std::vector<int>", 'labels = std::vector<node_t*>')
+out = out.replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
+out = out.replace(/(labels|declarations)\.length/g, '$1.size')
+out = out.replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
+out = out.replace(/cases = std::vector<int>/g, 'cases = std::vector<node_t*>')
+out = out.replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
 
 // typify
 out = out.replace(/auto options/g, 'options_t options')
@@ -235,6 +240,15 @@ out = out.replace(/auto unexpected\b/g, 'void unexpected');
 out = out.replace(/auto parseIdent\b/g, 'node_t* parseIdent');
 out = out.replace(/auto liberal\b/g, 'bool liberal');
 out = out.replace(/auto finishNode.*/m, 'node_t* finishNode(node_t* node, std::string type) {')
+out = out.replace(/auto loopLabel\b/, 'label_t loopLabel');
+out = out.replace(/auto switchLabel\b/, 'label_t switchLabel');
+out = out.replace(/auto parseParenExpression/, 'node_t* parseParenExpression');
+out = out.replace(/auto parseFor\b.*/m, 'node_t* parseFor(node_t* node, node_t* init) {')
+out = out.replace(/auto parseVar\b.*/m, 'node_t* parseVar(node_t* node, bool noIn) {')
+out = out.replace(/auto parseForIn\b.*/m, 'node_t* parseForIn(node_t* node, node_t* init) {')
+out = out.replace(/auto parseExpression\b.*/m, 'node_t* parseExpression(bool noComma, bool noIn) {')
+out = out.replace(/auto parseFunction\b.*/m, 'node_t* parseFunction(node_t node, bool isStatement) {')
+
 
 
 console.log('#include "out-inc.h"\n' + out);

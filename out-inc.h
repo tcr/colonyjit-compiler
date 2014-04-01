@@ -98,6 +98,12 @@ int push(std::vector<T> value, T idx)
 	return 0;
 }
 
+template<class T>
+T pop(std::vector<T> value)
+{
+	return nullptr;
+}
+
 bool test(auto regex, std::string input)
 {
 	return false;
@@ -140,6 +146,11 @@ struct regexp_t {
 bool ISNULL (struct regexp_t val)
 {
 	return val.str.length() == 0;
+}
+
+bool ISNOTNULL (std::string str)
+{
+	return str.length() != 0;
 }
 
 
@@ -243,6 +254,19 @@ node_loc_t::node_loc_t () {
 	this->source = sourceFile;
 }
 
+class label_t {
+  public:
+    std::string kind;
+    std::string name;
+
+ //    void operator= (std::nullptr_t right){
+	//     this->kind = right;
+	//     this->name = right;
+	// }
+};
+
+
+
 class node_t {
   public:
     std::string type;
@@ -259,7 +283,7 @@ node_t* consequent;
 node_t* alternate;
 node_t* argument;
 node_t* discriminant;
-node_t* cases;
+std::vector<node_t*> cases;
 node_t* block;
 node_t* handler;
 node_t* guardedHandlers;
@@ -270,7 +294,7 @@ node_t* init;
 node_t* update;
 node_t* left;
 node_t* right;
-node_t* declarations;
+std::vector<node_t*> declarations;
 node_t* kind;
 node_t* expressions;
 // node_t* operator;
@@ -285,7 +309,7 @@ node_t* elements;
 node_t* properties;
 std::string id;
 node_t* params;
-node_t* name;
+std::string name;
 
     node_t ();
 };
@@ -299,6 +323,14 @@ node_t::node_t () {
 
 node_t* parseIdent(bool liberal);
 node_t* parseIdent() { parseIdent(false); }
+node_t* parseParenExpression();
+node_t* parseFor(node_t* node, node_t* init);
+node_t* parseVar(node_t* node, bool noIn);
+node_t* parseForIn(node_t* node, node_t* init);
+node_t* parseExpression(bool noComma, bool noIn);
+node_t* parseExpression(bool noComma) { return parseExpression(noComma, false); }
+node_t* parseExpression() { return parseExpression(false, false); }
+node_t* parseFunction(node_t*, bool);
 
 bool ISNULL (node_t* t)
 {
