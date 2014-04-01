@@ -455,7 +455,7 @@ tokEndLoc = line_loc_t;
 }
     tokType = type;
     skipSpace();
-    tokVal = val;
+    
     tokRegexpAllowed = type.beforeExpr;
   }
 

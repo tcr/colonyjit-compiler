@@ -285,6 +285,7 @@ out = out.replace(/auto out\b.*/m, 'std::string out');
 
 out = out.replace("push(node->properties, prop", "push(node->properties, &prop")
 out = out.replace("switch \(tokType", "switch \(tokType._id");
+out = out.replace("tokVal = val;", "");
 
 out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
 

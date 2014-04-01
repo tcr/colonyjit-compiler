@@ -79,7 +79,7 @@ std::string slice (std::string arr, int start, int end)
 
 RegExpVector exec(auto regex, std::string input)
 {
-	return nullptr;
+	return RegExpVector();
 }
 
 int charCodeAt(std::string input, int idx)
@@ -107,7 +107,7 @@ int push(std::vector<T> value, std::nullptr_t)
 template<class T>
 T pop(std::vector<T> value)
 {
-	return nullptr;
+	return T();
 }
 
 bool test(auto regex, std::string input)
