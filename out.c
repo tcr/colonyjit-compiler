@@ -65,20 +65,17 @@
   // offset. `input` should be the code string that the offset refers
   // into.
 
-  auto getLineInfo  (auto input, auto offset) {
-    auto line = 1;  auto cur = 0; ; for (; ;)
-{
-      lineBreak.lastIndex = cur;
-      RegExpVector match = exec(lineBreak, input); 
-      if (match && match.index < offset) {
-{
-        ++line;
-        cur = match.index + match[0].length();
-      }
-}
-    }
-    return {line: line, column: offset - cur};
-  }; 
+
+
+
+
+
+
+
+
+
+
+
 
   // Acorn is organized as a tokenizer and a recursive-descent parser.
   // The `tokenize` export provides an interface to the tokenizer.
@@ -177,13 +174,13 @@
   // of the error message, and then raises a `SyntaxError` with that
   // message.
 
-  auto raise(auto pos, auto message) {
-    auto loc = getLineInfo(input, pos); 
-    message += std::string(" (") + loc->line + std::string(":") + loc->column + std::string(")");
-    auto err = SyntaxError(message); 
-    err.pos = pos; err.loc = loc; err.raisedAt = tokPos;
-    throw err;
-  }
+
+
+
+
+
+
+
 
   // Reused empty array added for node fields that are always empty.
 
@@ -528,13 +525,13 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
   auto readToken_dot() {
     auto next = charCodeAt(input, tokPos + 1); 
     if (next >= 48 && next <= 57) {
-return readNumber(true);
+readNumber(true);
 }
     ++tokPos;
     finishToken(_dot);
   }
 
-  auto readToken_slash() { // '/'
+  void readToken_slash (...) {
     auto next = charCodeAt(input, tokPos + 1); 
     if (tokRegexpAllowed) {
 {++tokPos; readRegexp();}
@@ -636,7 +633,7 @@ finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
       // The interpretation of a dot depends on whether it is followed
       // by a digit.
     case 46:{ // '.'
-      return readToken_dot();}
+      readToken_dot();}
 
       // Punctuation tokens.
     case 40:{ ++tokPos; finishToken(_parenL);}
@@ -654,12 +651,12 @@ finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
     case 48:{ // '0'
       auto next = charCodeAt(input, tokPos + 1); 
       if (next == 120 || next == 88) {
-return readHexNumber();
+readHexNumber();
 }}
       // Anything else beginning with a digit is an integer, octal
       // number, or float.
     case 49:{} case 50:{} case 51:{} case 52:{} case 53:{} case 54:{} case 55:{} case 56:{} case 57:{ // 1-9
-      return readNumber(false);}
+      readNumber(false);}
 
       // Quotes produce strings.
     case 34:{} case 39:{ // '"', "'"
@@ -792,7 +789,7 @@ raise(start, "Invalid regexp flag");
   // were read, the integer value otherwise. When `len` is given, this
   // will return `null` unless the integer has exactly `len` digits.
 
-  auto readInt(auto radix, auto len) {
+  int readInt(int radix, int len) {
     auto start = tokPos;  auto total = 0; 
     auto i = 0;  auto e = ISNULL(len) ? Infinity : len; ; for (; i < e;)
 {
@@ -807,7 +804,7 @@ break;
       total = total * radix + val;
     }
     if (tokPos == start || ISNOTNULL(len) && tokPos - start != len) {
-return null;
+return DBL_NULL;
 }
 
     return total;
@@ -867,7 +864,7 @@ val = parseFloat(str);
 
   auto readString(auto quote) {
     tokPos++;
-    auto out = ""; 
+    std::string out
     ; for (; ;)
 {
       if (tokPos >= inputLen) {
@@ -889,7 +886,7 @@ raise(tokStart, "Unterminated string constant");
 octal = null;
 }
         ++tokPos;
-        if (octal) {
+        if (octal.length() > 0) {
 {
           if (strict) {
 raise(tokPos - 2, "Octal literal in strict mode");
@@ -1069,9 +1066,9 @@ node->range[1] = lastEnd;
 
   // Test whether a statement node is the string literal `"use strict"`.
 
-  auto isUseStrict(auto stmt) {
-    return options.ecmaVersion >= 5 && stmt.type == "ExpressionStatement" &&
-      stmt.expression.type == "Literal" && stmt.expression.value == "use strict";
+  bool isUseStrict(node_t* stmt) {
+    return options.ecmaVersion >= 5 && stmt->type == "ExpressionStatement" &&
+      stmt->expression->type == "Literal" && stmt->expression->value == "use strict";
   }
 
   // Predicate that tests whether the next token is of the given
@@ -1402,7 +1399,7 @@ if (labels[i].name == maybeName) {
 raise(expr->start, std::string("Label '") + maybeName + std::string("' is already declared"));
 }
         std::string kind = tokType.isLoop ? "loop" : tokType == _switch ? "switch" : null; 
-        push(labels, {name: maybeName, kind: kind});
+        push(labels, (label_t){kind: kind, name: maybeName});
         
         node->body = parseStatement();
         pop(labels);
@@ -1644,7 +1641,7 @@ checkLVal(node->argument);
   // or `{}`.
 
   node_t* parseExprAtom() {
-    switch (tokType) {
+    switch (tokType._id) {
     case 26:{
       auto node = startNode(); 
       next();
@@ -1735,7 +1732,7 @@ break;
       }
 }
 
-      node_t prop = {key: parsePropertyName()};  auto isGetSet = false;  std::string kind = ""; 
+      node_t prop = {}; prop.key = parsePropertyName();  auto isGetSet = false;  std::string kind = ""; 
       if (eat(_colon)) {
 {
         prop.value = parseExpression(true);
@@ -1834,8 +1831,8 @@ raise(id->start, "Argument name clash in strict mode");
   // nothing in between them to be parsed as `null` (which is needed
   // for array literals).
 
-  node_t* parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {
-    auto elts = std::vector<int>();  auto first = true; 
+  std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {
+    auto elts = std::vector<node_t*>();  auto first = true; 
     while (!eat(close)) {
       if (!first) {
 {

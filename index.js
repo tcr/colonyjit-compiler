@@ -26,8 +26,10 @@ function infuse (out, start, end, rep) {
 }
 
 out = wipe(out, 0, 30); out = wipe(out, -2);
+out = wipe(out, 132, 143); // removes behaviors defines
 out = wipe(out, 109, 109+8); // removes behaviors defines
 
+out = wipe(out, 241, 248); // removes raise
 out = wipe(out, 354, 354+8); // removes external toktypes
 out = wipe(out, 369, 369+38); // makePredicate
 out = wipe(out, 119, 125); // setOptions
@@ -180,7 +182,7 @@ out = out.replace(/===/g, '==');
 out = out.replace(/!==/g, '!=');
 
 // non-trivial designated initializers not allowed
-out = infuse(out, 200, 290, function (a) {
+out = infuse(out, 198, 290, function (a) {
   return a.replace(/\bauto\b/g, 'struct keyword_t');
 });
 
@@ -203,11 +205,12 @@ out = out.replace(/\boperator\b/g, 'opr');
 out = out.replace(/auto content = slice/g, 'content = slice')
 out = out.replace(/.length\b/g, '.length()')
 out = out.replace('tokPos - start != len) return null;', 'tokPos - start != len) return DBL_NULL;');
+out = out.replace(/^return null;/m, 'return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
 out = out.replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
 out = out.replace(/THIS\.end = null/g, 'THIS.end = DBL_NULL');
-out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body)\.(\w+)/g, '$1->$2');
-out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
 out = out.replace(/(j\])\.(\w+)/g, '$1->$2');
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
@@ -218,9 +221,12 @@ out = out.replace("keywordTypes[word]", "keywordTypes(word)");
 out = out.replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
 out = out.replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
 out = out.replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
-out = out.replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params) = std::vector<int>/g, '$1 = std::vector<node_t*>')
+out = out.replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<node_t*>')
 out = out.replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
 out = out.replace(/auto prop\b/, 'node_t prop');
+out = out.replace('push(labels, {name: maybeName, kind: kind})', 'push(labels, (label_t){kind: kind, name: maybeName})');
+out = out.replace('{key: parsePropertyName()};', '{}; prop.key = parsePropertyName();');
+out = out.replace('if (octal) {', 'if (octal.length() > 0) {')
 
 // typify
 out = out.replace(/auto options/g, 'options_t options')
@@ -231,9 +237,11 @@ out = out.replace(/auto nonASCIIidentifierChars/g, 'std::string nonASCIIidentifi
 out = out.replace(/auto match/g, 'RegExpVector match')
 out = out.replace(/auto skipSpace/g, 'void skipSpace');
 out = out.replace(/auto readNumber/g, 'void readNumber');
+out = out.replace(/auto readInt\b.*/gm, 'int readInt(int radix, int len) {');
 out = out.replace(/auto startsWithDot/g, 'bool startsWithDot');
 out = out.replace(/auto finishToken/g, 'void finishToken');
 out = out.replace(/auto readRegexp/g, 'void readRegexp');
+out = out.replace(/auto readToken_slash\b.*/m, 'void readToken_slash (...) {');
 out = out.replace(/auto finishOp/g, 'void finishOp');
 out = out.replace(/auto type/g, 'keyword_t type');
 out = out.replace(/auto size/g, 'int size');
@@ -268,13 +276,16 @@ out = out.replace(/auto parseExprOp\b.*/m, 'node_t* parseExprOp(node_t* left, do
 out = out.replace(/auto parseExprSubscripts\b.*/m, 'node_t* parseExprSubscripts() {');
 out = out.replace(/auto parseExprAtom\b.*/m, 'node_t* parseExprAtom() {');
 out = out.replace(/auto parseSubscripts\b.*/m, 'node_t* parseSubscripts(node_t* base, bool noCalls) {');
-out = out.replace(/auto parseExprList\b.*/m, 'node_t* parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {');
+out = out.replace(/auto parseExprList\b.*/m, 'std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {');
 out = out.replace(/auto parseObj\b.*/m, 'node_t* parseObj() {');
 out = out.replace(/auto parseNew\b.*/m, 'node_t* parseNew() {');
 out = out.replace(/auto parsePropertyName\b.*/m, 'node_t* parsePropertyName() {');
+out = out.replace(/auto isUseStrict\b.*/m, 'bool isUseStrict(node_t* stmt) {');
+out = out.replace(/auto out\b.*/m, 'std::string out');
 
 out = out.replace("push(node->properties, prop", "push(node->properties, &prop")
+out = out.replace("switch \(tokType", "switch \(tokType._id");
 
-out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
+out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
 
 console.log('#include "out-inc.h"\n' + out);

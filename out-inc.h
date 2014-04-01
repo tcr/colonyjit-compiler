@@ -125,6 +125,11 @@ int indexOf(std::string input, std::string needle)
 	return indexOf(input, needle, 0);
 }
 
+int lastIndexOf(std::string input, std::string needle, int offset)
+{
+	return 0;
+}
+
 
 
 
@@ -214,7 +219,8 @@ struct this_t {
 struct this_t THIS;
 
 
-auto readInt (auto radix) { return readInt (radix, 0); }
+int readInt (int radix, int len);
+int readInt (int radix) { return readInt (radix, 0); }
 
 auto readToken (auto forceRegexp);
 bool readToken () { return readToken (false); }
@@ -310,11 +316,11 @@ bool prefix;
 node_t* property;
 bool computed;
 node_t* callee;
-node_t* arguments;
+std::vector<node_t*> arguments;
 node_t* key;
 node_t* value;
 std::string raw;
-node_t* elements;
+std::vector<node_t*> elements;
 std::vector<node_t*> properties;
 node_t* id;
 node_t* param;
@@ -354,8 +360,8 @@ node_t* parseExprSubscripts();
 node_t* parseExprAtom();
 node_t* parseSubscripts(node_t* base, bool noCalls);
 node_t* parseSubscripts(node_t* base) { return parseSubscripts(base, false); }
-node_t* parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
-node_t* parseExprList(keyword_t close, bool allowTrailingComma) { return parseExprList(close, allowTrailingComma, false); }
+std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
+std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma) { return parseExprList(close, allowTrailingComma, false); }
 node_t* parseObj();
 node_t* parseNew();
 node_t* parsePropertyName();
@@ -371,6 +377,10 @@ bool operator== (std::string & left, int right){
 
 std::string operator+ (std::string left, int right){
     return left;
+}
+
+void raise (int start, std::string message){
+
 }
 
 extern struct regexp_t lineBreak;
