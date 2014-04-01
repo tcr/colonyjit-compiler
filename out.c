@@ -1133,7 +1133,7 @@
       next();
       push(labels, loopLabel);
       node->body = parseStatement();
-      pop(labels, );
+      pop(labels);
       expect(_while);
       node->test = parseParenExpression();
       semicolon();
@@ -1222,7 +1222,7 @@
       }
       if (cur) finishNode(cur, "SwitchCase");
       next(); // Closing brace
-      pop(labels, );
+      pop(labels);
       return finishNode(node, "SwitchStatement");}
 
     case 20:{
@@ -1268,7 +1268,7 @@
       node->test = parseParenExpression();
       push(labels, loopLabel);
       node->body = parseStatement();
-      pop(labels, );
+      pop(labels);
       return finishNode(node, "WhileStatement");}
 
     case 24:{
@@ -1300,7 +1300,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
         push(labels, {name: maybeName, kind: kind});
         
         node->body = parseStatement();
-        pop(labels, );
+        pop(labels);
         node->label = expr;
         return finishNode(node, "LabeledStatement");
       } else {
@@ -1354,7 +1354,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
     node->update = tokType == _parenR ? null : parseExpression();
     expect(_parenR);
     node->body = parseStatement();
-    pop(labels, );
+    pop(labels);
     return finishNode(node, "ForStatement");
   }
 
@@ -1365,7 +1365,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
     node->right = parseExpression();
     expect(_parenR);
     node->body = parseStatement();
-    pop(labels, );
+    pop(labels);
     return finishNode(node, "ForInStatement");
   }
 
