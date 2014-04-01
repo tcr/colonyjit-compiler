@@ -185,7 +185,7 @@
 
   // Reused empty array added for node fields that are always empty.
 
-  auto empty = std::vector<int>(); 
+  auto empty = std::vector<node_t*>(); 
 
   // ## Token types
 
@@ -1050,10 +1050,10 @@
   // to.
 
   auto checkLVal(auto expr) {
-    if (expr.type != "Identifier" && expr.type != "MemberExpression")
-      raise(expr.start, "Assigning to rvalue");
-    if (strict && expr.type == "Identifier" && isStrictBadIdWord(expr.name))
-      raise(expr.start, std::string("Assigning to ") + expr.name + std::string(" in strict mode"));
+    if (expr->type != "Identifier" && expr->type != "MemberExpression")
+      raise(expr->start, "Assigning to rvalue");
+    if (strict && expr->type == "Identifier" && isStrictBadIdWord(expr->name))
+      raise(expr->start, std::string("Assigning to ") + expr->name + std::string(" in strict mode"));
   }
 
   // ### Statement parsing
@@ -1207,17 +1207,17 @@
           auto isCase = tokType == _case; 
           if (cur) finishNode(cur, "SwitchCase");
           push(node->cases, cur = startNode());
-          cur.consequent = std::vector<int>();
+          cur->consequents = std::vector<node_t*>();
           next();
-          if (isCase) cur.test = parseExpression();
+          if (isCase) cur->test = parseExpression();
           else {
             if (sawDefault) raise(lastStart, "Multiple default clauses"); sawDefault = true;
-            cur.test = null;
+            cur->test = null;
           }
           expect(_colon);
         } else {
           if (!cur) unexpected();
-          push(cur.consequent, parseStatement());
+          push(cur->consequents, parseStatement());
         }
       }
       if (cur) finishNode(cur, "SwitchCase");
@@ -1242,12 +1242,12 @@
         auto clause = startNode(); 
         next();
         expect(_parenL);
-        clause.param = parseIdent();
-        if (strict && isStrictBadIdWord(clause.param.name))
-          raise(clause.param.start, std::string("Binding ") + clause.param.name + std::string(" in strict mode"));
+        clause->param = parseIdent();
+        if (strict && isStrictBadIdWord(clause->param->name))
+          raise(clause->param->start, std::string("Binding ") + clause->param->name + std::string(" in strict mode"));
         expect(_parenR);
-        clause.guard = null;
-        clause.body = parseBlock();
+        clause->guard = null;
+        clause->body = parseBlock();
         node->handler = finishNode(clause, "CatchClause");
       }
       node->guardedHandlers = empty;
@@ -1293,9 +1293,9 @@
 
     default:{
       auto maybeName = tokVal;  auto expr = parseExpression(); 
-      if (starttype == _name && expr.type == "Identifier" && eat(_colon)) {
+      if (starttype == _name && expr->type == "Identifier" && eat(_colon)) {
         auto i = 0; ; for (; i < labels.size();)
-if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + maybeName + std::string("' is already declared"));
+if (labels[i].name == maybeName) raise(expr->start, std::string("Label '") + maybeName + std::string("' is already declared"));
         auto kind = tokType.isLoop ? "loop" : tokType == _switch ? "switch" : null; 
         push(labels, {name: maybeName, kind: kind});
         
@@ -1325,7 +1325,7 @@ if (labels[i].name == maybeName) raise(expr.start, std::string("Label '") + mayb
   // strict"` declarations when `allowStrict` is true (used for
   // function bodies).
 
-  auto parseBlock(auto allowStrict) {
+  node_t* parseBlock(bool allowStrict) {
     auto node = startNode();  auto first = true;  auto strict = false;  auto oldStrict = 0; 
     node->body = std::vector<int>();
     expect(_braceL);

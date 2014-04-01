@@ -199,8 +199,8 @@ out = out.replace(/.length\b/g, '.length()')
 out = out.replace('tokPos - start != len) return null;', 'tokPos - start != len) return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
 out = out.replace(/THIS\.end = null/g, 'THIS.end = DBL_NULL');
-out = out.replace(/\b(node|loc|label|init)\.(\w+)/g, '$1->$2');
-out = out.replace(/\b(node|loc|label|init)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr)\.(\w+)/g, '$1->$2');
+out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr)\.(\w+)/g, '$1->$2');
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
@@ -210,7 +210,7 @@ out = out.replace("keywordTypes[word]", "keywordTypes(word)");
 out = out.replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
 out = out.replace(/(labels|declarations)\.length/g, '$1.size')
 out = out.replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
-out = out.replace(/cases = std::vector<int>/g, 'cases = std::vector<node_t*>')
+out = out.replace(/(cases|consequents|empty) = std::vector<int>/g, '$1 = std::vector<node_t*>')
 out = out.replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
 
 // typify
@@ -248,7 +248,7 @@ out = out.replace(/auto parseVar\b.*/m, 'node_t* parseVar(node_t* node, bool noI
 out = out.replace(/auto parseForIn\b.*/m, 'node_t* parseForIn(node_t* node, node_t* init) {')
 out = out.replace(/auto parseExpression\b.*/m, 'node_t* parseExpression(bool noComma, bool noIn) {')
 out = out.replace(/auto parseFunction\b.*/m, 'node_t* parseFunction(node_t node, bool isStatement) {')
-
+out = out.replace(/auto parseBlock\b.*/m, 'node_t* parseBlock(bool allowStrict) {')
 
 
 console.log('#include "out-inc.h"\n' + out);

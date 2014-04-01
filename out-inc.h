@@ -280,13 +280,14 @@ node_t* body;
 node_t* label;
 node_t* test;
 node_t* consequent;
+std::vector<node_t*> consequents;
 node_t* alternate;
 node_t* argument;
 node_t* discriminant;
 std::vector<node_t*> cases;
 node_t* block;
 node_t* handler;
-node_t* guardedHandlers;
+std::vector<node_t*> guardedHandlers;
 node_t* finalizer;
 node_t* object;
 node_t* expression;
@@ -308,7 +309,8 @@ node_t* raw;
 node_t* elements;
 node_t* properties;
 std::string id;
-node_t* params;
+node_t* param;
+node_t* guard;
 std::string name;
 
     node_t ();
@@ -326,15 +328,26 @@ node_t* parseIdent() { parseIdent(false); }
 node_t* parseParenExpression();
 node_t* parseFor(node_t* node, node_t* init);
 node_t* parseVar(node_t* node, bool noIn);
+node_t* parseVar(node_t* node) { return parseVar(node, false); }
 node_t* parseForIn(node_t* node, node_t* init);
 node_t* parseExpression(bool noComma, bool noIn);
 node_t* parseExpression(bool noComma) { return parseExpression(noComma, false); }
 node_t* parseExpression() { return parseExpression(false, false); }
 node_t* parseFunction(node_t*, bool);
+node_t* parseBlock(bool allowStrict);
+node_t* parseBlock() { return parseBlock(false); }
 
 bool ISNULL (node_t* t)
 {
 	return t == nullptr;
+}
+
+bool operator== (std::string & left, int right){
+    return left.length() > 0;
+}
+
+std::string operator+ (std::string left, int right){
+    return left;
 }
 
 extern struct regexp_t lineBreak;

@@ -1265,7 +1265,7 @@
           var isCase = tokType === _case;
           if (cur) finishNode(cur, "SwitchCase");
           node.cases.push(cur = startNode());
-          cur.consequent = [];
+          cur.consequents = [];
           next();
           if (isCase) cur.test = parseExpression();
           else {
@@ -1275,7 +1275,7 @@
           expect(_colon);
         } else {
           if (!cur) unexpected();
-          cur.consequent.push(parseStatement());
+          cur.consequents.push(parseStatement());
         }
       }
       if (cur) finishNode(cur, "SwitchCase");
