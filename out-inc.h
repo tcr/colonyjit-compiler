@@ -42,6 +42,16 @@ public:
     virtual ~RegExpVector();
 };
 
+RegExpVector::RegExpVector ()
+{
+
+}
+
+RegExpVector::~RegExpVector ()
+{
+	
+}
+
 
 
 enum {
@@ -234,7 +244,9 @@ void readRegexp ();
 
 void finishOp(keyword_t type, int size);
 
-void finishToken (keyword_t type, void* ptr);
+void finishToken (keyword_t type, void* ptr) {
+
+}
 void finishToken (keyword_t type) { finishToken(type, nullptr); }
 
 void onComment(options_t options, bool what, std::string code, int start, int tokPos,
@@ -245,8 +257,10 @@ void onComment(options_t options, bool what, std::string code, int start, int to
 void unexpected();
 
 
-keyword_t keywordTypes (std::string key);
-
+keyword_t keywordTypes (std::string key) {
+	return keyword_t();
+}
+ 
 
 extern int tokStart;
 extern int tokStartLoc;
@@ -270,11 +284,6 @@ class label_t {
   public:
     std::string kind;
     std::string name;
-
- //    void operator= (std::nullptr_t right){
-	//     this->kind = right;
-	//     this->name = right;
-	// }
 };
 
 
@@ -286,47 +295,47 @@ class node_t {
     int end;
     node_loc_t* loc;
 
-std::string sourceFile;
-std::vector<int> range;
-node_t* body;
-std::vector<node_t*> bodyarr;
-node_t* label;
-node_t* test;
-node_t* consequent;
-std::vector<node_t*> consequents;
-node_t* alternate;
-node_t* argument;
-node_t* discriminant;
-std::vector<node_t*> cases;
-node_t* block;
-node_t* handler;
-std::vector<node_t*> guardedHandlers;
-node_t* finalizer;
-node_t* object;
-node_t* expression;
-node_t* init;
-node_t* update;
-node_t* left;
-node_t* right;
-std::vector<node_t*> declarations;
-std::string kind;
-std::vector<node_t*> expressions;
-node_t* opr;
-bool prefix;
-node_t* property;
-bool computed;
-node_t* callee;
-std::vector<node_t*> arguments;
-node_t* key;
-node_t* value;
-std::string raw;
-std::vector<node_t*> elements;
-std::vector<node_t*> properties;
-node_t* id;
-node_t* param;
-std::vector<node_t*> params;
-node_t* guard;
-std::string name;
+	std::string sourceFile;
+	std::vector<int> range;
+	node_t* body;
+	std::vector<node_t*> bodyarr;
+	node_t* label;
+	node_t* test;
+	node_t* consequent;
+	std::vector<node_t*> consequents;
+	node_t* alternate;
+	node_t* argument;
+	node_t* discriminant;
+	std::vector<node_t*> cases;
+	node_t* block;
+	node_t* handler;
+	std::vector<node_t*> guardedHandlers;
+	node_t* finalizer;
+	node_t* object;
+	node_t* expression;
+	node_t* init;
+	node_t* update;
+	node_t* left;
+	node_t* right;
+	std::vector<node_t*> declarations;
+	std::string kind;
+	std::vector<node_t*> expressions;
+	node_t* opr;
+	bool prefix;
+	node_t* property;
+	bool computed;
+	node_t* callee;
+	std::vector<node_t*> arguments;
+	node_t* key;
+	node_t* value;
+	std::string raw;
+	std::vector<node_t*> elements;
+	std::vector<node_t*> properties;
+	node_t* id;
+	node_t* param;
+	std::vector<node_t*> params;
+	node_t* guard;
+	std::string name;
 
     node_t ();
 };
@@ -383,4 +392,6 @@ void raise (int start, std::string message){
 
 }
 
-extern struct regexp_t lineBreak;
+int main () {
+	return 0;
+}
