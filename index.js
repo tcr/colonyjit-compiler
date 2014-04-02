@@ -294,4 +294,4 @@ out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
 
-console.log('#include "out-inc.h"\n' + prototypes.join('\n') + out);
+console.log(prototypes.join('\n') + out);

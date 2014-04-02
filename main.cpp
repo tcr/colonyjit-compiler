@@ -381,6 +381,15 @@ void raise (int start, std::string message){
 
 }
 
+#include "out.c"
+
+
+
+/**
+ * main
+ */
+
+
 int main () {
 	return 0;
 }
