@@ -139,7 +139,7 @@
   // on the type of the token. For literals, it is the literal value,
   // for operators, the opr name, and so on.
 
-  keyword_t tokType = { };  auto tokVal = 0; 
+  keyword_t tokType = {};  auto tokVal = 0; 
 
   // Interal state for the tokenizer. To distinguish between division
   // operators and regular expressions, it remembers whether the last
