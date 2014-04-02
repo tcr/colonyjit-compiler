@@ -584,7 +584,60 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
 { // ' '
         ++tokPos;
       }
+}if (ch == 13) {
+{
+        ++tokPos;
+        auto next = charCodeAt(input, tokPos); 
+        if (next == 10) {
+{
+          ++tokPos;
+        }
 }
+        if (options.locations) {
+{
+          ++tokCurLine;
+          tokLineStart = tokPos;
+        }
+}
+      }
+}if (ch == 10 || ch == 8232 || ch == 8233) {
+{
+        ++tokPos;
+        if (options.locations) {
+{
+          ++tokCurLine;
+          tokLineStart = tokPos;
+        }
+}
+      }
+}if (ch > 8 && ch < 14) {
+{
+        ++tokPos;
+      }
+}if (ch == 47) {
+{ // '/'
+        auto next = charCodeAt(input, tokPos + 1); 
+        if (next == 42) {
+{ // '*'
+          skipBlockComment();
+        }
+}if (next == 47) {
+{ // '/'
+          skipLineComment();
+        }
+}break;
+      }
+}if (ch == 160) {
+{ // '\xa0'
+        ++tokPos;
+      }
+}if (ch >= 5760 && test(nonASCIIwhitespace, fromCharCode(ch))) {
+{
+        ++tokPos;
+      }
+}{
+        break;
+      }
     }
   }
 
@@ -776,7 +829,7 @@ readHexNumber();
   void readToken(bool forceRegexp) {
     if (!forceRegexp) {
 tokStart = tokPos;
-}
+}tokPos = tokStart + 1;
     if (options.locations) {
 tokStartLoc = line_loc_t;
 }
@@ -834,10 +887,14 @@ raise(start, "Unterminated regular expression");
 {
         if (ch == "[") {
 inClass = true;
+}if (ch == "]" && inClass) {
+inClass = false;
+}if (ch == "/" && !inClass) {
+break;
 }
         escaped = ch == "\\";
       }
-}
+}escaped = false;
       ++tokPos;
     }
     content = slice(input, start, tokPos); 
@@ -874,7 +931,11 @@ raise(start, "Invalid regexp flag");
       auto code = charCodeAt(input, tokPos);  auto val = 0; 
       if (code >= 97) {
 val = code - 97 + 10;
-}
+}if (code >= 65) {
+val = code - 65 + 10;
+}if (code >= 48 && code <= 57) {
+val = code - 48;
+}val = Infinity;
       if (val >= radix) {
 break;
 }
@@ -934,7 +995,11 @@ raise(tokPos, "Identifier directly after number");
     auto str = slice(input, start, tokPos);  auto val = 0; 
     if (isFloat) {
 val = parseFloat(str);
-}
+}if (!octal || str.length() == 1) {
+val = parseInt(str, 10);
+}if (test(RegExp("[object Object]"), str) || strict) {
+raise(start, "Invalid number");
+}val = parseInt(str, 8);
     finishToken(_num, val);
   }
 
@@ -972,9 +1037,37 @@ raise(tokPos - 2, "Octal literal in strict mode");
           out += fromCharCode(parseInt(octal, 8));
           tokPos += octal.length() - 1;
         }
+}{
+          switch (ch) {
+          case 110:{ out += "\n"; break;} // 'n' -> '\n'
+          case 114:{ out += "\r"; break;} // 'r' -> '\r'
+          case 120:{ out += fromCharCode(readHexChar(2)); break;} // 'x'
+          case 117:{ out += fromCharCode(readHexChar(4)); break;} // 'u'
+          case 85:{ out += fromCharCode(readHexChar(8)); break;} // 'U'
+          case 116:{ out += "\t"; break;} // 't' -> '\t'
+          case 98:{ out += "\b"; break;} // 'b' -> '\b'
+          case 118:{ out += "\u000b"; break;} // 'v' -> '\u000b'
+          case 102:{ out += "\f"; break;} // 'f' -> '\f'
+          case 48:{ out += "\0"; break;} // 0 -> '\0'
+          case 13:{ if (charCodeAt(input, tokPos) == 10) {
+++tokPos;
+}} // '\r\n'
+          case 10:{ // ' \n'
+            if (options.locations) {
+{ tokLineStart = tokPos; ++tokCurLine; }
 }
+            break;}
+          default:{ out += fromCharCode(ch); break;}
+          }
+        }
       }
+}{
+        if (ch == 13 || ch == 10 || ch == 8232 || ch == 8233) {
+raise(tokStart, "Unterminated string constant");
 }
+        out += fromCharCode(ch); // '\'
+        ++tokPos;
+      }
     }
   }
 
@@ -1013,7 +1106,29 @@ word += charAt(input, tokPos);
 }
         ++tokPos;
       }
+}if (ch == 92) {
+{ // "\"
+        if (!containsEsc) {
+word = slice(input, start, tokPos);
 }
+        containsEsc = true;
+        if (charCodeAt(input, ++tokPos) != 117) {
+raise(tokPos, "Expecting Unicode escape sequence \\uXXXX");
+}
+        ++tokPos;
+        auto esc = readHexChar(4); 
+        auto escStr = fromCharCode(esc); 
+        if (!escStr) {
+raise(tokPos - 1, "Invalid Unicode escape");
+}
+        if (!(first ? isIdentifierStart(esc) : isIdentifierChar(esc))) {
+raise(tokPos - 4, "Invalid Unicode escape");
+}
+        word += escStr;
+      }
+}{
+        break;
+      }
       first = false;
     }
     return containsEsc ? word : slice(input, start, tokPos);
@@ -1183,7 +1298,7 @@ unexpected();
   auto expect(auto type) {
     if (tokType == type) {
 next();
-}
+}unexpected();
   }
 
   // Raise an unexpected token error.
@@ -1261,7 +1376,12 @@ readToken(true);
       auto isBreak = starttype == _break; 
       if (eat(_semi) || canInsertSemicolon()) {
 node->label = null;
-}
+}if (tokType != _name) {
+unexpected();
+}{
+        node->label = parseIdent();
+        semicolon();
+      }
 
       // Verify that there is an actual destination to break or
       // continue to.
@@ -1356,7 +1476,7 @@ raise(tokStart, "'return' outside of function");
 
       if (eat(_semi) || canInsertSemicolon()) {
 node->argument = null;
-}
+}{ node->argument = parseExpression(); semicolon(); }
       return finishNode(node, "ReturnStatement");}
 
     case 19:{
@@ -1383,10 +1503,20 @@ finishNode(cur, "SwitchCase");
           next();
           if (isCase) {
 cur->test = parseExpression();
-}
+}{
+            if (sawDefault) {
+raise(lastStart, "Multiple default clauses");
+} sawDefault = true;
+            cur->test = null;
+          }
           expect(_colon);
         }
+}{
+          if (!cur) {
+unexpected();
 }
+          push(cur->consequents, parseStatement());
+        }
       }
       if (cur) {
 finishNode(cur, "SwitchCase");
@@ -1484,7 +1614,11 @@ raise(expr->start, std::string("Label '") + maybeName + std::string("' is alread
         node->label = expr;
         return finishNode(node, "LabeledStatement");
       }
-}}
+}{
+        node->expression = expr;
+        semicolon();
+        return finishNode(node, "ExpressionStatement");
+      }}
     }
   }
 
@@ -1678,6 +1812,9 @@ break;
       node->argument = parseMaybeUnary();
       if (update) {
 checkLVal(node->argument);
+}if (strict && node->opr == "delete" &&
+               node->argument->type == "Identifier") {
+raise(node->start, "Deleting local variable in strict mode");
 }
       return finishNode(node, update ? "UpdateExpression" : "UnaryExpression");
     }
@@ -1710,7 +1847,23 @@ checkLVal(node->argument);
       node->computed = false;
       return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
     }
-}
+}if (eat(_bracketL)) {
+{
+      auto node = startNodeFrom(base); 
+      node->object = base;
+      node->property = parseExpression();
+      node->computed = true;
+      expect(_bracketR);
+      return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
+    }
+}if (!noCalls && eat(_parenL)) {
+{
+      auto node = startNodeFrom(base); 
+      node->callee = base;
+      node->arguments = parseExprList(_parenR, false);
+      return parseSubscripts(finishNode(node, "CallExpression"), noCalls);
+    }
+}return base;
   }
 
   // Parse an atomic expression — either a single token that is an
@@ -1790,7 +1943,7 @@ val->range = std::vector<int>(tokStart1, tokEnd);
     node->callee = parseSubscripts(parseExprAtom(), true);
     if (eat(_parenL)) {
 node->arguments = parseExprList(_parenR, false);
-}
+}node->arguments = empty;
     return finishNode(node, "NewExpression");
   }
 
@@ -1808,7 +1961,7 @@ node->arguments = parseExprList(_parenR, false);
 break;
 }
       }
-}
+}first = false;
 
       node_t prop = {}; prop.key = parsePropertyName();  auto isGetSet = false;  std::string kind = std::string(""); 
       if (eat(_colon)) {
@@ -1816,7 +1969,18 @@ break;
         prop.value = parseExpression(true);
         kind = prop.kind = "init";
       }
+}if (options.ecmaVersion >= 5 && prop.key->type == "Identifier" &&
+                 (prop.key->name == "get" || prop.key->name == "set")) {
+{
+        isGetSet = sawGetSet = true;
+        kind = prop.kind = prop.key->name;
+        prop.key = parsePropertyName();
+        if (tokType != _parenL) {
+unexpected();
 }
+        prop.value = parseFunction(startNode(), false);
+      }
+}unexpected();
 
       // getters and setters are not allowed to clash — either with
       // each other or with an init property — and in strict mode,
@@ -1860,14 +2024,16 @@ return parseExprAtom();
   node_t* parseFunction(node_t* node, bool isStatement) {
     if (tokType == _name) {
 node->id = parseIdent();
-}
+}if (isStatement) {
+unexpected();
+}node->id = null;
     node->params = std::vector<node_t*>();
     auto first = true; 
     expect(_parenL);
     while (!eat(_parenR)) {
       if (!first) {
 expect(_comma);
-}
+}first = false;
       push(node->params, parseIdent());
     }
     
@@ -1919,11 +2085,11 @@ raise(id->start, "Argument name clash in strict mode");
 break;
 }
       }
-}
+}first = false;
 
       if (allowEmpty && tokType == _comma) {
 push(elts, null);
-}
+}push(elts, parseExpression(true));
     }
     return elts;
   }
@@ -1948,7 +2114,13 @@ raise(tokStart, std::string("The keyword '") + tokVal + std::string("' is reserv
 }
       node->name = tokVal;
     }
-}
+}if (liberal && tokType.keyword) {
+{
+      node->name = tokType.keyword;
+    }
+}{
+      unexpected();
+    }
     tokRegexpAllowed = false;
     next();
     return finishNode(node, "Identifier");

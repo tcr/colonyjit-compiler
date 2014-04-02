@@ -26,15 +26,15 @@ function infuse (out, start, end, rep) {
 }
 
 wipe(0, 30); wipe(-2); // prelude / finish
-wipe(132, 143);        // removes behaviors defines
 wipe(109, 109+8);      // removes behaviors defines
+wipe(119, 125);        // setOptions
+wipe(132, 143);        // removes behaviors defines
+wipe(151, 181);        // removes tokenize entirely
 wipe(241, 248);        // removes raise() for errors
+wipe(303, 313);        // TEMP!! hash
 wipe(354, 354+8);      // removes external toktypes
 wipe(369, 369+38);     // makePredicate
-wipe(119, 125);        // setOptions
-wipe(151, 181);        // removes tokenize entirely
 wipe(1011, 1023)       // replace node_[loc_]t with custom version
-wipe(303, 313);        // TEMP!! hash
 
 // Simpily exports expressions.
 out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
@@ -177,7 +177,7 @@ out = falafel(out, function (node) {
 
   // make sure if statement bodies are enclosed
   if (node.type == 'IfStatement') {
-    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}');
+    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}' + (node.alternate ? node.alternate.source() : ''));
   }
 
   if (node.value instanceof RegExp) {
