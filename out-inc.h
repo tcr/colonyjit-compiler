@@ -7,8 +7,21 @@ bool operator&& (std::string & left, bool right){
     return left.length() > 0 && right;
 }
 
+bool operator== (std::string & left, int right){
+    return left.length() > 0;
+}
+
+std::string operator+ (std::string left, int right){
+    return left;
+}
+
 bool operator! (std::string & left){
     return left.length() == 0;
+}
+
+bool ISNOTNULL (std::string str)
+{
+	return str.length() != 0;
 }
 
 #define null nullptr
@@ -21,38 +34,6 @@ bool ISNULL (double val)
 {
 	return *((uint32_t*) &val) == DBL_NULL_VAL;
 }
-
-
-class RegExpVector: private std::vector<std::string>
-{
-    typedef std::string T;
-    typedef std::vector<std::string> vector;
-public:
-    using vector::push_back;
-    using vector::operator[];
-    using vector::begin;
-    using vector::end;
-    RegExpVector operator*(const RegExpVector & ) const;
-    RegExpVector operator+(const RegExpVector & ) const;
-    bool operator&&(bool value ) {
-    	return false && value;
-    }
-    int index;
-    RegExpVector();
-    virtual ~RegExpVector();
-};
-
-RegExpVector::RegExpVector ()
-{
-
-}
-
-RegExpVector::~RegExpVector ()
-{
-	
-}
-
-
 
 enum {
 	ATOM_NULL,
@@ -87,11 +68,6 @@ std::string slice (std::string arr, int start, int end)
 	return arr;
 }
 
-RegExpVector exec(auto regex, std::string input)
-{
-	return RegExpVector();
-}
-
 int charCodeAt(std::string input, int idx)
 {
 	return 0;
@@ -120,11 +96,6 @@ T pop(std::vector<T> value)
 	return T();
 }
 
-bool test(auto regex, std::string input)
-{
-	return false;
-}
-
 int indexOf(std::string input, std::string needle, int offset)
 {
 	return 0;
@@ -140,8 +111,83 @@ int lastIndexOf(std::string input, std::string needle, int offset)
 	return 0;
 }
 
+// auto SyntaxError(std::string str) {
+// 	return str;
+// }
 
 
+
+/**
+ * regexp stuff
+ */
+
+bool test(auto regex, std::string input)
+{
+	return false;
+}
+
+class RegExpVector: private std::vector<std::string>
+{
+    typedef std::string T;
+    typedef std::vector<std::string> vector;
+public:
+    using vector::push_back;
+    using vector::operator[];
+    using vector::begin;
+    using vector::end;
+    RegExpVector operator*(const RegExpVector & ) const;
+    RegExpVector operator+(const RegExpVector & ) const;
+    bool operator&&(bool value ) {
+    	return false && value;
+    }
+    int index;
+    RegExpVector();
+    virtual ~RegExpVector();
+};
+
+RegExpVector::RegExpVector ()
+{
+
+}
+
+RegExpVector::~RegExpVector ()
+{
+	
+}
+
+RegExpVector exec(auto regex, std::string input)
+{
+	return RegExpVector();
+}
+
+struct regexp_t {
+	std::string str;
+	int lastIndex;
+	int index;
+};
+
+bool ISNULL (struct regexp_t val)
+{
+	return val.str.length() == 0;
+}
+
+bool operator== (struct regexp_t & left, std::nullptr_t n){
+    return false;
+}
+
+struct regexp_t RegExp(std::string str) {
+	return { str };
+}
+
+struct regexp_t RegExp(std::string str, std::string mods) {
+	return { str };
+}
+
+
+
+/**
+ * options struct
+ */
 
 typedef struct {
 	int ecmaVersion;
@@ -157,30 +203,10 @@ typedef struct {
 	std::string directSourceFile;
 } options_t;
 
-struct regexp_t {
-	std::string str;
-	int lastIndex;
-	int index;
-};
 
-
-bool ISNULL (struct regexp_t val)
-{
-	return val.str.length() == 0;
-}
-
-bool ISNOTNULL (std::string str)
-{
-	return str.length() != 0;
-}
-
-
-
-bool operator== (struct regexp_t & left, std::nullptr_t n){
-    return false;
-}
-
-
+/**
+ * keyword struct
+ */
 
 struct keyword_t {
 	int _id;
@@ -204,18 +230,15 @@ bool operator!= (struct keyword_t & left, struct keyword_t & right){
     return false;
 }
 
-struct regexp_t RegExp(std::string str) {
-	return { str };
+
+keyword_t keywordTypes (std::string key) {
+	return keyword_t();
 }
 
-struct regexp_t RegExp(std::string str, std::string mods) {
-	return { str };
-}
 
-auto SyntaxError(std::string str) {
-	return str;
-}
-
+/**
+ * "this" struct
+ */
 
 struct this_t {
 	int line;
@@ -227,29 +250,12 @@ struct this_t {
 };
 
 struct this_t THIS;
-
-
-int readInt (int radix, int len);
-int readInt (int radix) { return readInt (radix, 0); }
-
-auto readToken (auto forceRegexp);
-bool readToken () { return readToken (false); }
-
-void finishToken (keyword_t type, void* ptr) { }
-void finishToken (keyword_t type) { finishToken(type, nullptr); }
-
-void onComment(options_t options, bool what, std::string code, int start, int tokPos,
-                        int startLoc, bool ok) {
-
-}
-
-// void unexpected();
-
-
-keyword_t keywordTypes (std::string key) {
-	return keyword_t();
-}
  
+
+
+/**
+ * node_loc_t struct
+ */
 
 extern int tokStart;
 extern int tokStartLoc;
@@ -269,6 +275,12 @@ node_loc_t::node_loc_t () {
 	this->source = sourceFile;
 }
 
+
+
+/**
+ * label struct
+ */
+
 class label_t {
   public:
     std::string kind;
@@ -276,6 +288,12 @@ class label_t {
 };
 
 
+
+
+
+/**
+ * node struct
+ */
 
 class node_t {
   public:
@@ -336,36 +354,25 @@ node_t::node_t () {
 	this->loc = nullptr;
 }
 
-node_t* parseIdent(bool liberal);
-node_t* parseIdent() { parseIdent(false); }
-
-node_t* parseVar(node_t* node, bool noIn);
-node_t* parseVar(node_t* node) { return parseVar(node, false); }
-
-node_t* parseExpression(bool noComma, bool noIn);
-node_t* parseExpression(bool noComma) { return parseExpression(noComma, false); }
-node_t* parseExpression() { return parseExpression(false, false); }
-
-node_t* parseBlock(bool allowStrict);
-node_t* parseBlock() { return parseBlock(false); }
-
-node_t* parseSubscripts(node_t* base, bool noCalls);
-node_t* parseSubscripts(node_t* base) { return parseSubscripts(base, false); }
-
-std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
-std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma) { return parseExprList(close, allowTrailingComma, false); }
-
 bool ISNULL (node_t* t)
 {
 	return t == nullptr;
 }
 
-bool operator== (std::string & left, int right){
-    return left.length() > 0;
-}
 
-std::string operator+ (std::string left, int right){
-    return left;
+
+
+
+/**
+ * this should be auto-generated...
+ */
+
+void finishToken (keyword_t type, void* ptr) { }
+void finishToken (keyword_t type) { finishToken(type, nullptr); }
+
+void onComment(options_t options, bool what, std::string code, int start, int tokPos,
+                        int startLoc, bool ok) {
+
 }
 
 void raise (int start, std::string message){

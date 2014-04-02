@@ -17,16 +17,21 @@ auto readToken_plus_min(auto code);
 auto readToken_lt_gt(auto code);
 auto readToken_eq_excl(auto code);
 auto getTokenFromCode(auto code);
-auto readToken(auto forceRegexp);
+void readToken(bool forceRegexp);
+void readToken(){ return readToken(false); }
 void finishOp(keyword_t type, int size);
+void finishOp(keyword_t type){ return finishOp(type, 0); }
 void readRegexp();
 int readInt(int radix, int len);
+int readInt(int radix){ return readInt(radix, 0); }
+int readInt(){ return readInt(0); }
 auto readHexNumber();
 void readNumber(bool startsWithDot);
+void readNumber(){ return readNumber(false); }
 auto readString(auto quote);
 auto readHexChar(auto len);
 std::string readWord1();
-auto readWord();
+std::string readWord();
 auto next();
 auto setStrict(auto strct);
 auto startNode();
@@ -43,24 +48,37 @@ auto parseTopLevel(auto program);
 auto parseStatement();
 node_t* parseParenExpression();
 node_t* parseBlock(bool allowStrict);
+node_t* parseBlock(){ return parseBlock(false); }
 node_t* parseFor(node_t* node, node_t* init);
 node_t* parseForIn(node_t* node, node_t* init);
 node_t* parseVar(node_t* node, bool noIn);
+node_t* parseVar(node_t* node){ return parseVar(node, false); }
 node_t* parseExpression(bool noComma, bool noIn);
+node_t* parseExpression(bool noComma){ return parseExpression(noComma, false); }
+node_t* parseExpression(){ return parseExpression(false); }
 node_t* parseMaybeAssign(bool noIn);
+node_t* parseMaybeAssign(){ return parseMaybeAssign(false); }
 node_t* parseMaybeConditional(bool noIn);
+node_t* parseMaybeConditional(){ return parseMaybeConditional(false); }
 node_t* parseExprOps(bool noIn);
+node_t* parseExprOps(){ return parseExprOps(false); }
 node_t* parseExprOp(node_t* left, double minPrec, bool noIn);
+node_t* parseExprOp(node_t* left, double minPrec){ return parseExprOp(left, minPrec, false); }
 node_t* parseMaybeUnary();
 node_t* parseExprSubscripts();
 node_t* parseSubscripts(node_t* base, bool noCalls);
+node_t* parseSubscripts(node_t* base){ return parseSubscripts(base, false); }
 node_t* parseExprAtom();
 node_t* parseNew();
 node_t* parseObj();
 node_t* parsePropertyName();
 node_t* parseFunction(node_t* node, bool isStatement);
+node_t* parseFunction(node_t* node){ return parseFunction(node, false); }
 std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
+std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma){ return parseExprList(close, allowTrailingComma, false); }
+std::vector<node_t*> parseExprList(keyword_t close){ return parseExprList(close, false); }
 node_t* parseIdent(bool liberal);
+node_t* parseIdent(){ return parseIdent(false); }
 
 
 
@@ -641,7 +659,7 @@ finishOp(_assign, 2);
         tokPos += 3;
         skipLineComment();
         skipSpace();
-        return readToken();
+        readToken();
       }
 }
       finishOp(_incDec, 2);
@@ -672,7 +690,7 @@ finishOp(_assign, size + 1);
       tokPos += 4;
       skipLineComment();
       skipSpace();
-      return readToken();
+      readToken();
     }
 }
     if (next == 61) {
@@ -735,19 +753,19 @@ readHexNumber();
       readToken_mult_modulo();}
 
     case 124:{} case 38:{ // '|&'
-      return readToken_pipe_amp(code);}
+      readToken_pipe_amp(code);}
 
     case 94:{ // '^'
       readToken_caret();}
 
     case 43:{} case 45:{ // '+-'
-      return readToken_plus_min(code);}
+      readToken_plus_min(code);}
 
     case 60:{} case 62:{ // '<>'
-      return readToken_lt_gt(code);}
+      readToken_lt_gt(code);}
 
     case 61:{} case 33:{ // '=!'
-      return readToken_eq_excl(code);}
+      readToken_eq_excl(code);}
 
     case 126:{ // '~'
       finishOp(_prefix, 1);}
@@ -756,7 +774,7 @@ readHexNumber();
     return false;
   }
 
-  auto readToken(auto forceRegexp) {
+  void readToken(bool forceRegexp) {
     if (!forceRegexp) {
 tokStart = tokPos;
 }
@@ -1005,7 +1023,7 @@ word += charAt(input, tokPos);
   // Read an identifier or keyword token. Will check for reserved
   // words when necessary.
 
-  auto readWord() {
+  std::string readWord() {
     std::string word = readWord1(); 
     keyword_t type = _name; 
     if (!containsEsc && isKeyword(word)) {

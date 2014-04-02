@@ -58,6 +58,7 @@ var funcs = {
   readInt: ['int', 'int', 'int'],
   readRegexp: ['void'],
   readToken_slash: ['void'],
+  readToken: ['void', 'bool'],
   finishOp: ['void', 'keyword_t', 'int'],
   finishNode: ['node_t*', 'node_t*', 'std::string'],
   finishToken: ['auto', 'keyword_t', 'auto'],
@@ -84,6 +85,7 @@ var funcs = {
   parseIdent: ['node_t*', 'bool'],
   isUseStrict: ['bool', 'node_t*'],
   unexpected: ['void'],
+  readWord: ['std::string'],
   readWord1: ['std::string'],
 }
 
@@ -141,12 +143,29 @@ out = falafel(out, function (node) {
   if (node.type == 'FunctionExpression' || node.type == 'FunctionDeclaration') {
     node.update(node.source().replace(/^function\s*(\w+\s*)?\(([^)]*)\)/, function (_, w, a) {
       var def = funcs[w] || ['auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto']; //etc
-      var proto = def[0] + ' ' + (w||'') + '(' + a.split(/\s*,\s*/).filter(function (a) {
+      var args = a.split(/\s*,\s*/).filter(function (a) {
         return a;
-      }).map(function (arg, i) {
-        return def[i+1] + ' ' + arg;
-      }).join(', ') + ')';
+      });
+
+      function makeproto (def, args) {
+        return def[0] + ' ' + (w||'') + '(' + args.map(function (arg, i) {
+          return def[i+1] + ' ' + arg;
+        }).join(', ') + ')';
+      }
+
+      // Optional boolean, integer arguments.
+      var proto = makeproto(def, args);
       prototypes.push(proto + ';');
+      (function (args) {
+        while (args.length && (def[args.length] == 'int' || def[args.length] == 'bool')) {
+          prototypes.push(makeproto(def, args.slice(0, -1)) + '{ return ' + w + '(' + args.slice(0, -1).concat([
+            def[args.length] == 'bool' ? 'false' : '0'
+          ]).join(', ') + '); }');
+          args.pop();
+        }
+      })(args.slice());
+
+
       return proto;
     }));
   }
@@ -270,7 +289,7 @@ out = out.replace('if (octal) {', 'if (octal.length() > 0) {')
 out = out.replace("push(node->properties, prop", "push(node->properties, &prop")
 out = out.replace("switch \(tokType", "switch \(tokType._id");
 out = out.replace("tokVal = val;", "");
-out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
+out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
