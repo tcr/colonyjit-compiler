@@ -3,7 +3,7 @@ auto isIdentifierStart (auto code);
 auto isIdentifierChar (auto code);
 auto line_loc_t();
 auto initTokenState();
-auto finishToken(keyword_t type, auto val);
+void finishToken(keyword_t type, struct js_t val);
 auto skipBlockComment();
 auto skipLineComment();
 void skipSpace();
@@ -526,7 +526,7 @@ return true;
   // `tokRegexpAllowed`, and skips the space after the token, so that
   // the next one's `tokStart` will point at the right position.
 
-  auto finishToken(keyword_t type, auto val) {
+  void finishToken(keyword_t type, struct js_t val) {
     tokEnd = tokPos;
     if (options.locations) {
 tokEndLoc = line_loc_t;

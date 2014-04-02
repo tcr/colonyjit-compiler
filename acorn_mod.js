@@ -1130,11 +1130,11 @@
     labels = [];
     readToken();
 
-    var node = program || startNode(), first = true;
-    if (!program) node.body = [];
+    var node = startNode(), first = true;
+    if (!program) node.bodyarr = [];
     while (tokType !== _eof) {
       var stmt = parseStatement();
-      node.body.push(stmt);
+      node.bodyarr.push(stmt);
       if (first && isUseStrict(stmt)) setStrict(true);
       first = false;
     }

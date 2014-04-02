@@ -43,7 +43,7 @@ enum {
 
 
 std::string fromCharCode (int c) {
-	return std::string((char) c);
+	return std::string(1, (char) c);
 }
 
 int parseInt (std::string c) {
@@ -116,6 +116,56 @@ int lastIndexOf(std::string input, std::string needle, int offset)
 // auto SyntaxError(std::string str) {
 // 	return str;
 // }
+
+
+
+
+/**
+ * any type
+ */
+
+struct js_t {
+	int type;
+	union {
+		bool value_bool;
+		double value_double;
+		std::string* value_string;
+	};
+};
+
+enum {
+	JS_NULL,
+	JS_DOUBLE,
+	JS_STRING,
+	JS_BOOLEAN
+} js_t_val;
+
+struct js_t js_null_t() {
+	struct js_t val = {};
+	val.type = JS_NULL;
+	return val;
+}
+
+struct js_t js_string_t(std::string* str) {
+	struct js_t val = {};
+	val.type = JS_STRING;
+	val.value_string = str;
+	return val;
+}
+
+struct js_t js_double_t(double value) {
+	struct js_t val = {};
+	val.type = JS_DOUBLE;
+	val.value_double = value;
+	return val;
+}
+
+struct js_t js_bool_t(bool value) {
+	struct js_t val = {};
+	val.type = JS_BOOLEAN;
+	val.value_bool = value;
+	return val;
+}
 
 
 
@@ -369,8 +419,11 @@ typedef struct {
  * this should be auto-generated...
  */
 
-void finishToken (keyword_t type, void* ptr) { }
-void finishToken (keyword_t type) { finishToken(type, nullptr); }
+void finishToken (keyword_t type, struct js_t ptr);
+void finishToken (keyword_t type, struct regexp_t value) { finishToken(type, js_null_t()); }
+void finishToken (keyword_t type, std::string value) { finishToken(type, js_string_t(&value)); }
+void finishToken (keyword_t type, double value) { finishToken(type, js_double_t(value)); }
+void finishToken (keyword_t type) { finishToken(type, js_null_t()); }
 
 void onComment(options_t options, bool what, std::string code, int start, int tokPos,
                         int startLoc, bool ok) {
@@ -396,8 +449,9 @@ int main () {
 		input = INPUT; inputLen = input.length();
 	    // setOptions(opts);
 	    initTokenState();
-	    parseTopLevel(options.program);
+	    node_t* top = parseTopLevel(options.program);
+	    printf("ok %s\n", top->type.c_str());
 	}
-
+	printf("done.\n");
 	return 0;
 }

@@ -25,6 +25,18 @@ function infuse (out, start, end, rep) {
   }).join('\n');
 }
 
+function replace (regex, str)
+{
+  out = out.replace(regex, str);
+}
+
+
+
+
+
+
+/************************************************************/
+
 wipe(0, 30); wipe(-2); // prelude / finish
 wipe(109, 109+8);      // removes behaviors defines
 wipe(119, 125);        // setOptions
@@ -37,10 +49,10 @@ wipe(369, 369+38);     // makePredicate
 wipe(1011, 1023)       // replace node_[loc_]t with custom version
 
 // Simpily exports expressions.
-out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
-out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+/g, "var $1 ");
-out = out.replace(/exports.(\w+)\s*=\s*function/g, "function $1 ");
-out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/, "function $1 ");
+replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
+replace(/var\s+(\w+)\s*=\s*exports.\w+/g, "var $1 ");
+replace(/exports.(\w+)\s*=\s*function/g, "function $1 ");
+replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/, "function $1 ");
 
 // default variable initialization
 var autoDefaults = {
@@ -64,7 +76,7 @@ var funcs = {
   readToken: ['void', 'bool'],
   finishOp: ['void', 'keyword_t', 'int'],
   finishNode: ['node_t*', 'node_t*', 'std::string'],
-  finishToken: ['auto', 'keyword_t', 'auto'],
+  finishToken: ['void', 'keyword_t', 'struct js_t'],
   eat: ['auto', 'keyword_t'],
   parseTopLevel: ['node_t*', 'node_t*'],
   parseParenExpression: ['node_t*'],
@@ -234,21 +246,21 @@ out = falafel(out, function (node) {
   }
 }).toString();
 
-out = out.replace(/([a-z.]+)\.exec\(/ig, 'exec($1, ');
-out = out.replace(/([a-z.]+)\.push\(/ig, 'push($1, ');
-out = out.replace(/([a-z.]+)\.pop\(/ig, 'pop($1');
-out = out.replace(/([a-z.]+)\.lastIndexOf\(/ig, 'lastIndexOf($1, ');
-out = out.replace(/([a-z.]+)\.test\(/ig, 'test($1, ');
-out = out.replace(/([a-z.]+)\.fromCharCode\(/ig, 'fromCharCode(');
-out = out.replace(/([a-z.]+)\.indexOf\(/ig, 'indexOf($1, ');
-out = out.replace(/([a-z.]+)\.onComment\(/ig, 'onComment($1, ');
-out = out.replace(/([a-z.]+)\.slice\(/ig, 'slice($1, ');
-out = out.replace(/([a-z.]+)\.charAt\(/ig, 'charAt($1, ');
-out = out.replace(/([a-z.]+)\.charCodeAt\(/ig, 'charCodeAt($1, ');
+replace(/([a-z.]+)\.exec\(/ig, 'exec($1, ');
+replace(/([a-z.]+)\.push\(/ig, 'push($1, ');
+replace(/([a-z.]+)\.pop\(/ig, 'pop($1');
+replace(/([a-z.]+)\.lastIndexOf\(/ig, 'lastIndexOf($1, ');
+replace(/([a-z.]+)\.test\(/ig, 'test($1, ');
+replace(/([a-z.]+)\.fromCharCode\(/ig, 'fromCharCode(');
+replace(/([a-z.]+)\.indexOf\(/ig, 'indexOf($1, ');
+replace(/([a-z.]+)\.onComment\(/ig, 'onComment($1, ');
+replace(/([a-z.]+)\.slice\(/ig, 'slice($1, ');
+replace(/([a-z.]+)\.charAt\(/ig, 'charAt($1, ');
+replace(/([a-z.]+)\.charCodeAt\(/ig, 'charCodeAt($1, ');
 
 // operators
-out = out.replace(/===/g, '==');
-out = out.replace(/!==/g, '!=');
+replace(/===/g, '==');
+replace(/!==/g, '!=');
 
 // non-trivial designated initializers not allowed
 out = infuse(out, 198, 290, function (a) {
@@ -256,9 +268,9 @@ out = infuse(out, 198, 290, function (a) {
 });
 
 // todo no line_loc_t
-out = out.replace(/new (RegExp|SyntaxError|line_loc_t)/g, "$1");
+replace(/new (RegExp|SyntaxError|line_loc_t)/g, "$1");
 
-out = out.replace(/auto (\w+)\s*=\s*makePredicate\("([^"]+?)"\);/g, function (_, name, args) {
+replace(/auto (\w+)\s*=\s*makePredicate\("([^"]+?)"\);/g, function (_, name, args) {
   return 'bool ' + name + '(std::string arg) { return false; }';
 })
 
@@ -270,34 +282,34 @@ out.match(/_(\w+) = \{_id: (\d+)/g).forEach(function (a) {
 });
 
 // manual hacks
-out = out.replace(/\boperator\b/g, 'opr');
-out = out.replace(/std::string content = slice/g, 'content = slice') // prevent redeclaration
-out = out.replace(/.length\b/g, '.length()');
-out = out.replace(/^return null;/m, 'return DBL_NULL;');
-out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
-out = out.replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
-out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
-out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
-out = out.replace(/(j\])\.(\w+)/g, '$1->$2');
-out = out.replace("switch (starttype) {", "switch (starttype._id) {")
-out = out.replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
-out = out.replace("keywordTypes[word]", "keywordTypes(word)");
-out = out.replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
-out = out.replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
-out = out.replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
-out = out.replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<node_t*>')
-out = out.replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
-out = out.replace(/auto prop\b/, 'node_t prop');
-out = out.replace('push(labels, {name: maybeName, kind: kind})', 'push(labels, (label_t){kind: kind, name: maybeName})');
-out = out.replace('{key: parsePropertyName()};', '{}; prop.key = parsePropertyName();');
-out = out.replace('if (octal) {', 'if (octal.length() > 0) {')
-out = out.replace("push(node->properties, prop", "push(node->properties, &prop")
-out = out.replace("switch \(tokType", "switch \(tokType._id");
-out = out.replace("tokVal = val;", "");
-out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
-out = out.replace(/case\s*_(\w+):/g, function (a, name) {
+replace(/\boperator\b/g, 'opr');
+replace(/std::string content = slice/g, 'content = slice') // prevent redeclaration
+replace(/.length\b/g, '.length()');
+replace(/^return null;/m, 'return DBL_NULL;');
+replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
+replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
+replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
+replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
+replace(/(j\])\.(\w+)/g, '$1->$2');
+replace("switch (starttype) {", "switch (starttype._id) {")
+replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
+replace("keywordTypes[word]", "keywordTypes(word)");
+replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
+replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
+replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
+replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<node_t*>')
+replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
+replace(/auto prop\b/, 'node_t prop');
+replace('push(labels, {name: maybeName, kind: kind})', 'push(labels, (label_t){kind: kind, name: maybeName})');
+replace('{key: parsePropertyName()};', '{}; prop.key = parsePropertyName();');
+replace('if (octal) {', 'if (octal.length() > 0) {')
+replace("push(node->properties, prop", "push(node->properties, &prop")
+replace("switch \(tokType", "switch \(tokType._id");
+replace("tokVal = val;", "");
+replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
+replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
-out = out.replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
+replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
 
 console.log(prototypes.join('\n') + out);
