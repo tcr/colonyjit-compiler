@@ -1130,7 +1130,7 @@
     labels = [];
     readToken();
 
-    var node = startNode(), first = true;
+    var node = program || startNode(), first = true;
     if (!program) node.bodyarr = [];
     while (tokType !== _eof) {
       var stmt = parseStatement();
