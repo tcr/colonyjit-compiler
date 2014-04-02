@@ -43,8 +43,8 @@ auto semicolon();
 auto expect(auto type);
 void unexpected();
 auto checkLVal(auto expr);
-auto parseTopLevel(auto program);
-auto parseStatement();
+node_t* parseTopLevel(node_t* program);
+node_t* parseStatement();
 node_t* parseParenExpression();
 node_t* parseBlock(bool allowStrict);
 node_t* parseBlock(){ return parseBlock(false); }
@@ -128,7 +128,7 @@ node_t* parseIdent(){ return parseIdent(false); }
   // A second optional argument can be given to further configure
   // the parser process. These options are recognized:
 
-  options_t defaultOptions  = {ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: false, allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: "", sourceFile: "", directSourceFile: ""}; 
+  options_t defaultOptions  = {ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: false, allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: null, sourceFile: "", directSourceFile: ""}; 
 
 
 
@@ -1211,22 +1211,22 @@ raise(expr->start, std::string("Assigning to ") + expr->name + std::string(" in 
   // `program` argument.  If present, the statements will be appended
   // to its body instead of creating a new node.
 
-  auto parseTopLevel(auto program) {
+  node_t* parseTopLevel(node_t* program) {
     lastStart = lastEnd = tokPos;
     if (options.locations) {
 lastEndLoc = line_loc_t;
 }
-    inFunction = strict = null;
+    inFunction = strict = false;
     labels = std::vector<label_t>();
     readToken();
 
-    auto node = program || startNode();  auto first = true; 
+    auto node = startNode();  auto first = true; 
     if (!program) {
-node->body = std::vector<int>();
+node->bodyarr = std::vector<node_t*>();
 }
     while (tokType != _eof) {
       auto stmt = parseStatement(); 
-      push(node->body, stmt);
+      push(node->bodyarr, stmt);
       if (first && isUseStrict(stmt)) {
 setStrict(true);
 }
@@ -1244,7 +1244,7 @@ setStrict(true);
   // `if (foo) /blah/.exec(foo);`, where looking at the previous token
   // does not help.
 
-  auto parseStatement() {
+  node_t* parseStatement() {
     if (tokType == _slash || tokType == _assign && tokVal == "/=") {
 readToken(true);
 }

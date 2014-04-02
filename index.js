@@ -66,6 +66,7 @@ var funcs = {
   finishNode: ['node_t*', 'node_t*', 'std::string'],
   finishToken: ['auto', 'keyword_t', 'auto'],
   eat: ['auto', 'keyword_t'],
+  parseTopLevel: ['node_t*', 'node_t*'],
   parseParenExpression: ['node_t*'],
   parseFor: ['node_t*', 'node_t*', 'node_t*'],
   parseVar: ['node_t*', 'node_t*', 'bool'],
@@ -85,6 +86,7 @@ var funcs = {
   parseObj: ['node_t*'],
   parseNew: ['node_t*'],
   parsePropertyName: ['node_t*'],
+  parseStatement: ['node_t*'],
   parseIdent: ['node_t*', 'bool'],
   isUseStrict: ['bool', 'node_t*'],
   unexpected: ['void'],
@@ -296,5 +298,6 @@ out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readT
 out = out.replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
+out = out.replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
 
 console.log(prototypes.join('\n') + out);

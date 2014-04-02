@@ -186,26 +186,6 @@ struct regexp_t RegExp(std::string str, std::string mods) {
 }
 
 
-
-/**
- * options struct
- */
-
-typedef struct {
-	int ecmaVersion;
-	bool strictSemicolons;
-	bool allowTrailingCommas;
-	bool forbidReserved;
-	bool allowReturnOutsideFunction;
-	bool locations;
-	void (*onComment)();
-	bool ranges;
-	std::string program;
-	std::string sourceFile;
-	std::string directSourceFile;
-} options_t;
-
-
 /**
  * keyword struct
  */
@@ -366,6 +346,26 @@ bool ISNULL (node_t* t)
 
 
 /**
+ * options struct
+ */
+
+typedef struct {
+	int ecmaVersion;
+	bool strictSemicolons;
+	bool allowTrailingCommas;
+	bool forbidReserved;
+	bool allowReturnOutsideFunction;
+	bool locations;
+	void (*onComment)();
+	bool ranges;
+	node_t* program;
+	std::string sourceFile;
+	std::string directSourceFile;
+} options_t;
+
+
+
+/**
  * this should be auto-generated...
  */
 
@@ -391,5 +391,13 @@ void raise (int start, std::string message){
 
 
 int main () {
+	std::string INPUT = "console.log('hi');";
+	{
+		input = INPUT; inputLen = input.length();
+	    // setOptions(opts);
+	    initTokenState();
+	    parseTopLevel(options.program);
+	}
+
 	return 0;
 }

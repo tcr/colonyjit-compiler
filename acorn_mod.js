@@ -99,7 +99,7 @@
     // `program` option in subsequent parses. This will add the
     // toplevel forms of the parsed file to the `Program` (top) node
     // of an existing parse tree.
-    program: "",
+    program: null,
     // When `locations` is on, you can pass this to record the source
     // file in every node's `loc` object.
     sourceFile: "",
