@@ -235,18 +235,7 @@ int readInt (int radix) { return readInt (radix, 0); }
 auto readToken (auto forceRegexp);
 bool readToken () { return readToken (false); }
 
-std::string readWord1 (void);
-
-void readNumber (bool startsWithDot);
-void skipSpace ();
-
-void readRegexp ();
-
-void finishOp(keyword_t type, int size);
-
-void finishToken (keyword_t type, void* ptr) {
-
-}
+void finishToken (keyword_t type, void* ptr) { }
 void finishToken (keyword_t type) { finishToken(type, nullptr); }
 
 void onComment(options_t options, bool what, std::string code, int start, int tokPos,
@@ -254,7 +243,7 @@ void onComment(options_t options, bool what, std::string code, int start, int to
 
 }
 
-void unexpected();
+// void unexpected();
 
 
 keyword_t keywordTypes (std::string key) {
@@ -349,31 +338,22 @@ node_t::node_t () {
 
 node_t* parseIdent(bool liberal);
 node_t* parseIdent() { parseIdent(false); }
-node_t* parseParenExpression();
-node_t* parseFor(node_t* node, node_t* init);
+
 node_t* parseVar(node_t* node, bool noIn);
 node_t* parseVar(node_t* node) { return parseVar(node, false); }
-node_t* parseForIn(node_t* node, node_t* init);
+
 node_t* parseExpression(bool noComma, bool noIn);
 node_t* parseExpression(bool noComma) { return parseExpression(noComma, false); }
 node_t* parseExpression() { return parseExpression(false, false); }
-node_t* parseFunction(node_t*, bool);
+
 node_t* parseBlock(bool allowStrict);
 node_t* parseBlock() { return parseBlock(false); }
-node_t* parseMaybeAssign(bool noIn);
-node_t* parseMaybeConditional(bool noIn);
-node_t* parseExprOps(bool noIn);
-node_t* parseMaybeUnary();
-node_t* parseExprOp(node_t* left, double minPrec, bool noIn);
-node_t* parseExprSubscripts();
-node_t* parseExprAtom();
+
 node_t* parseSubscripts(node_t* base, bool noCalls);
 node_t* parseSubscripts(node_t* base) { return parseSubscripts(base, false); }
+
 std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
 std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma) { return parseExprList(close, allowTrailingComma, false); }
-node_t* parseObj();
-node_t* parseNew();
-node_t* parsePropertyName();
 
 bool ISNULL (node_t* t)
 {
