@@ -116,7 +116,7 @@ node_t* parseIdent(){ return parseIdent(false); }
   //
   // [api]: https://developer.mozilla.org/en-US/docs/SpiderMonkey/Parser_API
 
-  options_t options = {};  auto input = std::string("");  auto inputLen = 0;  std::string sourceFile = 0; 
+  options_t options = {};  auto input = std::string("");  auto inputLen = 0;  std::string sourceFile = std::string(""); 
 
   auto parse (auto inpt, auto opts) {
     input = String(inpt); inputLen = input.length();
@@ -128,7 +128,7 @@ node_t* parseIdent(){ return parseIdent(false); }
   // A second optional argument can be given to further configure
   // the parser process. These options are recognized:
 
-  options_t defaultOptions  = {ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: false, allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: null, sourceFile: null, directSourceFile: null}; 
+  options_t defaultOptions  = {ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: false, allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: "", sourceFile: "", directSourceFile: ""}; 
 
 
 
@@ -1002,7 +1002,7 @@ raise(tokStart, "Bad character escape sequence");
 
   std::string readWord1() {
     containsEsc = false;
-    std::string word = 0;  auto first = true;  auto start = tokPos; 
+    std::string word = std::string("");  auto first = true;  auto start = tokPos; 
     ; for (; ;)
 {
       auto ch = charCodeAt(input, tokPos); 
@@ -1810,7 +1810,7 @@ break;
       }
 }
 
-      node_t prop = {}; prop.key = parsePropertyName();  auto isGetSet = false;  std::string kind = 0; 
+      node_t prop = {}; prop.key = parsePropertyName();  auto isGetSet = false;  std::string kind = std::string(""); 
       if (eat(_colon)) {
 {
         prop.value = parseExpression(true);

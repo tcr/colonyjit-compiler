@@ -350,7 +350,7 @@ class node_t {
 };
 
 node_t::node_t () {
-	this->type = nullptr;
+	this->type = std::string();
 	this->start = tokStart;
 	this->end = DBL_NULL;
 	this->loc = nullptr;

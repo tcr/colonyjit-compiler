@@ -99,13 +99,13 @@
     // `program` option in subsequent parses. This will add the
     // toplevel forms of the parsed file to the `Program` (top) node
     // of an existing parse tree.
-    program: null,
+    program: "",
     // When `locations` is on, you can pass this to record the source
     // file in every node's `loc` object.
-    sourceFile: null,
+    sourceFile: "",
     // This value, if given, is stored in every node, whether
     // `locations` is on or off.
-    directSourceFile: null,
+    directSourceFile: "",
     // Behaviors that change and listen to how acorn operates.
     behaviors: {
       openFor: function () { },

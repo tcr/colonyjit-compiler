@@ -47,6 +47,9 @@ var autoDefaults = {
   input: 'std::string("")',
   options: '{}',
   match: 'RegExpVector()',
+  sourceFile: 'std::string("")',
+  word: 'std::string("")',
+  kind: 'std::string("")',
   tokType: '{}',
   labels: 'std::vector<int>()',
 };
