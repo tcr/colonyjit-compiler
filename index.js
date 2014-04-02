@@ -3,12 +3,12 @@ var falafel = require('falafel');
 
 var out = fs.readFileSync('./acorn_mod.js', 'utf-8');
 
-function wipe (out, start, end) {
+function wipe (start, end) {
   if (start < 0) {
     start = start + out.split(/\n/).length;
     end = out.split(/\n/).length
   }
-  return out.split(/\n/).map(function (n, i) {
+  out = out.split(/\n/).map(function (n, i) {
     if (i >= start && i < end) {
       return '';
     }
@@ -25,20 +25,24 @@ function infuse (out, start, end, rep) {
   }).join('\n');
 }
 
-out = wipe(out, 0, 30); out = wipe(out, -2);
-out = wipe(out, 132, 143); // removes behaviors defines
-out = wipe(out, 109, 109+8); // removes behaviors defines
+wipe(0, 30); wipe(-2); // prelude / finish
+wipe(132, 143);        // removes behaviors defines
+wipe(109, 109+8);      // removes behaviors defines
+wipe(241, 248);        // removes raise() for errors
+wipe(354, 354+8);      // removes external toktypes
+wipe(369, 369+38);     // makePredicate
+wipe(119, 125);        // setOptions
+wipe(151, 181);        // removes tokenize entirely
+wipe(1011, 1023)       // replace node_[loc_]t with custom version
+wipe(303, 313);        // TEMP!! hash
 
-out = wipe(out, 241, 248); // removes raise
-out = wipe(out, 354, 354+8); // removes external toktypes
-out = wipe(out, 369, 369+38); // makePredicate
-out = wipe(out, 119, 125); // setOptions
-out = wipe(out, 151, 181); // removes tokenize entirely
+// Simpily exports expressions.
+out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
+out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+/g, "var $1 ");
+out = out.replace(/exports.(\w+)\s*=\s*function/g, "function $1 ");
+out = out.replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/, "function $1 ");
 
-out = wipe(out, 1011, 1023) // wipe node_[loc_]t
-
-out = wipe(out, 303, 313); // TEMP!! hash
-
+// default variable initialization
 var autoDefaults = {
   input: 'std::string("")',
   options: '{}',
@@ -47,8 +51,64 @@ var autoDefaults = {
   labels: 'std::vector<int>()',
 };
 
+// function definitions
+var funcs = {
+  skipSpace: ['void'],
+  readNumber: ['void', 'bool'],
+  readInt: ['int', 'int', 'int'],
+  readRegexp: ['void'],
+  readToken_slash: ['void'],
+  finishOp: ['void', 'keyword_t', 'int'],
+  finishNode: ['node_t*', 'node_t*', 'std::string'],
+  finishToken: ['auto', 'keyword_t', 'auto'],
+  eat: ['auto', 'keyword_t'],
+  parseParenExpression: ['node_t*'],
+  parseFor: ['node_t*', 'node_t*', 'node_t*'],
+  parseVar: ['node_t*', 'node_t*', 'bool'],
+  parseForIn: ['node_t*', 'node_t*', 'node_t*'],
+  parseExpression: ['node_t*', 'bool', 'bool'],
+  parseFunction: ['node_t*', 'node_t*', 'bool'],
+  parseBlock: ['node_t*', 'bool'],
+  parseMaybeAssign: ['node_t*', 'bool'],
+  parseMaybeConditional: ['node_t*', 'bool'],
+  parseExprOps: ['node_t*', 'bool'],
+  parseMaybeUnary: ['node_t*'],
+  parseExprOp: ['node_t*', 'node_t*', 'double', 'bool'],
+  parseExprSubscripts: ['node_t*'],
+  parseExprAtom: ['node_t*'],
+  parseSubscripts: ['node_t*', 'node_t*', 'bool'],
+  parseExprList: ['std::vector<node_t*>', 'keyword_t', 'bool', 'bool'],
+  parseObj: ['node_t*'],
+  parseNew: ['node_t*'],
+  parsePropertyName: ['node_t*'],
+  parseIdent: ['node_t*', 'bool'],
+  isUseStrict: ['bool', 'node_t*'],
+  unexpected: ['void'],
+  readWord1: ['std::string'],
+}
+
+var vars = {
+  options: 'options_t',
+  defaultOptions: 'options_t',
+  type: 'keyword_t',
+  size: 'int',
+  content: 'std::string',
+  word: 'std::string',
+  sourceFile: 'std::string',
+  tokStart: 'int',
+  tokStartLoc: 'int',
+  tokStartLoc1: 'int',
+  tokType: 'keyword_t',
+  parseIdent: 'node_t*',
+  liberal: 'bool',
+  loopLabel: 'label_t',
+  switchLabel: 'label_t',
+  kind: 'std::string',
+  out: 'std::string',
+}
 
 var keywordid = 1, keywordids = {};
+var prototypes = [];
 
 out = falafel(out, function (node) {
   if (node.type == 'VariableDeclarator') {
@@ -56,11 +116,13 @@ out = falafel(out, function (node) {
       node.update(node.source() + ' = ' + (autoDefaults[node.source()] || '0'));
     }
   }
+
   if (node.type == 'VariableDeclaration') {
     node.update(node.declarations.map(function (d) {
-      return 'auto ' + d.source() + '; ';
+      return (vars[d.source().replace(/(\s+=.*)?$/, '')] || 'auto') + ' ' + d.source() + '; ';
     }).join(' '));
   }
+
   if (node.type == 'BinaryExpression') {
     if (node.left.source() == 'null' || node.right.source() == 'null') {
       if (node.operator == '==' || node.operator == '===') {
@@ -71,40 +133,43 @@ out = falafel(out, function (node) {
       }
     }
   }
+
   if (node.type == 'SwitchCase') {
     node.update(node.source().replace(/:/, ':{') + '}');
   }
-  if (node.type == 'FunctionExpression') {
+
+  if (node.type == 'FunctionExpression' || node.type == 'FunctionDeclaration') {
     node.update(node.source().replace(/^function\s*(\w+\s*)?\(([^)]*)\)/, function (_, w, a) {
-      return 'auto ' + (w||'') + '(' + a.split(/\s*,\s*/).map(function (arg) {
-        return 'auto ' + arg;
-      }).join(', ') + ')';
-    }));
-  }
-  if (node.type == 'FunctionDeclaration') {
-    node.update(node.source().replace(/^function\s*(\w+\s*)?\(([^)]*)\)/, function (_, w, a) {
-      return 'auto ' + (w||'') + '(' + a.split(/\s*,\s*/).filter(function (a) {
+      var def = funcs[w] || ['auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto']; //etc
+      var proto = def[0] + ' ' + (w||'') + '(' + a.split(/\s*,\s*/).filter(function (a) {
         return a;
-      }).map(function (arg) {
-        return 'auto ' + arg;
+      }).map(function (arg, i) {
+        return def[i+1] + ' ' + arg;
       }).join(', ') + ')';
+      prototypes.push(proto + ';');
+      return proto;
     }));
   }
+
+  // make sure if statement bodies are enclosed
   if (node.type == 'IfStatement') {
-    // make sure if statement bodies are enclosed
     node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}');
   }
+
   if (node.value instanceof RegExp) {
     node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
   }
+
   if (typeof node.value == 'string' && node.parent.type == 'BinaryExpression' && node.parent.operator == '+') {
     node.update('std::string(' + JSON.stringify(node.value) + ')');
   }
+
   if (node.type.match(/^ForStatement/)) {
     node.update((node.init ? node.init.source() : '') + '; for (; ' + (node.test ? node.test.source() : '') +';' +
       (typeof node.update == 'function' ? '' : node.update.source()) + ')\n'
         + node.body.source())
   }
+
   if (node.type.match(/^ArrayExpression/)) {
     node.update('std::vector<int>(' + node.elements.map(function (a) {
       return a.source()
@@ -112,8 +177,8 @@ out = falafel(out, function (node) {
   }
 
   if(node.type == 'ThisExpression') {
-  node.update('THIS');
-}
+    node.update('THIS');
+  }
 
   if (node.type.match(/^ObjectExpression/)) {
     var map = {};
@@ -143,11 +208,7 @@ out = falafel(out, function (node) {
       return key + ': ' + map[key]
     }).join(', ') + '}')
   }
-}).toString()
-
-out = out.replace(/auto\s+(\w+)\s*=\s*exports.\w+\s*=\s*auto/g, "auto $1 ")
-out = out.replace(/exports.(\w+)\s*=\s*auto/g, "auto $1 ")
-out = out.replace(/auto\s+(\w+)\s*=\s*exports.\w+/, "auto $1 ")
+}).toString();
 
 out = out.replace(/([a-z.]+)\.exec\(/ig, 'exec($1, ');
 out = out.replace(/([a-z.]+)\.push\(/ig, 'push($1, ');
@@ -186,7 +247,7 @@ out.match(/_(\w+) = \{_id: (\d+)/g).forEach(function (a) {
 
 // manual hacks
 out = out.replace(/\boperator\b/g, 'opr');
-out = out.replace(/auto content = slice/g, 'content = slice')
+out = out.replace(/std::string content = slice/g, 'content = slice') // prevent redeclaration
 out = out.replace(/.length\b/g, '.length()');
 out = out.replace(/^return null;/m, 'return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
@@ -194,9 +255,6 @@ out = out.replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
 out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
 out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
 out = out.replace(/(j\])\.(\w+)/g, '$1->$2');
-out = out.replace(/case\s*_(\w+):/g, function (a, name) {
-  return 'case ' + keywordids[name] + ':';
-});
 out = out.replace("switch (starttype) {", "switch (starttype._id) {")
 out = out.replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
 out = out.replace("keywordTypes[word]", "keywordTypes(word)");
@@ -209,59 +267,12 @@ out = out.replace(/auto prop\b/, 'node_t prop');
 out = out.replace('push(labels, {name: maybeName, kind: kind})', 'push(labels, (label_t){kind: kind, name: maybeName})');
 out = out.replace('{key: parsePropertyName()};', '{}; prop.key = parsePropertyName();');
 out = out.replace('if (octal) {', 'if (octal.length() > 0) {')
-
-// typify
-out = out.replace(/auto options/g, 'options_t options')
-out = out.replace(/auto defaultOptions/g, 'options_t defaultOptions')
-out = out.replace(/auto skipSpace/g, 'void skipSpace');
-out = out.replace(/auto readNumber/g, 'void readNumber');
-out = out.replace(/auto readInt\b.*/gm, 'int readInt(int radix, int len) {');
-out = out.replace(/auto startsWithDot/g, 'bool startsWithDot');
-out = out.replace(/auto readRegexp/g, 'void readRegexp');
-out = out.replace(/auto readToken_slash\b.*/m, 'void readToken_slash (...) {');
-out = out.replace(/auto finishOp/g, 'void finishOp');
-out = out.replace(/auto type/g, 'keyword_t type');
-out = out.replace(/auto size/g, 'int size');
-out = out.replace(/auto content/g, 'std::string content');
-out = out.replace(/auto readWord1/g, 'std::string readWord1');
-out = out.replace(/auto word/g, 'std::string word');
-out = out.replace(/auto sourceFile/g, 'std::string sourceFile');
-out = out.replace(/auto tokStart/g, 'int tokStart');
-out = out.replace(/auto tokType\b/g, 'keyword_t tokType');
-out = out.replace(/auto unexpected\b/g, 'void unexpected');
-out = out.replace(/auto parseIdent\b/g, 'node_t* parseIdent');
-out = out.replace(/auto liberal\b/g, 'bool liberal');
-out = out.replace(/auto finishNode.*/m, 'node_t* finishNode(node_t* node, std::string type) {')
-out = out.replace(/auto loopLabel\b/, 'label_t loopLabel');
-out = out.replace(/auto switchLabel\b/, 'label_t switchLabel');
-out = out.replace(/auto kind\b/g, 'std::string kind');
-
-out = out.replace(/auto parseParenExpression/, 'node_t* parseParenExpression');
-out = out.replace(/auto parseFor\b.*/m, 'node_t* parseFor(node_t* node, node_t* init) {')
-out = out.replace(/auto parseVar\b.*/m, 'node_t* parseVar(node_t* node, bool noIn) {')
-out = out.replace(/auto parseForIn\b.*/m, 'node_t* parseForIn(node_t* node, node_t* init) {')
-out = out.replace(/auto parseExpression\b.*/m, 'node_t* parseExpression(bool noComma, bool noIn) {')
-out = out.replace(/auto parseFunction\b.*/m, 'node_t* parseFunction(node_t* node, bool isStatement) {')
-out = out.replace(/auto parseBlock\b.*/m, 'node_t* parseBlock(bool allowStrict) {');
-out = out.replace(/auto parseMaybeAssign\b.*/m, 'node_t* parseMaybeAssign(bool noIn) {');
-out = out.replace(/auto parseMaybeConditional\b.*/m, 'node_t* parseMaybeConditional(bool noIn) {');
-out = out.replace(/auto parseExprOps\b.*/m, 'node_t* parseExprOps(bool noIn) {');
-out = out.replace(/auto parseMaybeUnary\b.*/m, 'node_t* parseMaybeUnary() {');
-out = out.replace(/auto parseExprOp\b.*/m, 'node_t* parseExprOp(node_t* left, double minPrec, bool noIn) {');
-out = out.replace(/auto parseExprSubscripts\b.*/m, 'node_t* parseExprSubscripts() {');
-out = out.replace(/auto parseExprAtom\b.*/m, 'node_t* parseExprAtom() {');
-out = out.replace(/auto parseSubscripts\b.*/m, 'node_t* parseSubscripts(node_t* base, bool noCalls) {');
-out = out.replace(/auto parseExprList\b.*/m, 'std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {');
-out = out.replace(/auto parseObj\b.*/m, 'node_t* parseObj() {');
-out = out.replace(/auto parseNew\b.*/m, 'node_t* parseNew() {');
-out = out.replace(/auto parsePropertyName\b.*/m, 'node_t* parsePropertyName() {');
-out = out.replace(/auto isUseStrict\b.*/m, 'bool isUseStrict(node_t* stmt) {');
-out = out.replace(/auto out\b.*/m, 'std::string out');
-
 out = out.replace("push(node->properties, prop", "push(node->properties, &prop")
 out = out.replace("switch \(tokType", "switch \(tokType._id");
 out = out.replace("tokVal = val;", "");
-
 out = out.replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
+out = out.replace(/case\s*_(\w+):/g, function (a, name) {
+  return 'case ' + keywordids[name] + ':';
+});
 
-console.log('#include "out-inc.h"\n' + out);
+console.log('#include "out-inc.h"\n' + prototypes.join('\n') + out);

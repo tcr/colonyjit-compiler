@@ -1,5 +1,66 @@
 #include "out-inc.h"
-
+auto parse (auto inpt, auto opts);
+auto isIdentifierStart (auto code);
+auto isIdentifierChar (auto code);
+auto line_loc_t();
+auto initTokenState();
+auto finishToken(keyword_t type, auto val);
+auto skipBlockComment();
+auto skipLineComment();
+void skipSpace();
+auto readToken_dot();
+void readToken_slash();
+auto readToken_mult_modulo();
+auto readToken_pipe_amp(auto code);
+auto readToken_caret();
+auto readToken_plus_min(auto code);
+auto readToken_lt_gt(auto code);
+auto readToken_eq_excl(auto code);
+auto getTokenFromCode(auto code);
+auto readToken(auto forceRegexp);
+void finishOp(keyword_t type, int size);
+void readRegexp();
+int readInt(int radix, int len);
+auto readHexNumber();
+void readNumber(bool startsWithDot);
+auto readString(auto quote);
+auto readHexChar(auto len);
+std::string readWord1();
+auto readWord();
+auto next();
+auto setStrict(auto strct);
+auto startNode();
+auto startNodeFrom(auto other);
+node_t* finishNode(node_t* node, std::string type);
+bool isUseStrict(node_t* stmt);
+auto eat(keyword_t type);
+auto canInsertSemicolon();
+auto semicolon();
+auto expect(auto type);
+void unexpected();
+auto checkLVal(auto expr);
+auto parseTopLevel(auto program);
+auto parseStatement();
+node_t* parseParenExpression();
+node_t* parseBlock(bool allowStrict);
+node_t* parseFor(node_t* node, node_t* init);
+node_t* parseForIn(node_t* node, node_t* init);
+node_t* parseVar(node_t* node, bool noIn);
+node_t* parseExpression(bool noComma, bool noIn);
+node_t* parseMaybeAssign(bool noIn);
+node_t* parseMaybeConditional(bool noIn);
+node_t* parseExprOps(bool noIn);
+node_t* parseExprOp(node_t* left, double minPrec, bool noIn);
+node_t* parseMaybeUnary();
+node_t* parseExprSubscripts();
+node_t* parseSubscripts(node_t* base, bool noCalls);
+node_t* parseExprAtom();
+node_t* parseNew();
+node_t* parseObj();
+node_t* parsePropertyName();
+node_t* parseFunction(node_t* node, bool isStatement);
+std::vector<node_t*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty);
+node_t* parseIdent(bool liberal);
 
 
 
@@ -40,7 +101,7 @@
 
   options_t options = {};  auto input = std::string("");  auto inputLen = 0;  std::string sourceFile = 0; 
 
-  auto parse  (auto inpt, auto opts) {
+  auto parse (auto inpt, auto opts) {
     input = String(inpt); inputLen = input.length();
     setOptions(opts);
     initTokenState();
@@ -385,7 +446,7 @@
 
   // Test whether a given character code starts an identifier.
 
-  auto isIdentifierStart  (auto code) {
+  auto isIdentifierStart (auto code) {
     if (code < 65) {
 return code == 36;
 }
@@ -399,11 +460,11 @@ return code == 95;
 return true;
 }
     return code >= 0xaa && test(nonASCIIidentifierStart, fromCharCode(code));
-  }; 
+  };
 
   // Test whether a given character is part of an identifier.
 
-  auto isIdentifierChar  (auto code) {
+  auto isIdentifierChar (auto code) {
     if (code < 48) {
 return code == 36;
 }
@@ -423,7 +484,7 @@ return code == 95;
 return true;
 }
     return code >= 0xaa && test(nonASCIIidentifier, fromCharCode(code));
-  }; 
+  };
 
   // ## Tokenizer
 
@@ -531,7 +592,7 @@ readNumber(true);
     finishToken(_dot);
   }
 
-  void readToken_slash (...) {
+  void readToken_slash() { // '/'
     auto next = charCodeAt(input, tokPos + 1); 
     if (tokRegexpAllowed) {
 {++tokPos; readRegexp();}
@@ -668,7 +729,7 @@ readHexNumber();
     // of the type given by its first argument.
 
     case 47:{ // '/'
-      readToken_slash(code);}
+      readToken_slash();}
 
     case 37:{} case 42:{ // '%*'
       readToken_mult_modulo();}
@@ -864,7 +925,7 @@ val = parseFloat(str);
 
   auto readString(auto quote) {
     tokPos++;
-    std::string out
+    std::string out = ""; 
     ; for (; ;)
 {
       if (tokPos >= inputLen) {
@@ -1102,7 +1163,7 @@ unexpected();
   // Expect a token of a given type. If found, consume it, otherwise,
   // raise an unexpected token error.
 
-  auto expect(keyword_t type) {
+  auto expect(auto type) {
     if (tokType == type) {
 next();
 }
@@ -1663,7 +1724,7 @@ checkLVal(node->argument);
       return finishNode(node, "Literal");}
 
     case 35:{
-      int tokStartLoc1 = tokStartLoc;  int tokStart1 = tokStart; 
+      int tokStartLoc1 = tokStartLoc;  auto tokStart1 = tokStart; 
       next();
       auto val = parseExpression(); 
       val->start = tokStart1;
