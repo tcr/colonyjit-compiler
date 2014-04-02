@@ -43,11 +43,8 @@ var autoDefaults = {
   input: 'std::string("")',
   options: '{}',
   match: 'RegExpVector()',
-  // word: '""',
-  // sourceFile: '""',
-  tokType: '{ }',
+  tokType: '{}',
   labels: 'std::vector<int>()',
-  // kind: '""',
 };
 
 
@@ -152,14 +149,10 @@ out = out.replace(/auto\s+(\w+)\s*=\s*exports.\w+\s*=\s*auto/g, "auto $1 ")
 out = out.replace(/exports.(\w+)\s*=\s*auto/g, "auto $1 ")
 out = out.replace(/auto\s+(\w+)\s*=\s*exports.\w+/, "auto $1 ")
 
-// out = out.replace(/([a-z.]+)\.call\(/ig, 'call($1, ');
 out = out.replace(/([a-z.]+)\.exec\(/ig, 'exec($1, ');
-// out = out.replace(/([a-z.]+)\.split\(/ig, 'split($1, ');
 out = out.replace(/([a-z.]+)\.push\(/ig, 'push($1, ');
 out = out.replace(/([a-z.]+)\.pop\(/ig, 'pop($1');
 out = out.replace(/([a-z.]+)\.lastIndexOf\(/ig, 'lastIndexOf($1, ');
-// out = out.replace(/([a-z.]+)\.stringify\(/ig, 'stringify(');
-// out = out.replace(/([a-z.]+)\.sort\(/ig, 'sort($1, ');
 out = out.replace(/([a-z.]+)\.test\(/ig, 'test($1, ');
 out = out.replace(/([a-z.]+)\.fromCharCode\(/ig, 'fromCharCode(');
 out = out.replace(/([a-z.]+)\.indexOf\(/ig, 'indexOf($1, ');
@@ -194,12 +187,10 @@ out.match(/_(\w+) = \{_id: (\d+)/g).forEach(function (a) {
 // manual hacks
 out = out.replace(/\boperator\b/g, 'opr');
 out = out.replace(/auto content = slice/g, 'content = slice')
-out = out.replace(/.length\b/g, '.length()')
-// out = out.replace('tokPos - start != len) return null;', 'tokPos - start != len) return DBL_NULL;');
+out = out.replace(/.length\b/g, '.length()');
 out = out.replace(/^return null;/m, 'return DBL_NULL;');
 out = out.replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
 out = out.replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
-// out = out.replace(/THIS\.end = null/g, 'THIS.end = DBL_NULL');
 out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
 out = out.replace(/\b(node|loc|label|init|cur|clause|param|expr|decl|id|argument|val|key|other|body|stmt|expression)\.(\w+)/g, '$1->$2');
 out = out.replace(/(j\])\.(\w+)/g, '$1->$2');
@@ -222,15 +213,10 @@ out = out.replace('if (octal) {', 'if (octal.length() > 0) {')
 // typify
 out = out.replace(/auto options/g, 'options_t options')
 out = out.replace(/auto defaultOptions/g, 'options_t defaultOptions')
-// out = out.replace(/auto lineBreak/g, 'struct regexp_t lineBreak')
-// out = out.replace(/auto nonASCIIidentifierStartChars/g, 'std::string nonASCIIidentifierStartChars')
-// out = out.replace(/auto nonASCIIidentifierChars/g, 'std::string nonASCIIidentifierChars')
-// out = out.replace(/auto match/g, 'RegExpVector match')
 out = out.replace(/auto skipSpace/g, 'void skipSpace');
 out = out.replace(/auto readNumber/g, 'void readNumber');
 out = out.replace(/auto readInt\b.*/gm, 'int readInt(int radix, int len) {');
 out = out.replace(/auto startsWithDot/g, 'bool startsWithDot');
-// out = out.replace(/auto finishToken/g, 'void finishToken');
 out = out.replace(/auto readRegexp/g, 'void readRegexp');
 out = out.replace(/auto readToken_slash\b.*/m, 'void readToken_slash (...) {');
 out = out.replace(/auto finishOp/g, 'void finishOp');
@@ -240,9 +226,7 @@ out = out.replace(/auto content/g, 'std::string content');
 out = out.replace(/auto readWord1/g, 'std::string readWord1');
 out = out.replace(/auto word/g, 'std::string word');
 out = out.replace(/auto sourceFile/g, 'std::string sourceFile');
-// out = out.replace(/auto tokStartLoc/g, 'int tokStartLoc');
 out = out.replace(/auto tokStart/g, 'int tokStart');
-// out = out.replace(/auto tokEnd\b/g, 'int tokEnd');
 out = out.replace(/auto tokType\b/g, 'keyword_t tokType');
 out = out.replace(/auto unexpected\b/g, 'void unexpected');
 out = out.replace(/auto parseIdent\b/g, 'node_t* parseIdent');
