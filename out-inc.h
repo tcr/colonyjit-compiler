@@ -43,62 +43,63 @@ enum {
 
 
 std::string fromCharCode (int c) {
-	return "";
+	return std::string((char) c);
 }
 
 int parseInt (std::string c) {
-	return 0;
+	return std::stoi(c);
 }
 
 int parseInt (std::string c, int radix) {
-	return 0;
+	return std::stoi(c, 0, radix);
 }
 
 double parseFloat (std::string c) {
-	return 0;
-}
-
-std::vector<int> slice (std::vector<int> arr, int start, int end)
-{
-	return arr;
+	return std::stod(c);
 }
 
 std::string slice (std::string arr, int start, int end)
 {
-	return arr;
+	// TODO check negative indices
+	return arr.substr(start,end);
 }
 
 int charCodeAt(std::string input, int idx)
 {
-	return 0;
+	return input.at(idx);
 }
 
 std::string charAt(std::string input, int idx)
 {
-	return "";
+	return std::string(input.at(idx));
 }
 
 template<class T>
 int push(std::vector<T> value, T idx)
 {
-	return 0;
+	value.push_back(idx);
+	return value.size();
 }
 
 template<class T>
 int push(std::vector<T> value, std::nullptr_t)
 {
-	return 0;
+	value.push_back(nullptr);
+	return value.size();
 }
 
 template<class T>
 T pop(std::vector<T> value)
 {
-	return T();
+	T val = value.back();
+	value.pop_back();
+	return val;
 }
 
 int indexOf(std::string input, std::string needle, int offset)
 {
-	return 0;
+	std::string::size_type n = input.find(needle, offset);
+	return n;
 }
 
 int indexOf(std::string input, std::string needle)
@@ -108,7 +109,8 @@ int indexOf(std::string input, std::string needle)
 
 int lastIndexOf(std::string input, std::string needle, int offset)
 {
-	return 0;
+	std::string::size_type n = input.rfind(needle, offset);
+	return n;
 }
 
 // auto SyntaxError(std::string str) {
