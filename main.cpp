@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 
+#define LOGICALOR(A,B) (A ? A : B)
 
 bool operator&& (std::string & left, bool right){
     return left.length() > 0 && right;

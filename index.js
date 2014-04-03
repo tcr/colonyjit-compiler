@@ -153,6 +153,12 @@ out = falafel(out, function (node) {
     }
   }
 
+  if (node.type == 'LogicalExpression') {
+    if (node.operator == '||') {
+      node.update('LOGICALOR(' + node.left.source() + ','+ node.right.source() + ')');
+    }
+  }
+
   if (node.type == 'SwitchCase') {
     node.update(node.source().replace(/:/, ':{') + '}');
   }
@@ -294,7 +300,7 @@ replace(/(j\])\.(\w+)/g, '$1->$2');
 replace("switch (starttype) {", "switch (starttype._id) {")
 replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
 replace("keywordTypes[word]", "keywordTypes(word)");
-replace(/options.behaviors.\w+\([^)]*\)\s*(\|\|)?;?/g, '')
+replace(/options.behaviors.\w+\([^)]*\)\s*(;?)/g, '0$1')
 replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
 replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
 replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<node_t*>')

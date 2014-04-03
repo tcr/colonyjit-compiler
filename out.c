@@ -600,7 +600,7 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
         }
 }
       }
-}if (ch == 10 || ch == 8232 || ch == 8233) {
+}if (LOGICALOR(LOGICALOR(ch == 10,ch == 8232),ch == 8233)) {
 {
         ++tokPos;
         if (options.locations) {
@@ -781,7 +781,7 @@ finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
       // '0x' is a hexadecimal number.
     case 48:{ // '0'
       auto next = charCodeAt(input, tokPos + 1); 
-      if (next == 120 || next == 88) {
+      if (LOGICALOR(next == 120,next == 88)) {
 readHexNumber();
 }}
       // Anything else beginning with a digit is an integer, octal
@@ -843,7 +843,7 @@ finishToken(_eof);
     auto code = charCodeAt(input, tokPos); 
     // Identifier or keyword. '\uXXXX' sequences are allowed in
     // identifiers, so '\' also dispatches to that.
-    if (isIdentifierStart(code) || code == 92) {
+    if (LOGICALOR(isIdentifierStart(code),code == 92)) {
 readWord();
 }
 
@@ -854,7 +854,7 @@ readWord();
       // If we are here, we either found a non-ASCII identifier
       // character, or something that's entirely disallowed.
       auto ch = fromCharCode(code); 
-      if (ch == "\\" || test(nonASCIIidentifierStart, ch)) {
+      if (LOGICALOR(ch == "\\",test(nonASCIIidentifierStart, ch))) {
 readWord();
 }
       raise(tokPos, std::string("Unexpected character '") + ch + std::string("'"));
@@ -942,7 +942,7 @@ break;
       ++tokPos;
       total = total * radix + val;
     }
-    if (tokPos == start || ISNOTNULL(len) && tokPos - start != len) {
+    if (LOGICALOR(tokPos == start,ISNOTNULL(len) && tokPos - start != len)) {
 return DBL_NULL;
 }
 
@@ -976,10 +976,10 @@ raise(start, "Invalid number");
     }
 }
     auto next = charCodeAt(input, tokPos); 
-    if (next == 69 || next == 101) {
+    if (LOGICALOR(next == 69,next == 101)) {
 { // 'eE'
       next = charCodeAt(input, ++tokPos);
-      if (next == 43 || next == 45) {
+      if (LOGICALOR(next == 43,next == 45)) {
 ++tokPos;
 } // '+-'
       if (ISNULL(readInt(10))) {
@@ -995,9 +995,9 @@ raise(tokPos, "Identifier directly after number");
     auto str = slice(input, start, tokPos);  auto val = 0; 
     if (isFloat) {
 val = parseFloat(str);
-}if (!octal || str.length() == 1) {
+}if (LOGICALOR(!octal,str.length() == 1)) {
 val = parseInt(str, 10);
-}if (test(RegExp("[object Object]"), str) || strict) {
+}if (LOGICALOR(test(RegExp("[object Object]"), str),strict)) {
 raise(start, "Invalid number");
 }val = parseInt(str, 8);
     finishToken(_num, val);
@@ -1062,7 +1062,7 @@ raise(tokPos - 2, "Octal literal in strict mode");
         }
       }
 }{
-        if (ch == 13 || ch == 10 || ch == 8232 || ch == 8233) {
+        if (LOGICALOR(LOGICALOR(LOGICALOR(ch == 13,ch == 10),ch == 8232),ch == 8233)) {
 raise(tokStart, "Unterminated string constant");
 }
         out += fromCharCode(ch); // '\'
@@ -1254,7 +1254,7 @@ node->loc->end = lastEndLoc;
     if (options.ranges) {
 node->range[1] = lastEnd;
 }
-    return  node;
+    return LOGICALOR(0,node);
   }
 
   // Test whether a statement node is the string literal `"use strict"`.
@@ -1280,7 +1280,7 @@ node->range[1] = lastEnd;
 
   auto canInsertSemicolon() {
     return !options.strictSemicolons &&
-      (tokType == _eof || tokType == _braceR || test(newline, slice(input, lastEnd, tokStart)));
+      (LOGICALOR(LOGICALOR(tokType == _eof,tokType == _braceR),test(newline, slice(input, lastEnd, tokStart))));
   }
 
   // Consume a semicolon, or, failing that, see if we are allowed to
@@ -1335,7 +1335,7 @@ lastEndLoc = line_loc_t;
     labels = std::vector<label_t>();
     readToken();
 
-    auto node = startNode();  auto first = true; 
+    auto node = LOGICALOR(program,startNode());  auto first = true; 
     if (!program) {
 node->bodyarr = std::vector<node_t*>();
 }
@@ -1360,7 +1360,7 @@ setStrict(true);
   // does not help.
 
   node_t* parseStatement() {
-    if (tokType == _slash || tokType == _assign && tokVal == "/=") {
+    if (LOGICALOR(tokType == _slash,tokType == _assign && tokVal == "/=")) {
 readToken(true);
 }
 
@@ -1374,7 +1374,7 @@ readToken(true);
     case 6:{} case 9:{
       next();
       auto isBreak = starttype == _break; 
-      if (eat(_semi) || canInsertSemicolon()) {
+      if (LOGICALOR(eat(_semi),canInsertSemicolon())) {
 node->label = null;
 }if (tokType != _name) {
 unexpected();
@@ -1388,9 +1388,9 @@ unexpected();
       auto i = 0; ; for (; i < labels.size();)
 {
         auto lab = labels[i]; 
-        if (ISNULL(node->label) || lab.name == node->label->name) {
+        if (LOGICALOR(ISNULL(node->label),lab.name == node->label->name)) {
 {
-          if (ISNOTNULL(lab.kind) && (isBreak || lab.kind == "loop")) {
+          if (ISNOTNULL(lab.kind) && (LOGICALOR(isBreak,lab.kind == "loop"))) {
 break;
 }
           if (node->label && isBreak) {
@@ -1428,7 +1428,7 @@ raise(node->start, std::string("Unsyntactic ") + starttype.keyword);
       // a regular `for` loop.
 
     case 15:{
-      
+      0;
       next();
       push(labels, loopLabel);
       expect(_parenL);
@@ -1474,7 +1474,7 @@ raise(tokStart, "'return' outside of function");
       // optional arguments, we eagerly look for a semicolon or the
       // possibility to insert one.
 
-      if (eat(_semi) || canInsertSemicolon()) {
+      if (LOGICALOR(eat(_semi),canInsertSemicolon())) {
 node->argument = null;
 }{ node->argument = parseExpression(); semicolon(); }
       return finishNode(node, "ReturnStatement");}
@@ -1492,7 +1492,7 @@ node->argument = null;
 
       node_t* cur = nullptr;  auto sawDefault = 0; ; for (; tokType != _braceR;)
 {
-        if (tokType == _case || tokType == _default) {
+        if (LOGICALOR(tokType == _case,tokType == _default)) {
 {
           auto isCase = tokType == _case; 
           if (cur) {
@@ -1535,7 +1535,7 @@ raise(lastEnd, "Illegal newline after throw");
       return finishNode(node, "ThrowStatement");}
 
     case 21:{
-      
+      0;
       next();
       node->block = parseBlock();
       node->handler = null;
@@ -1568,7 +1568,7 @@ raise(node->start, "Missing catch or finally clause");
       return finishNode(node, "VariableDeclaration");}
 
     case 23:{
-      
+      0;
       next();
       node->test = parseParenExpression();
       push(labels, loopLabel);
@@ -1608,7 +1608,7 @@ raise(expr->start, std::string("Label '") + maybeName + std::string("' is alread
 }
         std::string kind = tokType.isLoop ? "loop" : tokType == _switch ? "switch" : null; 
         push(labels, (label_t){kind: kind, name: maybeName});
-        
+        0;
         node->body = parseStatement();
         pop(labels);
         node->label = expr;
@@ -1780,7 +1780,7 @@ break;
 
   node_t* parseExprOp(node_t* left, double minPrec, bool noIn) {
     auto prec = tokType.binop; 
-    if (ISNOTNULL(prec) && (!noIn || tokType != _in)) {
+    if (ISNOTNULL(prec) && (LOGICALOR(!noIn,tokType != _in))) {
 {
       if (prec > minPrec) {
 {
@@ -1790,7 +1790,7 @@ break;
         auto op = tokType; 
         next();
         node->right = parseExprOp(parseMaybeUnary(), prec, noIn);
-        auto exprNode = finishNode(node, (op == _logicalOR || op == _logicalAND) ? "LogicalExpression" : "BinaryExpression"); 
+        auto exprNode = finishNode(node, (LOGICALOR(op == _logicalOR,op == _logicalAND)) ? "LogicalExpression" : "BinaryExpression"); 
         return parseExprOp(exprNode, minPrec, noIn);
       }
 }
@@ -1970,7 +1970,7 @@ break;
         kind = prop.kind = "init";
       }
 }if (options.ecmaVersion >= 5 && prop.key->type == "Identifier" &&
-                 (prop.key->name == "get" || prop.key->name == "set")) {
+                 (LOGICALOR(prop.key->name == "get",prop.key->name == "set"))) {
 {
         isGetSet = sawGetSet = true;
         kind = prop.kind = prop.key->name;
@@ -1986,15 +1986,14 @@ unexpected();
       // each other or with an init property — and in strict mode,
       // init properties are also not allowed to be repeated.
 
-      if (prop.key->type == "Identifier" && (strict || sawGetSet)) {
+      if (prop.key->type == "Identifier" && (LOGICALOR(strict,sawGetSet))) {
 {
         auto i = 0; ; for (; i < node->properties.size();)
 {
           auto other = node->properties[i]; 
           if (other->key->name == prop.key->name) {
 {
-            auto conflict = kind == other->kind || isGetSet && other->kind == "init" ||
-              kind == "init" && (other->kind == "get" || other->kind == "set"); 
+            auto conflict = LOGICALOR(LOGICALOR(kind == other->kind,isGetSet && other->kind == "init"),kind == "init" && (LOGICALOR(other->kind == "get",other->kind == "set"))); 
             if (conflict && !strict && kind == "init" && other->kind == "init") {
 conflict = false;
 }
@@ -2012,7 +2011,7 @@ raise(prop.key->start, "Redefinition of property");
   }
 
   node_t* parsePropertyName() {
-    if (tokType == _num || tokType == _string) {
+    if (LOGICALOR(tokType == _num,tokType == _string)) {
 return parseExprAtom();
 }
     return parseIdent(true);
@@ -2036,7 +2035,7 @@ expect(_comma);
 }first = false;
       push(node->params, parseIdent());
     }
-    
+    0;
 
     // Start a new scope with regard to labels and the `inFunction`
     // flag (restore them to their old value afterwards).
@@ -2048,12 +2047,12 @@ expect(_comma);
     // If this is a strict mode function, verify that argument names
     // are not repeated, and it does not try to bind the words `eval`
     // or `arguments`.
-    if (strict || node->body->bodyarr.size() && isUseStrict(node->body->bodyarr[0])) {
+    if (LOGICALOR(strict,node->body->bodyarr.size() && isUseStrict(node->body->bodyarr[0]))) {
 {
       auto i = node->id ? -1 : 0; ; for (; i < node->params.size();)
 {
         auto id = i < 0 ? node->id : node->params[i]; 
-        if (isStrictReservedWord(id->name) || isStrictBadIdWord(id->name)) {
+        if (LOGICALOR(isStrictReservedWord(id->name),isStrictBadIdWord(id->name))) {
 raise(id->start, std::string("Defining '") + id->name + std::string("' in strict mode"));
 }
         if (i >= 0) {
@@ -2106,9 +2105,8 @@ liberal = false;
     if (tokType == _name) {
 {
       if (!liberal &&
-          (options.forbidReserved &&
-           (options.ecmaVersion == 3 ? isReservedWord3 : isReservedWord5)(tokVal) ||
-           strict && isStrictReservedWord(tokVal)) &&
+          (LOGICALOR(options.forbidReserved &&
+           (options.ecmaVersion == 3 ? isReservedWord3 : isReservedWord5)(tokVal),strict && isStrictReservedWord(tokVal))) &&
           indexOf(slice(input, tokStart, tokEnd), "\\") == -1) {
 raise(tokStart, std::string("The keyword '") + tokVal + std::string("' is reserved"));
 }
