@@ -102,7 +102,7 @@ var funcs = {
   parseIdent: ['node_t*', 'bool'],
   isUseStrict: ['bool', 'node_t*'],
   unexpected: ['void'],
-  readWord: ['std::string'],
+  readWord: ['void'],
   readWord1: ['std::string'],
 }
 
@@ -178,16 +178,17 @@ out = falafel(out, function (node) {
 
       // Optional boolean, integer arguments.
       var proto = makeproto(def, args);
-      prototypes.push(proto + ';');
-      (function (args) {
-        while (args.length && (def[args.length] == 'int' || def[args.length] == 'bool')) {
-          prototypes.push(makeproto(def, args.slice(0, -1)) + '{ return ' + w + '(' + args.slice(0, -1).concat([
-            def[args.length] == 'bool' ? 'false' : '0'
-          ]).join(', ') + '); }');
-          args.pop();
-        }
-      })(args.slice());
-
+      if (def[0] != 'auto') {
+        prototypes.push(proto + ';');
+        (function (args) {
+          while (args.length && (def[args.length] == 'int' || def[args.length] == 'bool')) {
+            prototypes.push(makeproto(def, args.slice(0, -1)) + '{ return ' + w + '(' + args.slice(0, -1).concat([
+              def[args.length] == 'bool' ? 'false' : '0'
+            ]).join(', ') + '); }');
+            args.pop();
+          }
+        })(args.slice());
+      }
 
       return proto;
     }));
@@ -195,7 +196,7 @@ out = falafel(out, function (node) {
 
   // make sure if statement bodies are enclosed
   if (node.type == 'IfStatement') {
-    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}' + (node.alternate ? node.alternate.source() : ''));
+    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}' + (node.alternate ? ' else ' + node.alternate.source() : ''));
   }
 
   if (node.value instanceof RegExp) {
@@ -312,7 +313,7 @@ replace('if (octal) {', 'if (octal.length() > 0) {')
 replace("push(node->properties, prop", "push(node->properties, &prop")
 replace("switch \(tokType", "switch \(tokType._id");
 replace("tokVal = val;", "");
-replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)/g, "$1");
+replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)(\(.*\))/g, "$1$2; return");
 replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });

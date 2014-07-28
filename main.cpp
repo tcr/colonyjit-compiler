@@ -20,6 +20,11 @@ bool operator! (std::string & left){
     return left.length() == 0;
 }
 
+bool ISNOTNULL (int val)
+{
+	return val >= 0;
+}
+
 bool ISNOTNULL (std::string str)
 {
 	return str.length() != 0;
@@ -48,10 +53,16 @@ std::string fromCharCode (int c) {
 }
 
 int parseInt (std::string c) {
+	if (c.length() == 0) {
+		return nan("");
+	}
 	return std::stoi(c);
 }
 
 int parseInt (std::string c, int radix) {
+	if (c.length() == 0) {
+		return nan("");
+	}
 	return std::stoi(c, 0, radix);
 }
 
@@ -67,12 +78,18 @@ std::string slice (std::string arr, int start, int end)
 
 int charCodeAt(std::string input, int idx)
 {
+	if (idx < 0 || input.length() <= idx) {
+		return -1;
+	}
 	return input.at(idx);
 }
 
 std::string charAt(std::string input, int idx)
 {
-	return std::string(input.at(idx));
+	if (idx < 0 || input.length() <= idx) {
+		return std::string("");
+	}
+	return std::string(1, input.at(idx));
 }
 
 template<class T>
@@ -256,11 +273,11 @@ struct keyword_t {
 };
 
 bool operator== (struct keyword_t & left, struct keyword_t & right){
-    return false;
+    return left.type == right.type;
 }
 
 bool operator!= (struct keyword_t & left, struct keyword_t & right){
-    return false;
+    return !(left == right);
 }
 
 

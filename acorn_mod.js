@@ -107,14 +107,14 @@
     // `locations` is on or off.
     directSourceFile: "",
     // Behaviors that change and listen to how acorn operates.
-    behaviors: {
-      openFor: function () { },
-      openTry: function () { },
-      openWhile: function () { },
-      openLabel: function (name) { },
-      openFunction: function (id) { },
-      closeNode: function (node, type) { }
-    }
+    onOpenFor: function () { },
+    onOpenTry: function () { },
+    onOpenWhile: function () { },
+    onOpenLabel: function (name) { },
+    onOpenFunction: function (id) { },
+    onCloseNode: function (node, type) { }
+
+    
   };
 
   function setOptions(opts) {

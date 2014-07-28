@@ -1,21 +1,6 @@
-auto parse (auto inpt, auto opts);
-auto isIdentifierStart (auto code);
-auto isIdentifierChar (auto code);
-auto line_loc_t();
-auto initTokenState();
 void finishToken(keyword_t type, struct js_t val);
-auto skipBlockComment();
-auto skipLineComment();
 void skipSpace();
-auto readToken_dot();
 void readToken_slash();
-auto readToken_mult_modulo();
-auto readToken_pipe_amp(auto code);
-auto readToken_caret();
-auto readToken_plus_min(auto code);
-auto readToken_lt_gt(auto code);
-auto readToken_eq_excl(auto code);
-auto getTokenFromCode(auto code);
 void readToken(bool forceRegexp);
 void readToken(){ return readToken(false); }
 void finishOp(keyword_t type, int size);
@@ -24,25 +9,13 @@ void readRegexp();
 int readInt(int radix, int len);
 int readInt(int radix){ return readInt(radix, 0); }
 int readInt(){ return readInt(0); }
-auto readHexNumber();
 void readNumber(bool startsWithDot);
 void readNumber(){ return readNumber(false); }
-auto readString(auto quote);
-auto readHexChar(auto len);
 std::string readWord1();
-std::string readWord();
-auto next();
-auto setStrict(auto strct);
-auto startNode();
-auto startNodeFrom(auto other);
+void readWord();
 node_t* finishNode(node_t* node, std::string type);
 bool isUseStrict(node_t* stmt);
-auto eat(keyword_t type);
-auto canInsertSemicolon();
-auto semicolon();
-auto expect(auto type);
 void unexpected();
-auto checkLVal(auto expr);
 node_t* parseTopLevel(node_t* program);
 node_t* parseStatement();
 node_t* parseParenExpression();
@@ -584,7 +557,7 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
 { // ' '
         ++tokPos;
       }
-}if (ch == 13) {
+} else if (ch == 13) {
 {
         ++tokPos;
         auto next = charCodeAt(input, tokPos); 
@@ -600,7 +573,7 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
         }
 }
       }
-}if (LOGICALOR(LOGICALOR(ch == 10,ch == 8232),ch == 8233)) {
+} else if (LOGICALOR(LOGICALOR(ch == 10,ch == 8232),ch == 8233)) {
 {
         ++tokPos;
         if (options.locations) {
@@ -610,32 +583,32 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
         }
 }
       }
-}if (ch > 8 && ch < 14) {
+} else if (ch > 8 && ch < 14) {
 {
         ++tokPos;
       }
-}if (ch == 47) {
+} else if (ch == 47) {
 { // '/'
         auto next = charCodeAt(input, tokPos + 1); 
         if (next == 42) {
 { // '*'
           skipBlockComment();
         }
-}if (next == 47) {
+} else if (next == 47) {
 { // '/'
           skipLineComment();
         }
-}break;
+} else break;
       }
-}if (ch == 160) {
+} else if (ch == 160) {
 { // '\xa0'
         ++tokPos;
       }
-}if (ch >= 5760 && test(nonASCIIwhitespace, fromCharCode(ch))) {
+} else if (ch >= 5760 && test(nonASCIIwhitespace, fromCharCode(ch))) {
 {
         ++tokPos;
       }
-}{
+} else {
         break;
       }
     }
@@ -656,48 +629,48 @@ onComment(options, false, slice(input, start + 2, tokPos), start, tokPos,
   auto readToken_dot() {
     auto next = charCodeAt(input, tokPos + 1); 
     if (next >= 48 && next <= 57) {
-readNumber(true);
+readNumber(true); return;
 }
     ++tokPos;
-    finishToken(_dot);
+    finishToken(_dot); return;
   }
 
   void readToken_slash() { // '/'
     auto next = charCodeAt(input, tokPos + 1); 
     if (tokRegexpAllowed) {
-{++tokPos; readRegexp();}
+{++tokPos; readRegexp(); return;}
 }
     if (next == 61) {
-finishOp(_assign, 2);
+finishOp(_assign, 2); return;
 }
-    finishOp(_slash, 1);
+    finishOp(_slash, 1); return;
   }
 
   auto readToken_mult_modulo() { // '%*'
     auto next = charCodeAt(input, tokPos + 1); 
     if (next == 61) {
-finishOp(_assign, 2);
+finishOp(_assign, 2); return;
 }
-    finishOp(_multiplyModulo, 1);
+    finishOp(_multiplyModulo, 1); return;
   }
 
   auto readToken_pipe_amp(auto code) { // '|&'
     auto next = charCodeAt(input, tokPos + 1); 
     if (next == code) {
-finishOp(code == 124 ? _logicalOR : _logicalAND, 2);
+finishOp(code == 124 ? _logicalOR : _logicalAND, 2); return;
 }
     if (next == 61) {
-finishOp(_assign, 2);
+finishOp(_assign, 2); return;
 }
-    finishOp(code == 124 ? _bitwiseOR : _bitwiseAND, 1);
+    finishOp(code == 124 ? _bitwiseOR : _bitwiseAND, 1); return;
   }
 
   auto readToken_caret() { // '^'
     auto next = charCodeAt(input, tokPos + 1); 
     if (next == 61) {
-finishOp(_assign, 2);
+finishOp(_assign, 2); return;
 }
-    finishOp(_bitwiseXOR, 1);
+    finishOp(_bitwiseXOR, 1); return;
   }
 
   auto readToken_plus_min(auto code) { // '+-'
@@ -711,16 +684,16 @@ finishOp(_assign, 2);
         tokPos += 3;
         skipLineComment();
         skipSpace();
-        readToken();
+        readToken(); return;
       }
 }
-      finishOp(_incDec, 2);
+      finishOp(_incDec, 2); return;
     }
 }
     if (next == 61) {
-finishOp(_assign, 2);
+finishOp(_assign, 2); return;
 }
-    finishOp(_plusMin, 1);
+    finishOp(_plusMin, 1); return;
   }
 
   auto readToken_lt_gt(auto code) { // '<>'
@@ -730,9 +703,9 @@ finishOp(_assign, 2);
 {
       size = code == 62 && charCodeAt(input, tokPos + 2) == 62 ? 3 : 2;
       if (charCodeAt(input, tokPos + size) == 61) {
-finishOp(_assign, size + 1);
+finishOp(_assign, size + 1); return;
 }
-      finishOp(_bitShift, size);
+      finishOp(_bitShift, size); return;
     }
 }
     if (next == 33 && code == 60 && charCodeAt(input, tokPos + 2) == 45 &&
@@ -742,21 +715,21 @@ finishOp(_assign, size + 1);
       tokPos += 4;
       skipLineComment();
       skipSpace();
-      readToken();
+      readToken(); return;
     }
 }
     if (next == 61) {
 size = charCodeAt(input, tokPos + 2) == 61 ? 3 : 2;
 }
-    finishOp(_relational, size);
+    finishOp(_relational, size); return;
   }
 
   auto readToken_eq_excl(auto code) { // '=!'
     auto next = charCodeAt(input, tokPos + 1); 
     if (next == 61) {
-finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
+finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2); return;
 }
-    finishOp(code == 61 ? _eq : _prefix, 1);
+    finishOp(code == 61 ? _eq : _prefix, 1); return;
   }
 
   auto getTokenFromCode(auto code) {
@@ -764,30 +737,30 @@ finishOp(_equality, charCodeAt(input, tokPos + 2) == 61 ? 3 : 2);
       // The interpretation of a dot depends on whether it is followed
       // by a digit.
     case 46:{ // '.'
-      readToken_dot();}
+      readToken_dot(); return;}
 
       // Punctuation tokens.
-    case 40:{ ++tokPos; finishToken(_parenL);}
-    case 41:{ ++tokPos; finishToken(_parenR);}
-    case 59:{ ++tokPos; finishToken(_semi);}
-    case 44:{ ++tokPos; finishToken(_comma);}
-    case 91:{ ++tokPos; finishToken(_bracketL);}
-    case 93:{ ++tokPos; finishToken(_bracketR);}
-    case 123:{ ++tokPos; finishToken(_braceL);}
-    case 125:{ ++tokPos; finishToken(_braceR);}
-    case 58:{ ++tokPos; finishToken(_colon);}
-    case 63:{ ++tokPos; finishToken(_question);}
+    case 40:{ ++tokPos; finishToken(_parenL); return;}
+    case 41:{ ++tokPos; finishToken(_parenR); return;}
+    case 59:{ ++tokPos; finishToken(_semi); return;}
+    case 44:{ ++tokPos; finishToken(_comma); return;}
+    case 91:{ ++tokPos; finishToken(_bracketL); return;}
+    case 93:{ ++tokPos; finishToken(_bracketR); return;}
+    case 123:{ ++tokPos; finishToken(_braceL); return;}
+    case 125:{ ++tokPos; finishToken(_braceR); return;}
+    case 58:{ ++tokPos; finishToken(_colon); return;}
+    case 63:{ ++tokPos; finishToken(_question); return;}
 
       // '0x' is a hexadecimal number.
     case 48:{ // '0'
       auto next = charCodeAt(input, tokPos + 1); 
       if (LOGICALOR(next == 120,next == 88)) {
-readHexNumber();
+readHexNumber(); return;
 }}
       // Anything else beginning with a digit is an integer, octal
       // number, or float.
     case 49:{} case 50:{} case 51:{} case 52:{} case 53:{} case 54:{} case 55:{} case 56:{} case 57:{ // 1-9
-      readNumber(false);}
+      readNumber(false); return;}
 
       // Quotes produce strings.
     case 34:{} case 39:{ // '"', "'"
@@ -799,28 +772,28 @@ readHexNumber();
     // of the type given by its first argument.
 
     case 47:{ // '/'
-      readToken_slash();}
+      readToken_slash(); return;}
 
     case 37:{} case 42:{ // '%*'
-      readToken_mult_modulo();}
+      readToken_mult_modulo(); return;}
 
     case 124:{} case 38:{ // '|&'
-      readToken_pipe_amp(code);}
+      return readToken_pipe_amp(code);}
 
     case 94:{ // '^'
-      readToken_caret();}
+      readToken_caret(); return;}
 
     case 43:{} case 45:{ // '+-'
-      readToken_plus_min(code);}
+      return readToken_plus_min(code);}
 
     case 60:{} case 62:{ // '<>'
-      readToken_lt_gt(code);}
+      return readToken_lt_gt(code);}
 
     case 61:{} case 33:{ // '=!'
-      readToken_eq_excl(code);}
+      return readToken_eq_excl(code);}
 
     case 126:{ // '~'
-      finishOp(_prefix, 1);}
+      finishOp(_prefix, 1); return;}
     }
 
     return false;
@@ -829,22 +802,22 @@ readHexNumber();
   void readToken(bool forceRegexp) {
     if (!forceRegexp) {
 tokStart = tokPos;
-}tokPos = tokStart + 1;
+} else tokPos = tokStart + 1;
     if (options.locations) {
 tokStartLoc = line_loc_t;
 }
     if (forceRegexp) {
-readRegexp();
+readRegexp(); return;
 }
     if (tokPos >= inputLen) {
-finishToken(_eof);
+finishToken(_eof); return;
 }
 
     auto code = charCodeAt(input, tokPos); 
     // Identifier or keyword. '\uXXXX' sequences are allowed in
     // identifiers, so '\' also dispatches to that.
     if (LOGICALOR(isIdentifierStart(code),code == 92)) {
-readWord();
+readWord(); return;
 }
 
     auto tok = getTokenFromCode(code); 
@@ -855,7 +828,7 @@ readWord();
       // character, or something that's entirely disallowed.
       auto ch = fromCharCode(code); 
       if (LOGICALOR(ch == "\\",test(nonASCIIidentifierStart, ch))) {
-readWord();
+readWord(); return;
 }
       raise(tokPos, std::string("Unexpected character '") + ch + std::string("'"));
     }
@@ -887,14 +860,14 @@ raise(start, "Unterminated regular expression");
 {
         if (ch == "[") {
 inClass = true;
-}if (ch == "]" && inClass) {
+} else if (ch == "]" && inClass) {
 inClass = false;
-}if (ch == "/" && !inClass) {
+} else if (ch == "/" && !inClass) {
 break;
 }
         escaped = ch == "\\";
       }
-}escaped = false;
+} else escaped = false;
       ++tokPos;
     }
     content = slice(input, start, tokPos); 
@@ -917,7 +890,7 @@ raise(start, "Invalid regexp flag");
       raise(0, 'SyntaxError');
     }
 }
-    finishToken(_regexp, value);
+    finishToken(_regexp, value); return;
   }
 
   // Read an integer in the given radix. Return null if zero digits
@@ -931,11 +904,11 @@ raise(start, "Invalid regexp flag");
       auto code = charCodeAt(input, tokPos);  auto val = 0; 
       if (code >= 97) {
 val = code - 97 + 10;
-}if (code >= 65) {
+} else if (code >= 65) {
 val = code - 65 + 10;
-}if (code >= 48 && code <= 57) {
+} else if (code >= 48 && code <= 57) {
 val = code - 48;
-}val = Infinity;
+} else val = Infinity;
       if (val >= radix) {
 break;
 }
@@ -958,7 +931,7 @@ raise(tokStart + 2, "Expected hexadecimal number");
     if (isIdentifierStart(charCodeAt(input, tokPos))) {
 raise(tokPos, "Identifier directly after number");
 }
-    finishToken(_num, val);
+    finishToken(_num, val); return;
   }
 
   // Read an integer, octal integer, or floating-point number.
@@ -995,12 +968,12 @@ raise(tokPos, "Identifier directly after number");
     auto str = slice(input, start, tokPos);  auto val = 0; 
     if (isFloat) {
 val = parseFloat(str);
-}if (LOGICALOR(!octal,str.length() == 1)) {
+} else if (LOGICALOR(!octal,str.length() == 1)) {
 val = parseInt(str, 10);
-}if (LOGICALOR(test(RegExp("[object Object]"), str),strict)) {
+} else if (LOGICALOR(test(RegExp("[object Object]"), str),strict)) {
 raise(start, "Invalid number");
-}val = parseInt(str, 8);
-    finishToken(_num, val);
+} else val = parseInt(str, 8);
+    finishToken(_num, val); return;
   }
 
   // Read a string value, interpreting backslash-escapes.
@@ -1017,7 +990,7 @@ raise(tokStart, "Unterminated string constant");
       if (ch == quote) {
 {
         ++tokPos;
-        finishToken(_string, out);
+        finishToken(_string, out); return;
       }
 }
       if (ch == 92) {
@@ -1037,7 +1010,7 @@ raise(tokPos - 2, "Octal literal in strict mode");
           out += fromCharCode(parseInt(octal, 8));
           tokPos += octal.length() - 1;
         }
-}{
+} else {
           switch (ch) {
           case 110:{ out += "\n"; break;} // 'n' -> '\n'
           case 114:{ out += "\r"; break;} // 'r' -> '\r'
@@ -1061,7 +1034,7 @@ raise(tokPos - 2, "Octal literal in strict mode");
           }
         }
       }
-}{
+} else {
         if (LOGICALOR(LOGICALOR(LOGICALOR(ch == 13,ch == 10),ch == 8232),ch == 8233)) {
 raise(tokStart, "Unterminated string constant");
 }
@@ -1106,7 +1079,7 @@ word += charAt(input, tokPos);
 }
         ++tokPos;
       }
-}if (ch == 92) {
+} else if (ch == 92) {
 { // "\"
         if (!containsEsc) {
 word = slice(input, start, tokPos);
@@ -1126,7 +1099,7 @@ raise(tokPos - 4, "Invalid Unicode escape");
 }
         word += escStr;
       }
-}{
+} else {
         break;
       }
       first = false;
@@ -1137,13 +1110,13 @@ raise(tokPos - 4, "Invalid Unicode escape");
   // Read an identifier or keyword token. Will check for reserved
   // words when necessary.
 
-  std::string readWord() {
+  void readWord() {
     std::string word = readWord1(); 
     keyword_t type = _name; 
     if (!containsEsc && isKeyword(word)) {
 type = keywordTypes(word);
 }
-    finishToken(type, word);
+    finishToken(type, word); return;
   }
 
   // ## Parser
@@ -1298,7 +1271,7 @@ unexpected();
   auto expect(auto type) {
     if (tokType == type) {
 next();
-}unexpected();
+} else unexpected();
   }
 
   // Raise an unexpected token error.
@@ -1376,9 +1349,9 @@ readToken(true);
       auto isBreak = starttype == _break; 
       if (LOGICALOR(eat(_semi),canInsertSemicolon())) {
 node->label = null;
-}if (tokType != _name) {
+} else if (tokType != _name) {
 unexpected();
-}{
+} else {
         node->label = parseIdent();
         semicolon();
       }
@@ -1476,7 +1449,7 @@ raise(tokStart, "'return' outside of function");
 
       if (LOGICALOR(eat(_semi),canInsertSemicolon())) {
 node->argument = null;
-}{ node->argument = parseExpression(); semicolon(); }
+} else { node->argument = parseExpression(); semicolon(); }
       return finishNode(node, "ReturnStatement");}
 
     case 19:{
@@ -1503,7 +1476,7 @@ finishNode(cur, "SwitchCase");
           next();
           if (isCase) {
 cur->test = parseExpression();
-}{
+} else {
             if (sawDefault) {
 raise(lastStart, "Multiple default clauses");
 } sawDefault = true;
@@ -1511,7 +1484,7 @@ raise(lastStart, "Multiple default clauses");
           }
           expect(_colon);
         }
-}{
+} else {
           if (!cur) {
 unexpected();
 }
@@ -1614,7 +1587,7 @@ raise(expr->start, std::string("Label '") + maybeName + std::string("' is alread
         node->label = expr;
         return finishNode(node, "LabeledStatement");
       }
-}{
+} else {
         node->expression = expr;
         semicolon();
         return finishNode(node, "ExpressionStatement");
@@ -1812,7 +1785,7 @@ break;
       node->argument = parseMaybeUnary();
       if (update) {
 checkLVal(node->argument);
-}if (strict && node->opr == "delete" &&
+} else if (strict && node->opr == "delete" &&
                node->argument->type == "Identifier") {
 raise(node->start, "Deleting local variable in strict mode");
 }
@@ -1847,7 +1820,7 @@ raise(node->start, "Deleting local variable in strict mode");
       node->computed = false;
       return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
     }
-}if (eat(_bracketL)) {
+} else if (eat(_bracketL)) {
 {
       auto node = startNodeFrom(base); 
       node->object = base;
@@ -1856,14 +1829,14 @@ raise(node->start, "Deleting local variable in strict mode");
       expect(_bracketR);
       return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
     }
-}if (!noCalls && eat(_parenL)) {
+} else if (!noCalls && eat(_parenL)) {
 {
       auto node = startNodeFrom(base); 
       node->callee = base;
       node->arguments = parseExprList(_parenR, false);
       return parseSubscripts(finishNode(node, "CallExpression"), noCalls);
     }
-}return base;
+} else return base;
   }
 
   // Parse an atomic expression — either a single token that is an
@@ -1943,7 +1916,7 @@ val->range = std::vector<int>(tokStart1, tokEnd);
     node->callee = parseSubscripts(parseExprAtom(), true);
     if (eat(_parenL)) {
 node->arguments = parseExprList(_parenR, false);
-}node->arguments = empty;
+} else node->arguments = empty;
     return finishNode(node, "NewExpression");
   }
 
@@ -1961,7 +1934,7 @@ node->arguments = parseExprList(_parenR, false);
 break;
 }
       }
-}first = false;
+} else first = false;
 
       node_t prop = {}; prop.key = parsePropertyName();  auto isGetSet = false;  std::string kind = std::string(""); 
       if (eat(_colon)) {
@@ -1969,7 +1942,7 @@ break;
         prop.value = parseExpression(true);
         kind = prop.kind = "init";
       }
-}if (options.ecmaVersion >= 5 && prop.key->type == "Identifier" &&
+} else if (options.ecmaVersion >= 5 && prop.key->type == "Identifier" &&
                  (LOGICALOR(prop.key->name == "get",prop.key->name == "set"))) {
 {
         isGetSet = sawGetSet = true;
@@ -1980,7 +1953,7 @@ unexpected();
 }
         prop.value = parseFunction(startNode(), false);
       }
-}unexpected();
+} else unexpected();
 
       // getters and setters are not allowed to clash — either with
       // each other or with an init property — and in strict mode,
@@ -2023,16 +1996,16 @@ return parseExprAtom();
   node_t* parseFunction(node_t* node, bool isStatement) {
     if (tokType == _name) {
 node->id = parseIdent();
-}if (isStatement) {
+} else if (isStatement) {
 unexpected();
-}node->id = null;
+} else node->id = null;
     node->params = std::vector<node_t*>();
     auto first = true; 
     expect(_parenL);
     while (!eat(_parenR)) {
       if (!first) {
 expect(_comma);
-}first = false;
+} else first = false;
       push(node->params, parseIdent());
     }
     0;
@@ -2084,11 +2057,11 @@ raise(id->start, "Argument name clash in strict mode");
 break;
 }
       }
-}first = false;
+} else first = false;
 
       if (allowEmpty && tokType == _comma) {
 push(elts, null);
-}push(elts, parseExpression(true));
+} else push(elts, parseExpression(true));
     }
     return elts;
   }
@@ -2112,11 +2085,11 @@ raise(tokStart, std::string("The keyword '") + tokVal + std::string("' is reserv
 }
       node->name = tokVal;
     }
-}if (liberal && tokType.keyword) {
+} else if (liberal && tokType.keyword) {
 {
       node->name = tokType.keyword;
     }
-}{
+} else {
       unexpected();
     }
     tokRegexpAllowed = false;
