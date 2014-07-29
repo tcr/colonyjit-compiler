@@ -1,10 +1,13 @@
-all: build try test
+all: clean build try test
+
+clean:
+	rm -rf out/*
 
 count:
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | wc -l
 
 build:
-	cp src/gum.c out
+	cp src/helper.c out
 	cp src/main.cpp out
 	node src/index.js src/acorn_mod.js > out/compiled.c
 

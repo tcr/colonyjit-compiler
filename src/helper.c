@@ -304,22 +304,22 @@ struct this_t THIS;
 
 
 /**
- * node_loc_t struct
+ * SourceLocation struct
  */
 
 extern int tokStart;
 extern int tokStartLoc;
 extern std::string sourceFile;
 
-class node_loc_t {
+class SourceLocation {
   public:
     std::string source;
     int start;
     int end;
-    node_loc_t ();
+    SourceLocation ();
 };
 
-node_loc_t::node_loc_t () {
+SourceLocation::SourceLocation () {
 	this->start = tokStartLoc;
 	this->end = DBL_NULL;
 	this->source = sourceFile;
@@ -345,66 +345,67 @@ class label_t {
  * node struct
  */
 
-class node_t {
+class Node {
   public:
     std::string type;
     int start;
     int end;
-    node_loc_t* loc;
+    SourceLocation* loc;
 
 	std::string sourceFile;
 	std::vector<int> range;
-	node_t* body;
-	std::vector<node_t*> bodyarr;
-	node_t* label;
-	node_t* test;
-	node_t* consequent;
-	std::vector<node_t*> consequents;
-	node_t* alternate;
-	node_t* argument;
-	node_t* discriminant;
-	std::vector<node_t*> cases;
-	node_t* block;
-	node_t* handler;
-	std::vector<node_t*> guardedHandlers;
-	node_t* finalizer;
-	node_t* object;
-	node_t* expression;
-	node_t* init;
-	node_t* update;
-	node_t* left;
-	node_t* right;
-	std::vector<node_t*> declarations;
+	Node* body;
+	std::vector<Node*> bodyarr;
+	Node* label;
+	Node* test;
+	Node* consequent;
+	std::vector<Node*> consequents;
+	Node* alternate;
+	Node* argument;
+	Node* discriminant;
+	std::vector<Node*> cases;
+	Node* block;
+	Node* handler;
+	std::vector<Node*> guardedHandlers;
+	Node* finalizer;
+	Node* object;
+	Node* expression;
+	Node* init;
+	Node* update;
+	Node* left;
+	Node* right;
+	std::vector<Node*> declarations;
 	std::string kind;
-	std::vector<node_t*> expressions;
-	node_t* opr;
+	std::vector<Node*> expressions;
+	Node* opr;
 	bool prefix;
-	node_t* property;
+	Node* property;
 	bool computed;
-	node_t* callee;
-	std::vector<node_t*> arguments;
-	node_t* key;
-	node_t* value;
+	Node* callee;
+	std::vector<Node*> arguments;
+	Node* key;
+	Node* value;
 	std::string raw;
-	std::vector<node_t*> elements;
-	std::vector<node_t*> properties;
-	node_t* id;
-	node_t* param;
-	std::vector<node_t*> params;
-	node_t* guard;
+	std::vector<Node*> elements;
+	std::vector<Node*> properties;
+	Node* id;
+	Node* param;
+	std::vector<Node*> params;
+	Node* rest;
+	Node* guard;
 	std::string name;
 
-    node_t ();
+    Node ();
 };
 
-node_t::node_t () {
-	this->type = std::string();
+Node::Node () {
+	this->type = std::string("");
 	this->start = tokStart;
 	this->end = DBL_NULL;
 	this->loc = nullptr;
 }
 
-bool ISNULL (node_t* t)
+bool ISNULL (Node* t)
 {
 	return t == nullptr;
 }
@@ -426,7 +427,7 @@ typedef struct {
 	bool locations;
 	void (*onComment)();
 	bool ranges;
-	node_t* program;
+	Node* program;
 	std::string sourceFile;
 	std::string directSourceFile;
 } options_t;

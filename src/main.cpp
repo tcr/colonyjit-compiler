@@ -14,7 +14,7 @@ int main () {
 		input = INPUT; inputLen = input.length();
 	    // setOptions(opts);
 	    initTokenState();
-	    node_t* top = parseTopLevel(options.program);
+	    Node* top = parseTopLevel(options.program);
 	    printf("ok %s\n", top->type.c_str());
 	}
 	printf("done.\n");

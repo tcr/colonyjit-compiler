@@ -69,35 +69,52 @@ var funcs = {
   readToken_slash: ['void'],
   readToken: ['void', 'bool'],
   finishOp: ['void', 'keyword_t', 'int'],
-  finishNode: ['node_t*', 'node_t*', 'std::string'],
+  finishNode: ['Node*', 'Node*', 'std::string'],
   finishToken: ['void', 'keyword_t', 'struct js_t'],
   eat: ['auto', 'keyword_t'],
-  parseTopLevel: ['node_t*', 'node_t*'],
-  parseParenExpression: ['node_t*'],
-  parseFor: ['node_t*', 'node_t*', 'node_t*'],
-  parseVar: ['node_t*', 'node_t*', 'bool'],
-  parseForIn: ['node_t*', 'node_t*', 'node_t*'],
-  parseExpression: ['node_t*', 'bool', 'bool'],
-  parseFunction: ['node_t*', 'node_t*', 'bool'],
-  parseBlock: ['node_t*', 'bool'],
-  parseMaybeAssign: ['node_t*', 'bool'],
-  parseMaybeConditional: ['node_t*', 'bool'],
-  parseExprOps: ['node_t*', 'bool'],
-  parseMaybeUnary: ['node_t*'],
-  parseExprOp: ['node_t*', 'node_t*', 'double', 'bool'],
-  parseExprSubscripts: ['node_t*'],
-  parseExprAtom: ['node_t*'],
-  parseSubscripts: ['node_t*', 'node_t*', 'bool'],
-  parseExprList: ['std::vector<node_t*>', 'keyword_t', 'bool', 'bool'],
-  parseObj: ['node_t*'],
-  parseNew: ['node_t*'],
-  parsePropertyName: ['node_t*'],
-  parseStatement: ['node_t*'],
-  parseIdent: ['node_t*', 'bool'],
-  isUseStrict: ['bool', 'node_t*'],
-  unexpected: ['void'],
+  parseTopLevel: ['Node*', 'Node*'],
+  parseParenExpression: ['Node*'],
+  parseFor: ['Node*', 'Node*', 'Node*'],
+  parseVar: ['Node*', 'Node*', 'bool', 'std::string'],
+  parseForIn: ['Node*', 'Node*', 'Node*'],
+  parseExpression: ['Node*', 'bool', 'bool'],
+  parseFunction: ['Node*', 'Node*', 'bool'],
+  parseBlock: ['Node*', 'bool'],
+  parseMaybeAssign: ['Node*', 'bool'],
+  parseMaybeConditional: ['Node*', 'bool'],
+  parseExprOps: ['Node*', 'bool'],
+  parseMaybeUnary: ['Node*'],
+  parseExprOp: ['Node*', 'Node*', 'double', 'bool'],
+  parseExprSubscripts: ['Node*'],
+  parseExprAtom: ['Node*'],
+  parseSubscripts: ['Node*', 'Node*', 'bool'],
+  parseExprList: ['std::vector<Node*>', 'keyword_t', 'bool', 'bool'],
+  parseObj: ['Node*'],
+  parseNew: ['Node*'],
+  parsePropertyName: ['Node*'],
+  parseStatement: ['Node*'],
+  parseIdent: ['Node*', 'bool'],
+  isUseStrict: ['bool', 'Node*'],
+  unexpected: ['void*'],
   readWord: ['void'],
   readWord1: ['std::string'],
+  parseBreakContinueStatement: ['Node*', 'Node*', 'std::string'],
+  parseDebuggerStatement: ['Node*', 'Node*'],
+  parseDoStatement: ['Node*', 'Node*'],
+  parseExpressionStatement: ['Node*', 'Node*', 'Node*'],
+  parseForStatement: ['Node*', 'Node*'],
+  parseFunctionStatement: ['Node*', 'Node*'],
+  parseIfStatement: ['Node*', 'Node*'],
+  parseLabeledStatement: ['Node*', 'Node*', 'std::string', 'Node*'],
+  parseReturnStatement: ['Node*', 'Node*'],
+  parseSwitchStatement: ['Node*', 'Node*'],
+  parseThrowStatement: ['Node*', 'Node*'],
+  parseTryStatement: ['Node*', 'Node*'],
+  parseWhileStatement: ['Node*', 'Node*'],
+  parseWithStatement: ['Node*', 'Node*'],
+  parseEmptyStatement: ['Node*', 'Node*'],
+  parseVarStatement: ['Node*', 'Node*', 'std::string'],
+  startNode: ['Node*'],
 }
 
 var vars = {
@@ -112,25 +129,26 @@ var vars = {
   tokStartLoc: 'int',
   tokStartLoc1: 'int',
   tokType: 'keyword_t',
-  parseIdent: 'node_t*',
+  parseIdent: 'Node*',
   liberal: 'bool',
   loopLabel: 'label_t',
   switchLabel: 'label_t',
   kind: 'std::string',
   out: 'std::string',
+  id: 'Node*',
 }
 
 wipe(0, 30);           // javascript module prelude
 wipe(-2);              // javascript module conclusions
 wipe(109, 109+8);      // removes behaviors defines from options hash
-wipe(119, 125);        // remove entire setOptions function
+wipe(118, 126);        // remove entire setOptions function
 wipe(132, 143);        // removes "getLineInfo"
-wipe(151, 181);        // removes "tokenize" export
-wipe(241, 248);        // removes "raise" for our own impl
-wipe(303, 313);        // TODO: not remove "keywordTypes" hash
+wipe(151, 182);        // removes "tokenize" export
+wipe(241, 249);        // removes "raise" for our own impl
+wipe(302, 317);        // TODO: not remove "keywordTypes" hash
 wipe(354, 354+8);      // removes "tokTypes" export
-wipe(369, 369+38);     // removes "makePredicate" constructor nonsense
-wipe(1011, 1023)       // replace node_[loc_]t with custom version
+wipe(369, 369+41);     // removes "makePredicate" constructor nonsense
+wipe(1025, 1041)       // mask Node and SourceLocation with our own versions
 
 // Removes var/exports constructions for simple definitions.
 replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
@@ -247,6 +265,11 @@ transform([
       map['type'] = map['type'] || '""'
     }
 
+    if ('sourceFile' in map || 'directSourceFile' in map) {
+      map['sourceFile'] = '""';
+      map['directSourceFile'] = '""';
+    }
+
     var keys = Object.keys(map);
     if ('keyword' in map) {
       keys.sort();
@@ -286,15 +309,16 @@ replace(/===/g, '==');
 replace(/!==/g, '!=');
 
 // Non-trivial designated initializers not allowed.
-infuse(198, 290, function (a) {
+infuse(169, 270, function (a) {
   return a.replace(/\bauto\b/g, 'struct keyword_t');
 });
 
 // TODO: no line_loc_t
-replace(/new (RegExp|SyntaxError|line_loc_t)/g, "$1");
+replace(/new (RegExp|SyntaxError|Position)/g, "$1");
+// replace(/new (SourceLocation)[^;]*)/g, "&($1)");
 
 // TODO: replace makePredicate with a sensible approach.
-replace(/auto (\w+)\s*=\s*makePredicate\("([^"]+?)"\);/g, function (_, name, args) {
+replace(/auto (\w+)\s*=\s*makePredicate\((.*?)\);/g, function (_, name, args) {
   return 'bool ' + name + '(std::string arg) { return false; }';
 })
 
@@ -321,12 +345,12 @@ replace("keywordTypes[word]", "keywordTypes(word)");
 replace(/options.\w+\([^)]*\)\s*(;?)/g, '0$1')
 replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
 replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
-replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<node_t*>')
-replace(/auto cur = 0;  auto sawDefault/, 'node_t* cur = nullptr;  auto sawDefault')
-replace(/auto prop\b/, 'node_t prop');
+replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<Node*>')
+replace(/auto cur = 0;  auto sawDefault/, 'Node* cur = nullptr;  auto sawDefault')
+replace(/auto prop\b/, 'Node prop');
 replace('push(labels, {name: maybeName, kind: kind})', 'push(labels, (label_t){kind: kind, name: maybeName})');
 replace('{key: parsePropertyName()};', '{}; prop.key = parsePropertyName();');
-replace('if (octal) {', 'if (octal.length() > 0) {')
+replace(/if \(octal\) \{/g, 'if (octal.length() > 0) {')
 replace("push(node->properties, prop", "push(node->properties, &prop")
 replace("switch \(tokType", "switch \(tokType._id");
 replace("tokVal = val;", "");
