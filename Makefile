@@ -1,4 +1,4 @@
-all: build try
+all: build try test
 
 count:
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | wc -l
@@ -13,6 +13,12 @@ retry:
 
 try: build
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1
+
+test:
+	@./out/main > ./out/c.test
+	@./src/test.js > ./out/js.test
+	@diff ./out/c.test ./out/js.test | wc -l
+	@rm ./out/*.test
 
 tryh: build
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | head -n 45
