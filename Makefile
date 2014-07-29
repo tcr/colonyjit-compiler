@@ -14,7 +14,7 @@ build:
 retry:
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 -D_GLIBCXX_FULLY_DYNAMIC_STRING
 
-try: build
+try:
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1
 
 test:

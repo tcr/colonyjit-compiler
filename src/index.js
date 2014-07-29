@@ -17,9 +17,14 @@ function wipe (start, end) {
 }
 
 function infuse (start, end, rep) {
+  if (typeof end != 'number') {
+    rep = end;
+    end = start + 1;
+  }
+
   out = out.split(/\n/).map(function (n, i) {
     if (i >= start && i < end) {
-      return rep(n);
+      return typeof rep == 'function' ? rep(n) : rep;
     }
     return n;
   }).join('\n');
@@ -115,6 +120,10 @@ var funcs = {
   parseEmptyStatement: ['Node*', 'Node*'],
   parseVarStatement: ['Node*', 'Node*', 'std::string'],
   startNode: ['Node*'],
+  getTokenFromCode: ['bool', 'int'],
+  readHexNumber: ['int'],
+  readHexChar: ['int', 'int'],
+  readString: ['void', 'int'],
 }
 
 var vars = {
@@ -149,6 +158,60 @@ wipe(302, 317);        // TODO: not remove "keywordTypes" hash
 wipe(354, 354+8);      // removes "tokTypes" export
 wipe(369, 369+41);     // removes "makePredicate" constructor nonsense
 wipe(1025, 1041)       // mask Node and SourceLocation with our own versions
+
+
+function onlyUnique(value, index, self) { 
+    return self.indexOf(value) === index;
+}
+
+function makeregex (name, chars) {
+  var fn = ['bool', name, '(std::string arg) {', 'for (size_t i=0;i<arg.length();i++) {', 'switch (arg[i]) { '];
+  (chars.match(/.\-.|./g) || []).forEach(function (onecase) {
+    if (onecase.length == 3) {
+      fn.push('case 0x' + onecase.charCodeAt(0).toString(16) + ' ... 0x' + onecase.charCodeAt(2).toString(16) + ':');
+    } else {
+      fn.push('case 0x' + onecase.charCodeAt(0).toString(16) + ':');
+    }
+  })
+  // remove duplicate cases
+  fn = fn.filter(onlyUnique);
+  fn.push('break; default: return false; } } return true; };');
+  return fn.join(' ');
+}
+
+wipe(520, 521); // TODO NOT THIS
+
+function makeregexfn (line) {
+  if (line.match(/var/)) {
+    var chars = JSON.parse('"' + line.replace(/^.*?\/\[|\]\/.*?$/g, '').replace(/"/g, '\\"') + '"');
+    var name = line.match(/var (\S+)/)[1];
+    return '/*C ' + makeregex(name, chars) + '*/';
+  }
+  return line;
+}
+
+var regexcache = {};
+infuse(446, 448, function (line) {
+  var chars = eval('"' + line.replace(/^.*?\"|\".*?$/g, '').replace(/"/g, '\\"') + '"');
+  var name = line.match(/var (\S+)/)[1];
+  regexcache[name] = chars;
+  return '';
+});
+
+infuse(445, makeregexfn);
+
+infuse(448, function (line) {
+  var name = line.match(/var (\S+)/)[1];
+  return '/*C ' + makeregex(name, regexcache.nonASCIIidentifierStartChars) + '*/';
+})
+
+infuse(449, function (line) {
+  var name = line.match(/var (\S+)/)[1];
+  return '/*C ' + makeregex(name, regexcache.nonASCIIidentifierStartChars + regexcache.nonASCIIidentifierChars) + '*/';
+})
+
+infuse(453, makeregexfn);
+infuse(458, makeregexfn);
 
 // Removes var/exports constructions for simple definitions.
 replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
@@ -332,7 +395,7 @@ out.match(/_(\w+) = \{_id: (\d+)/g).forEach(function (a) {
 // Manual source code hacks.
 replace(/\boperator\b/g, 'opr');
 replace(/std::string content = slice/g, 'content = slice') // prevent redeclaration
-replace(/.length\b/g, '.length()');
+replace(/.length(?!\()\b/g, '.length()');
 replace(/^return null;/m, 'return DBL_NULL;');
 replace(/RegExp\((.*?)\)\.(test|exec)\(/g, '$2(RegExp($1), ');
 replace(/slice\((.*?)\)\.(indexOf)\(/g, '$2(slice($1), ');
@@ -354,11 +417,19 @@ replace(/if \(octal\) \{/g, 'if (octal.length() > 0) {')
 replace("push(node->properties, prop", "push(node->properties, &prop")
 replace("switch \(tokType", "switch \(tokType._id");
 replace("tokVal = val;", "");
-replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)(\(.*\))/g, "$1$2; return");
 replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
 replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
+
+// getTokenFromCode returns null values everywhere. return true instead.
+infuse(675, 738, function (line) {
+  if (line.match(/return/)) {
+   return line.replace(/return (\w+\(.*?\))/g, "$1; return true");
+  }
+  return line;
+});
+replace(/return (finishToken|finishOp|readToken)(\(.*\))/g, "$1$2; return");
 
 // Hardcoded C code in comments.
 replace(/\/\*C(.*)\*\//g, '$1'); 

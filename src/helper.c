@@ -450,5 +450,6 @@ void onComment(options_t options, bool what, std::string code, int start, int to
 }
 
 void raise (int start, std::string message){
-
+	printf("ERROR: %s %d\n", message.c_str(), start);
+	exit(1);
 }
