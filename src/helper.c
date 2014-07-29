@@ -73,7 +73,7 @@ double parseFloat (std::string c) {
 std::string slice (std::string arr, int start, int end)
 {
 	// TODO check negative indices
-	return arr.substr(start,end);
+	return arr.substr(start,end - start);
 }
 
 int charCodeAt(std::string input, int idx)
@@ -93,21 +93,21 @@ std::string charAt(std::string input, int idx)
 }
 
 template<class T>
-int push(std::vector<T> value, T idx)
+int push(std::vector<T> &value, T idx)
 {
 	value.push_back(idx);
 	return value.size();
 }
 
 template<class T>
-int push(std::vector<T> value, std::nullptr_t)
+int push(std::vector<T> &value, std::nullptr_t)
 {
 	value.push_back(nullptr);
 	return value.size();
 }
 
 template<class T>
-T pop(std::vector<T> value)
+T pop(std::vector<T> &value)
 {
 	T val = value.back();
 	value.pop_back();
@@ -191,9 +191,9 @@ struct js_t js_bool_t(bool value) {
  * regexp stuff
  */
 
-bool test(auto regex, std::string input)
+bool test(bool (*regex)(std::string), std::string input)
 {
-	return false;
+	return regex(input);
 }
 
 class RegExpVector: private std::vector<std::string>
@@ -253,6 +253,11 @@ struct regexp_t RegExp(std::string str, std::string mods) {
 	return { str };
 }
 
+bool test(regexp_t regex, std::string input)
+{
+	return false;
+}
+
 
 /**
  * keyword struct
@@ -273,15 +278,23 @@ struct keyword_t {
 };
 
 bool operator== (struct keyword_t & left, struct keyword_t & right){
-    return left.type == right.type;
+    return left.type == right.type && left.keyword == right.keyword;
 }
 
 bool operator!= (struct keyword_t & left, struct keyword_t & right){
     return !(left == right);
 }
 
+extern keyword_t _while;
+extern keyword_t _true;
 
 keyword_t keywordTypes (std::string key) {
+	if (key == "while") {
+		return _while;
+	}
+	if (key == "true") {
+		return _true;
+	}
 	return keyword_t();
 }
 

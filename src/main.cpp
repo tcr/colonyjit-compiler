@@ -1,6 +1,10 @@
 #include "helper.c"
 #include "compiled.c"
 
+#include <sstream>
+#include <string>
+#include <fstream>
+#include <streambuf>
 
 
 /**
@@ -9,9 +13,13 @@
 
 
 int main () {
-	std::string INPUT = "console.log('hi');";
+	std::ifstream t("../src/input.js");
+	std::stringstream INPUT;
+	INPUT << t.rdbuf();
+
+	// std::string INPUT = "console.log('hi', 5);";
 	{
-		input = INPUT; inputLen = input.length();
+		input = INPUT.str(); inputLen = input.length();
 	    // setOptions(opts);
 	    initTokenState();
 	    Node* top = parseTopLevel(options.program);

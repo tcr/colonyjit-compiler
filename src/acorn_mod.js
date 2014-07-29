@@ -427,13 +427,13 @@
 
   // And the keywords.
 
-  var ecma5AndLessKeywords = "break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this";
+  // var ecma5AndLessKeywords = "break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this";
 
-  var isEcma5AndLessKeyword = makePredicate(ecma5AndLessKeywords);
+  var isEcma5AndLessKeyword = makePredicate("break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this");
 
-  var isEcma6Keyword = makePredicate(ecma5AndLessKeywords + " let const");
+  var isEcma6Keyword = makePredicate("break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this let const");
 
-  var isKeyword = isEcma5AndLessKeyword;
+  var isKeyword = makePredicate("break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this");
 
   // ## Character categories
 
@@ -747,6 +747,7 @@
   }
 
   function readToken(forceRegexp) {
+    // console.error(tokPos);
     if (!forceRegexp) tokStart = tokPos;
     else tokPos = tokStart + 1;
     if (options.locations) tokStartLoc = new Position;
@@ -818,7 +819,7 @@
 
   function readInt(radix, len) {
     var start = tokPos, total = 0;
-    for (var i = 0, e = len == null ? Infinity : len; i < e; ++i) {
+    for (var i = 0, e = !len ? 256 : len; i < e; ++i) {
       var code = input.charCodeAt(tokPos), val;
       if (code >= 97) val = code - 97 + 10; // a
       else if (code >= 65) val = code - 65 + 10; // A

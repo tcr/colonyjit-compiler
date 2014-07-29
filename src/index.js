@@ -213,6 +213,8 @@ infuse(449, function (line) {
 infuse(453, makeregexfn);
 infuse(458, makeregexfn);
 
+// replace(/[^\n]+\/\/JS/, '');
+
 // Removes var/exports constructions for simple definitions.
 replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
 replace(/var\s+(\w+)\s*=\s*exports.\w+/g, "var $1 ");
@@ -382,7 +384,11 @@ replace(/new (RegExp|SyntaxError|Position)/g, "$1");
 
 // TODO: replace makePredicate with a sensible approach.
 replace(/auto (\w+)\s*=\s*makePredicate\((.*?)\);/g, function (_, name, args) {
-  return 'bool ' + name + '(std::string arg) { return false; }';
+  args = args.replace(/"|^\s*|\s*$/g, '').split(/\s+/);
+  var cases = args.map(function (str) {
+    return 'arg == ' + JSON.stringify(str);
+  });
+  return 'bool ' + name + '(std::string arg) { return ' + cases.join(' || ') + '; }';
 })
 
 // Populate _keyword constants with numeric ids instead of objects.
@@ -432,7 +438,7 @@ infuse(675, 738, function (line) {
 replace(/return (finishToken|finishOp|readToken)(\(.*\))/g, "$1$2; return");
 
 // Hardcoded C code in comments.
-replace(/\/\*C(.*)\*\//g, '$1'); 
+replace(/\/\*C(.*)\*\/[^\n]*/g, '$1'); 
 
 // Output file.
 console.log(prototypes.join('\n') + out);

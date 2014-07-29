@@ -1,8 +1,11 @@
 #!/usr/bin/env node
 
+var fs = require('fs');
 var acorn = require('./acorn_mod');
 
-var ret = acorn.parse('console.log("hi");', {
+var input = String(fs.readFileSync(__dirname + '/input.js'));
+
+var ret = acorn.parse(input, {
 	onCloseNode: function (node, type) {
 		console.log('type', type);
 	}

@@ -17,8 +17,11 @@ retry:
 try:
 	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1
 
+run:
+	cd out; ./main
+
 test:
-	@./out/main > ./out/c.test
+	@cd out; ./main > ./c.test
 	@./src/test.js > ./out/js.test
 	@diff ./out/c.test ./out/js.test | wc -l
 	@rm ./out/*.test
