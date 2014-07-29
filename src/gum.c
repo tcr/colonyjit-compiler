@@ -451,25 +451,3 @@ void onComment(options_t options, bool what, std::string code, int start, int to
 void raise (int start, std::string message){
 
 }
-
-#include "out.c"
-
-
-
-/**
- * main
- */
-
-
-int main () {
-	std::string INPUT = "console.log('hi');";
-	{
-		input = INPUT; inputLen = input.length();
-	    // setOptions(opts);
-	    initTokenState();
-	    node_t* top = parseTopLevel(options.program);
-	    printf("ok %s\n", top->type.c_str());
-	}
-	printf("done.\n");
-	return 0;
-}

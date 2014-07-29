@@ -1,7 +1,7 @@
 var fs = require('fs');
 var falafel = require('falafel');
 
-var out = fs.readFileSync('./acorn_mod.js', 'utf-8');
+var out = fs.readFileSync(process.argv[2], 'utf-8');
 
 function wipe (start, end) {
   if (start < 0) {
