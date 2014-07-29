@@ -1058,7 +1058,8 @@
       node.loc.end = lastEndLoc;
     if (options.ranges)
       node.range[1] = lastEnd;
-    return options.behaviors.closeNode(node, type) || node;
+    /*C printf("type %s\n", type.c_str()); */
+    return options.onCloseNode(node, type) || node;
   }
 
   // Test whether a statement node is the string literal `"use strict"`.
@@ -1207,7 +1208,7 @@
       // a regular `for` loop.
 
     case _for:
-      options.behaviors.openFor();
+      options.onOpenFor();
       next();
       labels.push(loopLabel);
       expect(_parenL);
@@ -1292,7 +1293,7 @@
       return finishNode(node, "ThrowStatement");
 
     case _try:
-      options.behaviors.openTry();
+      options.onOpenTry();
       next();
       node.block = parseBlock();
       node.handler = null;
@@ -1321,7 +1322,7 @@
       return finishNode(node, "VariableDeclaration");
 
     case _while:
-      options.behaviors.openWhile();
+      options.onOpenWhile();
       next();
       node.test = parseParenExpression();
       labels.push(loopLabel);
@@ -1356,7 +1357,7 @@
           if (labels[i].name === maybeName) raise(expr.start, "Label '" + maybeName + "' is already declared");
         var kind = tokType.isLoop ? "loop" : tokType === _switch ? "switch" : null;
         labels.push({name: maybeName, kind: kind});
-        options.behaviors.openLabel(maybeName);
+        options.onOpenLabel(maybeName);
         node.body = parseStatement();
         labels.pop();
         node.label = expr;
@@ -1726,7 +1727,7 @@
       if (!first) expect(_comma); else first = false;
       node.params.push(parseIdent());
     }
-    options.behaviors.openFunction(node.id);
+    options.onOpenFunction(node.id);
 
     // Start a new scope with regard to labels and the `inFunction`
     // flag (restore them to their old value afterwards).

@@ -16,8 +16,8 @@ function wipe (start, end) {
   }).join('\n');
 }
 
-function infuse (out, start, end, rep) {
-  return out.split(/\n/).map(function (n, i) {
+function infuse (start, end, rep) {
+  out = out.split(/\n/).map(function (n, i) {
     if (i >= start && i < end) {
       return rep(n);
     }
@@ -30,31 +30,25 @@ function replace (regex, str)
   out = out.replace(regex, str);
 }
 
-
-
+function transform (typefns)
+{
+  out = falafel(out, function (node) {
+    // Run type functions.
+    typefns.forEach(function (fn) {
+      if (fn.slice(0, -1).some(function (t) {
+        return typeof t == 'string' ? t == node.type : t.test(node.type)
+      })) {
+        fn.slice(-1)[0](node);
+      }
+    });
+  }).toString();
+}
 
 
 
 /************************************************************/
 
-wipe(0, 30); wipe(-2); // prelude / finish
-wipe(109, 109+8);      // removes behaviors defines
-wipe(119, 125);        // setOptions
-wipe(132, 143);        // removes behaviors defines
-wipe(151, 181);        // removes tokenize entirely
-wipe(241, 248);        // removes raise() for errors
-wipe(303, 313);        // TEMP!! hash
-wipe(354, 354+8);      // removes external toktypes
-wipe(369, 369+38);     // makePredicate
-wipe(1011, 1023)       // replace node_[loc_]t with custom version
-
-// Simpily exports expressions.
-replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
-replace(/var\s+(\w+)\s*=\s*exports.\w+/g, "var $1 ");
-replace(/exports.(\w+)\s*=\s*function/g, "function $1 ");
-replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/, "function $1 ");
-
-// default variable initialization
+// Default variable initialization.
 var autoDefaults = {
   input: 'std::string("")',
   options: '{}',
@@ -66,7 +60,7 @@ var autoDefaults = {
   labels: 'std::vector<int>()',
 };
 
-// function definitions
+// Function type definitions.
 var funcs = {
   skipSpace: ['void'],
   readNumber: ['void', 'bool'],
@@ -126,23 +120,42 @@ var vars = {
   out: 'std::string',
 }
 
-var keywordid = 1, keywordids = {};
-var prototypes = [];
+wipe(0, 30);           // javascript module prelude
+wipe(-2);              // javascript module conclusions
+wipe(109, 109+8);      // removes behaviors defines from options hash
+wipe(119, 125);        // remove entire setOptions function
+wipe(132, 143);        // removes "getLineInfo"
+wipe(151, 181);        // removes "tokenize" export
+wipe(241, 248);        // removes "raise" for our own impl
+wipe(303, 313);        // TODO: not remove "keywordTypes" hash
+wipe(354, 354+8);      // removes "tokTypes" export
+wipe(369, 369+38);     // removes "makePredicate" constructor nonsense
+wipe(1011, 1023)       // replace node_[loc_]t with custom version
 
-out = falafel(out, function (node) {
-  if (node.type == 'VariableDeclarator') {
+// Removes var/exports constructions for simple definitions.
+replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
+replace(/var\s+(\w+)\s*=\s*exports.\w+/g, "var $1 ");
+replace(/exports.(\w+)\s*=\s*function/g, "function $1 ");
+replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/, "function $1 ");
+
+// Keep track of keyword constants and function prototypes.
+var keywordid = 1, keywordids = {}, prototypes = [];
+
+// AST transform.
+transform([
+  ['VariableDeclarator', function (node) {
     if (!node.source().match(/=/)) {
       node.update(node.source() + ' = ' + (autoDefaults[node.source()] || '0'));
-    }
-  }
+    } 
+  }],
 
-  if (node.type == 'VariableDeclaration') {
+  ['VariableDeclaration', function (node) {
     node.update(node.declarations.map(function (d) {
       return (vars[d.source().replace(/(\s+=.*)?$/, '')] || 'auto') + ' ' + d.source() + '; ';
     }).join(' '));
-  }
+  }],
 
-  if (node.type == 'BinaryExpression') {
+  ['BinaryExpression', function (node) {
     if (node.left.source() == 'null' || node.right.source() == 'null') {
       if (node.operator == '==' || node.operator == '===') {
         node.update('ISNULL(' + node.left.source() + ')');
@@ -151,19 +164,28 @@ out = falafel(out, function (node) {
         node.update('ISNOTNULL(' + node.left.source() + ')');
       }
     }
-  }
+  }],
 
-  if (node.type == 'LogicalExpression') {
+  ['LogicalExpression', function (node) {
     if (node.operator == '||') {
       node.update('LOGICALOR(' + node.left.source() + ','+ node.right.source() + ')');
     }
-  }
+  }],
 
-  if (node.type == 'SwitchCase') {
+  ['SwitchCase', function (node) {
     node.update(node.source().replace(/:/, ':{') + '}');
-  }
+  }],
 
-  if (node.type == 'FunctionExpression' || node.type == 'FunctionDeclaration') {
+  // make sure if statement bodies are enclosed
+  ['IfStatement', function (node) {
+    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}' + (node.alternate ? ' else ' + node.alternate.source() : ''));
+  }],
+
+  ['ThisExpression', function (node) {
+    node.update('THIS');
+  }],
+
+  ['FunctionExpression', 'FunctionDeclaration', function (node) {
     node.update(node.source().replace(/^function\s*(\w+\s*)?\(([^)]*)\)/, function (_, w, a) {
       var def = funcs[w] || ['auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto', 'auto']; //etc
       var args = a.split(/\s*,\s*/).filter(function (a) {
@@ -192,38 +214,21 @@ out = falafel(out, function (node) {
 
       return proto;
     }));
-  }
+  }],
 
-  // make sure if statement bodies are enclosed
-  if (node.type == 'IfStatement') {
-    node.update('if (' + node.test.source() + ') {\n' + node.consequent.source() + '\n}' + (node.alternate ? ' else ' + node.alternate.source() : ''));
-  }
-
-  if (node.value instanceof RegExp) {
-    node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
-  }
-
-  if (typeof node.value == 'string' && node.parent.type == 'BinaryExpression' && node.parent.operator == '+') {
-    node.update('std::string(' + JSON.stringify(node.value) + ')');
-  }
-
-  if (node.type.match(/^ForStatement/)) {
+  ['ForStatement', function (node) {
     node.update((node.init ? node.init.source() : '') + '; for (; ' + (node.test ? node.test.source() : '') +';' +
       (typeof node.update == 'function' ? '' : node.update.source()) + ')\n'
         + node.body.source())
-  }
+  }],
 
-  if (node.type.match(/^ArrayExpression/)) {
+  ['ArrayExpression', function (node) {
     node.update('std::vector<int>(' + node.elements.map(function (a) {
       return a.source()
     }).join(', ') + ')');
-  }
+  }],
 
-  if(node.type == 'ThisExpression') {
-    node.update('THIS');
-  }
-
-  if (node.type.match(/^ObjectExpression/)) {
+  ['ObjectExpression', function (node) {
     var map = {};
     node.properties.forEach(function (a) {
       map[a.key.source()] = a.value.source();
@@ -250,9 +255,20 @@ out = falafel(out, function (node) {
     node.update('{' + keys.map(function (key) {
       return key + ': ' + map[key]
     }).join(', ') + '}')
-  }
-}).toString();
+  }],
 
+  ['Literal', function (node) {
+    if (node.value instanceof RegExp) {
+      node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
+    }
+
+    if (typeof node.value == 'string' && node.parent.type == 'BinaryExpression' && node.parent.operator == '+') {
+      node.update('std::string(' + JSON.stringify(node.value) + ')');
+    }
+  }],
+]);
+
+// Replce methods with functions.
 replace(/([a-z.]+)\.exec\(/ig, 'exec($1, ');
 replace(/([a-z.]+)\.push\(/ig, 'push($1, ');
 replace(/([a-z.]+)\.pop\(/ig, 'pop($1');
@@ -265,30 +281,31 @@ replace(/([a-z.]+)\.slice\(/ig, 'slice($1, ');
 replace(/([a-z.]+)\.charAt\(/ig, 'charAt($1, ');
 replace(/([a-z.]+)\.charCodeAt\(/ig, 'charCodeAt($1, ');
 
-// operators
+// Replace strict-mode operators.
 replace(/===/g, '==');
 replace(/!==/g, '!=');
 
-// non-trivial designated initializers not allowed
-out = infuse(out, 198, 290, function (a) {
+// Non-trivial designated initializers not allowed.
+infuse(198, 290, function (a) {
   return a.replace(/\bauto\b/g, 'struct keyword_t');
 });
 
-// todo no line_loc_t
+// TODO: no line_loc_t
 replace(/new (RegExp|SyntaxError|line_loc_t)/g, "$1");
 
+// TODO: replace makePredicate with a sensible approach.
 replace(/auto (\w+)\s*=\s*makePredicate\("([^"]+?)"\);/g, function (_, name, args) {
   return 'bool ' + name + '(std::string arg) { return false; }';
 })
 
-// populate keywordids
+// Populate _keyword constants with numeric ids instead of objects.
 out.match(/_(\w+) = \{_id: (\d+)/g).forEach(function (a) {
   (function (_, a, b) {
     keywordids[a] = Number(b);
   }).apply(null, a.match(/_(\w+) = \{_id: (\d+)/));
 });
 
-// manual hacks
+// Manual source code hacks.
 replace(/\boperator\b/g, 'opr');
 replace(/std::string content = slice/g, 'content = slice') // prevent redeclaration
 replace(/.length\b/g, '.length()');
@@ -301,7 +318,7 @@ replace(/(j\])\.(\w+)/g, '$1->$2');
 replace("switch (starttype) {", "switch (starttype._id) {")
 replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
 replace("keywordTypes[word]", "keywordTypes(word)");
-replace(/options.behaviors.\w+\([^)]*\)\s*(;?)/g, '0$1')
+replace(/options.\w+\([^)]*\)\s*(;?)/g, '0$1')
 replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
 replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
 replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<node_t*>')
@@ -314,9 +331,13 @@ replace("push(node->properties, prop", "push(node->properties, &prop")
 replace("switch \(tokType", "switch \(tokType._id");
 replace("tokVal = val;", "");
 replace(/return (readRegexp|readWord|finishToken|readToken_caret|readToken|readToken_dot|readHexNumber|readNumber|finishOp|readToken_mult_modulo|readToken_slash)(\(.*\))/g, "$1$2; return");
+replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
 replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
 });
-replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
 
+// Hardcoded C code in comments.
+replace(/\/\*C(.*)\*\//g, '$1'); 
+
+// Output file.
 console.log(prototypes.join('\n') + out);
