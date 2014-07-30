@@ -2,7 +2,7 @@
 #include <string>
 #include <vector>
 
-#define LOGICALOR(A,B) (A ? A : B)
+#define LOGICALOR(A,B) ({ auto left = A; left ? left : B; })
 
 bool operator&& (std::string & left, bool right){
     return left.length() > 0 && right;
@@ -377,7 +377,7 @@ class Node {
 	std::vector<Node*> declarations;
 	std::string kind;
 	std::vector<Node*> expressions;
-	Node* opr;
+	std::string opr;
 	bool prefix;
 	Node* property;
 	bool computed;
@@ -438,11 +438,10 @@ typedef struct {
  * this should be auto-generated...
  */
 
-void finishToken (keyword_t type, struct js_t ptr);
-void finishToken (keyword_t type, struct regexp_t value) { finishToken(type, js_null_t()); }
-void finishToken (keyword_t type, std::string value) { finishToken(type, js_string_t(&value)); }
-void finishToken (keyword_t type, double value) { finishToken(type, js_double_t(value)); }
-void finishToken (keyword_t type) { finishToken(type, js_null_t()); }
+void finishToken (keyword_t type, std::string val);
+void finishToken (keyword_t type, struct regexp_t value) { finishToken(type, ""); }
+void finishToken (keyword_t type, double value) { finishToken(type, ""); }
+void finishToken (keyword_t type) { finishToken(type, ""); }
 
 void onComment(options_t options, bool what, std::string code, int start, int tokPos,
                         int startLoc, bool ok) {

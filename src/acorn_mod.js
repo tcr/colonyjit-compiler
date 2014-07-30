@@ -1078,8 +1078,8 @@
       node.loc.end = lastEndLoc;
     if (options.ranges)
       node.range[1] = lastEnd;
-    /*C printf("type %s\n", type.c_str()); */
-    return options.onCloseNode(node, type) || node;
+    /*C printf("type %s\n", type.c_str()); return node; */
+    return options.onCloseNode(node, type) || node; //JS
   }
 
   // Test whether a statement node is the string literal `"use strict"`.

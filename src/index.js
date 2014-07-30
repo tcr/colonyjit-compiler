@@ -67,14 +67,37 @@ function transform (typefns)
 // Default variable initialization.
 var autoDefaults = {
   input: 'std::string("")',
-  options: '{}',
+  options: '{ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: false, allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: null, sourceFile: "", directSourceFile: ""}',
   match: 'RegExpVector()',
   sourceFile: 'std::string("")',
   word: 'std::string("")',
   kind: 'std::string("")',
   tokType: '{}',
+  tokVal: '""',
   labels: 'std::vector<int>()',
 };
+
+var vars = {
+  options: 'options_t',
+  defaultOptions: 'options_t',
+  type: 'keyword_t',
+  size: 'int',
+  content: 'std::string',
+  word: 'std::string',
+  sourceFile: 'std::string',
+  tokStart: 'int',
+  tokStartLoc: 'int',
+  tokStartLoc1: 'int',
+  tokType: 'keyword_t',
+  tokVal: 'std::string',
+  parseIdent: 'Node*',
+  liberal: 'bool',
+  loopLabel: 'label_t',
+  switchLabel: 'label_t',
+  kind: 'std::string',
+  out: 'std::string',
+  id: 'Node*',
+}
 
 // Function type definitions.
 var funcs = {
@@ -86,7 +109,7 @@ var funcs = {
   readToken: ['void', 'bool'],
   finishOp: ['void', 'keyword_t', 'int'],
   finishNode: ['Node*', 'Node*', 'std::string'],
-  finishToken: ['void', 'keyword_t', 'struct js_t'],
+  finishToken: ['void', 'keyword_t', 'std::string'],
   eat: ['auto', 'keyword_t'],
   parseTopLevel: ['Node*', 'Node*'],
   parseParenExpression: ['Node*'],
@@ -137,27 +160,6 @@ var funcs = {
   readString: ['void', 'int'],
 }
 
-var vars = {
-  options: 'options_t',
-  defaultOptions: 'options_t',
-  type: 'keyword_t',
-  size: 'int',
-  content: 'std::string',
-  word: 'std::string',
-  sourceFile: 'std::string',
-  tokStart: 'int',
-  tokStartLoc: 'int',
-  tokStartLoc1: 'int',
-  tokType: 'keyword_t',
-  parseIdent: 'Node*',
-  liberal: 'bool',
-  loopLabel: 'label_t',
-  switchLabel: 'label_t',
-  kind: 'std::string',
-  out: 'std::string',
-  id: 'Node*',
-}
-
 wipe(0, 30);           // javascript module prelude
 wipe(-2);              // javascript module conclusions
 wipe(109, 109+8);      // removes behaviors defines from options hash
@@ -185,7 +187,7 @@ function makeregex (name, chars) {
   })
   // remove duplicate cases
   fn = fn.filter(onlyUnique);
-  fn.push('break; default: return false; } } return true; };');
+  fn.push('return true; } } return false; };');
   return fn.join(' ');
 }
 
@@ -236,7 +238,7 @@ infuseall(308, 317, function (lines) {
   }).join('\n');
 });
 
-// replace(/[^\n]+\/\/JS/, '');
+replace(/[^\n]+\/\/JS/, '');
 
 // Removes var/exports constructions for simple definitions.
 replace(/var\s+(\w+)\s*=\s*exports.\w+\s*=\s*function/g, "function $1 ");
@@ -371,7 +373,7 @@ transform([
   ['Literal', function (node) {
     if (node.value instanceof RegExp) {
       // throw new Error('Cannot regexp')
-      node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
+      node.update('RegExp(' + JSON.stringify(node.value.toString()) + ')');
     }
 
     if (typeof node.value == 'string' && node.parent.type == 'BinaryExpression' && node.parent.operator == '+') {
@@ -395,7 +397,31 @@ replace(/([a-z.]+)\.charCodeAt\(/ig, 'charCodeAt($1, ');
 
 // Replace regexes.
 replace(/RegExp\(("[^"]*")\)\.(test|exec)\(/ig, function (_, r, fn) {
-  return fn + '(([](std::string arg)->bool { return false; }), ';
+  // console.error(r);
+  var contents = 'return false;';
+
+  if (r == "\"/^[gmsiy]*$/\"") {
+    contents = ['for (size_t i=0;i<arg.length();i++) { switch (arg[i]) {',
+    "case 'g': case 'm': case 's': case 'i': case 'y': break; default: return false; ",
+    '} }',
+    'return true;'].join(' ');
+  }
+
+  if (r == "\"/^[0-7]+/\"") {
+    contents = ['for (size_t i=0;i<arg.length();i++) { switch (arg[i]) {',
+    "case '0' ... '7': return true; default: break; ",
+    '} }',
+    'return false;'].join(' ');
+  }
+
+  if (r == "\"/[89]/\"") {
+    contents = ['for (size_t i=0;i<arg.length();i++) { switch (arg[i]) {',
+    "case '8': case '9': return true; ",
+    '} }',
+    'return false;'].join(' ');
+  }
+
+  return fn + '(([](std::string arg)->bool { ' + contents + ' }), ';
 })
 
 // Replace strict-mode operators.
@@ -440,7 +466,7 @@ replace(/(j\])\.(\w+)/g, '$1->$2');
 replace("switch (starttype) {", "switch (starttype._id) {")
 replace("if (options.directSourceFile)", "if (options.directSourceFile.length() > 0)");
 replace("keywordTypes[word]", "keywordTypes(word)");
-replace(/options.\w+\([^)]*\)\s*(;?)/g, '0$1')
+replace(/options\.\w+\([^)]*\)\s*\|\|/g, '$1')
 replace(/(labels|declarations|properties|params|bodyarr)\.length/g, '$1.size')
 replace(/labels = std::vector<int>/g, 'labels = std::vector<label_t>')
 replace(/(cases|consequents|empty|bodyarr|declarations|expressions|properties|params|elts) = std::vector<int>/g, '$1 = std::vector<Node*>')
@@ -451,7 +477,11 @@ replace('{key: parsePropertyName()};', '{}; prop.key = parsePropertyName();');
 replace(/if \(octal\) \{/g, 'if (octal.length() > 0) {')
 replace("push(node->properties, prop", "push(node->properties, &prop")
 replace("switch \(tokType", "switch \(tokType._id");
-replace("tokVal = val;", "");
+
+// replace("tokVal = val;", "");
+// replace(/node->opr = tokVal;/g, "");
+replace(/node->value = tokVal;/g, "");
+
 replace(/inFunction = strict = null;/, 'inFunction = strict = false;');
 replace(/case\s*_(\w+):/g, function (a, name) {
   return 'case ' + keywordids[name] + ':';
