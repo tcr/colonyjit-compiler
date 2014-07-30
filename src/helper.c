@@ -31,7 +31,7 @@ bool ISNOTNULL (std::string str)
 }
 
 #define null nullptr
-#define Infinity INFINITY
+#define Infinity 0x7FFFFFFF
 
 uint32_t DBL_NULL_VAL = 0x7fc00001;
 #define DBL_NULL *((double*) (&DBL_NULL_VAL))
@@ -52,14 +52,14 @@ std::string fromCharCode (int c) {
 	return std::string(1, (char) c);
 }
 
-int parseInt (std::string c) {
+double parseInt (std::string c) {
 	if (c.length() == 0) {
 		return nan("");
 	}
 	return std::stoi(c);
 }
 
-int parseInt (std::string c, int radix) {
+double parseInt (std::string c, int radix) {
 	if (c.length() == 0) {
 		return nan("");
 	}
@@ -272,10 +272,10 @@ struct keyword_t {
 	bool isAssign;
 	bool isLoop;
 	bool isUpdate;
-	char* keyword;
+	const char* keyword;
 	bool postfix;
 	bool prefix;
-	char* type;
+	const char* type;
 };
 
 bool operator== (struct keyword_t & left, struct keyword_t & right){
