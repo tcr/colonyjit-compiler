@@ -501,5 +501,8 @@ replace(/return (finishToken)(\(.*\))/g, "$1$2; return");
 // Hardcoded C code in comments.
 replace(/\/\*C(.*)\*\/[^\n]*/g, '$1'); 
 
+// NOTE: Errors crop up in optimization levels as this function becomes inlined.
+replace(/auto eat/, '__attribute__ ((noinline)) auto eat');
+
 // Output file.
 console.log(prototypes.join('\n') + out);

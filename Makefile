@@ -9,7 +9,7 @@ transpile:
 	node src/index.js src/acorn_mod.js > out/compiled.c
 
 compile:
-	cd out; g++-4.9 main.cpp -O0 -o main -std=gnu++1y -w -g -ggdb 2>&1
+	cd out; g++-4.9 main.cpp -Ofast -o main -std=gnu++1y -w -fno-inline -g -ggdb 2>&1
 
 run:
 	cd out; ./main
