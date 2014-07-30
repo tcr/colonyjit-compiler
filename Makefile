@@ -8,7 +8,8 @@ transpile:
 	node lib/transpile.js lib/acorn_mod.js > out/compiled.c
 
 compile:
-	cd out; g++-4.9 jsparser.cpp main.c -Ofast -fno-inline -o main -std=gnu++1y -w -g -ggdb 2>&1
+	cd out; g++-4.9 jsparser.cpp -Ofast -fno-inline -c -o jsparser.a -std=gnu++1y -w -g -ggdb 2>&1
+	cd out; g++-4.9 jsparser.a main.c -Ofast -o main -g -ggdb 2>&1
 
 run:
 	cd out; ./main

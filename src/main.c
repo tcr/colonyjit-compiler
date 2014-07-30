@@ -5,6 +5,10 @@
 #include <string.h>
 #include <stddef.h>
 
+void my_onclosenode (const char *type) {
+  printf("type %s\n", type);
+}
+
 int main (int argc, char **argv)
 {
   if (argc < 1) {
@@ -27,7 +31,7 @@ int main (int argc, char **argv)
   fclose(fp);
 
   // parse dat
-  jsparse(input, input_len);
+  jsparse(input, input_len, my_onclosenode);
 
   free(input);
   return 0;
