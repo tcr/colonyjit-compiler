@@ -23,7 +23,7 @@ run:
 test:
 	@cd out; ./main > ./c.test
 	@./src/test.js > ./out/js.test
-	@diff ./out/c.test ./out/js.test | wc -l
+	@diff ./out/c.test ./out/js.test
 	@rm ./out/*.test
 
 tryh: build

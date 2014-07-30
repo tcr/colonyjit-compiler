@@ -30,6 +30,17 @@ function infuse (start, end, rep) {
   }).join('\n');
 }
 
+function infuseall (start, end, rep) {
+  if (typeof end != 'number') {
+    rep = end;
+    end = start + 1;
+  }
+
+  out = out.split(/\n/);
+  out.splice.apply(out, [start, end - start].concat(rep(out.slice(start, end))))
+  out = out.join('\n');
+}
+
 function replace (regex, str)
 {
   out = out.replace(regex, str);
@@ -154,7 +165,6 @@ wipe(118, 126);        // remove entire setOptions function
 wipe(132, 143);        // removes "getLineInfo"
 wipe(151, 182);        // removes "tokenize" export
 wipe(241, 249);        // removes "raise" for our own impl
-wipe(302, 317);        // TODO: not remove "keywordTypes" hash
 wipe(354, 354+8);      // removes "tokTypes" export
 wipe(369, 369+41);     // removes "makePredicate" constructor nonsense
 wipe(1025, 1041)       // mask Node and SourceLocation with our own versions
@@ -166,7 +176,7 @@ function onlyUnique(value, index, self) {
 
 function makeregex (name, chars) {
   var fn = ['bool', name, '(std::string arg) {', 'for (size_t i=0;i<arg.length();i++) {', 'switch (arg[i]) { '];
-  (chars.match(/.\-.|./g) || []).forEach(function (onecase) {
+  (chars.match(/[\s\S]\-[\s\S]|[\s\S]/g) || []).forEach(function (onecase) {
     if (onecase.length == 3) {
       fn.push('case 0x' + onecase.charCodeAt(0).toString(16) + ' ... 0x' + onecase.charCodeAt(2).toString(16) + ':');
     } else {
@@ -179,7 +189,7 @@ function makeregex (name, chars) {
   return fn.join(' ');
 }
 
-wipe(520, 521); // TODO NOT THIS
+wipe(520, 521); // TODO NOT REMOVE LASTINDEX PROPERTY
 
 function makeregexfn (line) {
   if (line.match(/var/)) {
@@ -212,6 +222,19 @@ infuse(449, function (line) {
 
 infuse(453, makeregexfn);
 infuse(458, makeregexfn);
+
+infuseall(308, 317, function (lines) {
+  var keys = lines.join('').match(/\"[^"]+\":\s*_\w+/g).map(function (entry) {
+    return entry.match(/\"([^"]+)\":\s*_\w+/)[1];
+  });
+  var code = '/*C keyword_t keywordTypes(std::string arg) { ' + keys.map(function (entry) {
+    return 'if (arg == ' + JSON.stringify(entry) + ') { return _' + entry + '; }';
+  }).join(' ') + ' return {}; } */'
+
+  return code + lines.map(function (l) {
+    return ''
+  }).join('\n');
+});
 
 // replace(/[^\n]+\/\/JS/, '');
 

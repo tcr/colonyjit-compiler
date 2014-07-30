@@ -303,6 +303,9 @@
 
   // Map keyword names to token types.
 
+  var _instanceof = {keyword: "instanceof", binop: 7, beforeExpr: true}, _typeof = {keyword: "typeof", prefix: true, beforeExpr: true}
+  var _void = {keyword: "void", prefix: true, beforeExpr: true}, _delete = {keyword: "delete", prefix: true, beforeExpr: true};
+
   var keywordTypes = {"break": _break, "case": _case, "catch": _catch,
                       "continue": _continue, "debugger": _debugger, "default": _default,
                       "do": _do, "else": _else, "finally": _finally, "for": _for,
@@ -310,10 +313,7 @@
                       "throw": _throw, "try": _try, "var": _var, "let": _let, "const": _const,
                       "while": _while, "with": _with,
                       "null": _null, "true": _true, "false": _false, "new": _new, "in": _in,
-                      "instanceof": {keyword: "instanceof", binop: 7, beforeExpr: true}, "this": _this,
-                      "typeof": {keyword: "typeof", prefix: true, beforeExpr: true},
-                      "void": {keyword: "void", prefix: true, beforeExpr: true},
-                      "delete": {keyword: "delete", prefix: true, beforeExpr: true}};
+                      "instanceof": _instanceof, "this": _this, "typeof": _typeof, "void": _void, "delete": _delete };
 
   // Punctuation token types. Again, the `type` property is purely for debugging.
 

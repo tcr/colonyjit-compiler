@@ -285,20 +285,6 @@ bool operator!= (struct keyword_t & left, struct keyword_t & right){
     return !(left == right);
 }
 
-extern keyword_t _while;
-extern keyword_t _true;
-
-keyword_t keywordTypes (std::string key) {
-	if (key == "while") {
-		return _while;
-	}
-	if (key == "true") {
-		return _true;
-	}
-	return keyword_t();
-}
-
-
 /**
  * "this" struct
  */
