@@ -67,7 +67,7 @@ function transform (typefns)
 // Default variable initialization.
 var autoDefaults = {
   input: 'std::string("")',
-  options: '{ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: false, allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: null, sourceFile: "", directSourceFile: ""}',
+  options: '{ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: "", allowReturnOutsideFunction: false, locations: false, onComment: null, ranges: false, program: null, sourceFile: "", directSourceFile: ""}',
   match: 'RegExpVector()',
   sourceFile: 'std::string("")',
   word: 'std::string("")',
@@ -134,7 +134,7 @@ var funcs = {
   parseStatement: ['Node*'],
   parseIdent: ['Node*', 'bool'],
   isUseStrict: ['bool', 'Node*'],
-  unexpected: ['void*'],
+  unexpected: ['Node*'],
   readWord: ['void'],
   readWord1: ['std::string'],
   parseBreakContinueStatement: ['Node*', 'Node*', 'std::string'],
@@ -158,6 +158,7 @@ var funcs = {
   readHexNumber: ['int'],
   readHexChar: ['int', 'int'],
   readString: ['void', 'int'],
+  initTokenState: ['void'],
 }
 
 wipe(0, 30);           // javascript module prelude
@@ -331,9 +332,9 @@ transform([
   }],
 
   ['ArrayExpression', function (node) {
-    node.update('std::vector<int>(' + node.elements.map(function (a) {
+    node.update('std::vector<int>({' + node.elements.map(function (a) {
       return a.source()
-    }).join(', ') + ')');
+    }).join(', ') + '})');
   }],
 
   ['ObjectExpression', function (node) {
@@ -494,7 +495,8 @@ infuse(675, 738, function (line) {
   }
   return line;
 });
-replace(/return (finishToken|finishOp|readToken)(\(.*\))/g, "$1$2; return");
+replace(/return (finishOp|readToken)(\(.*\))/g, "$1$2; return 0;");
+replace(/return (finishToken)(\(.*\))/g, "$1$2; return");
 
 // Hardcoded C code in comments.
 replace(/\/\*C(.*)\*\/[^\n]*/g, '$1'); 

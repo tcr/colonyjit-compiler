@@ -65,7 +65,7 @@
     // `forbidReserved` to enforce them. When this option has the
     // value "everywhere", reserved words and keywords can also not be
     // used as property names.
-    forbidReserved: false,
+    forbidReserved: "",
     // When enabled, a return at the top level is not considered an
     // error.
     allowReturnOutsideFunction: false,
@@ -505,7 +505,7 @@
 
   function finishToken(type, val) {
     tokEnd = tokPos;
-    if (options.locations) tokEndLoc = new Position;
+    // if (options.locations) tokEndLoc = new Position;
     tokType = type;
     skipSpace();
     tokVal = val;
@@ -614,8 +614,8 @@
   function readToken_slash() { // '/'
     var next = input.charCodeAt(tokPos + 1);
     if (tokRegexpAllowed) {++tokPos; return readRegexp();}
-    if (next === 61) return finishOp(_assign, 2);
-    return finishOp(_slash, 1);
+    if (next === 61) { finishOp(_assign, 2); return; }
+    finishOp(_slash, 1); return;
   }
 
   function readToken_mult_modulo() { // '%*'
@@ -750,7 +750,7 @@
     // console.error(tokPos);
     if (!forceRegexp) tokStart = tokPos;
     else tokPos = tokStart + 1;
-    if (options.locations) tokStartLoc = new Position;
+    // if (options.locations) tokStartLoc = new Position;
     if (forceRegexp) return readRegexp();
     if (tokPos >= inputLen) return finishToken(_eof);
 
@@ -768,7 +768,7 @@
       if (ch === "\\" || nonASCIIidentifierStart.test(ch)) return readWord();
       raise(tokPos, "Unexpected character '" + ch + "'");
     }
-    return tok;
+    // return tok;
   }
 
   function finishOp(type, size) {
@@ -808,7 +808,7 @@
     // }
     var value = new RegExp(content, mods);
     if (value == null) {
-      raise(0, 'SyntaxError');
+      raise(0, "SyntaxError");
     }
     return finishToken(_regexp, value);
   }
@@ -839,7 +839,7 @@
     var val = readInt(16);
     if (val == null) raise(tokStart + 2, "Expected hexadecimal number");
     if (isIdentifierStart(input.charCodeAt(tokPos))) raise(tokPos, "Identifier directly after number");
-    return finishToken(_num, val);
+    finishToken(_num, val); return 0;
   }
 
   // Read an integer, octal integer, or floating-point number.
@@ -1086,7 +1086,7 @@
 
   function isUseStrict(stmt) {
     return options.ecmaVersion >= 5 && stmt.type === "ExpressionStatement" &&
-      stmt.expression.type === "Literal" && stmt.expression.value === "use strict";
+      stmt.expression.type === "Literal" && stmt.expression.raw === "\"use strict\"";
   }
 
   // Predicate that tests whether the next token is of the given
@@ -1147,7 +1147,7 @@
 
   function parseTopLevel(program) {
     lastStart = lastEnd = tokPos;
-    if (options.locations) lastEndLoc = new Position;
+    // if (options.locations) lastEndLoc = new Position;
     inFunction = strict = null;
     labels = [];
     readToken();
@@ -1657,7 +1657,7 @@
 
     case _null: case _true: case _false:
       var node = startNode();
-      node.value = tokType.atomValue;
+      // node.value = tokType.atomValue;
       node.raw = tokType.keyword;
       next();
       return finishNode(node, "Literal");
@@ -1741,17 +1741,17 @@
       // each other or with an init property — and in strict mode,
       // init properties are also not allowed to be repeated.
 
-      if (prop.key.type === "Identifier" && (strict || sawGetSet)) {
-        for (var i = 0; i < node.properties.length; ++i) {
-          var other = node.properties[i];
-          if (other.key.name === prop.key.name) {
-            var conflict = kind == other.kind || isGetSet && other.kind === "init" ||
-              kind === "init" && (other.kind === "get" || other.kind === "set");
-            if (conflict && !strict && kind === "init" && other.kind === "init") conflict = false;
-            if (conflict) raise(prop.key.start, "Redefinition of property");
-          }
-        }
-      }
+      // if (prop.key.type === "Identifier" && (strict || sawGetSet)) {
+      //   for (var i = 0; i < node.properties.length; ++i) {
+      //     var other = node.properties[i];
+      //     if (other.key.name === prop.key.name) {
+      //       var conflict = kind == other.kind || isGetSet && other.kind === "init" ||
+      //         kind === "init" && (other.kind === "get" || other.kind === "set");
+      //       if (conflict && !strict && kind === "init" && other.kind === "init") conflict = false;
+      //       if (conflict) raise(prop.key.start, "Redefinition of property");
+      //     }
+      //   }
+      // }
       node.properties.push(prop);
     }
     return finishNode(node, "ObjectExpression");

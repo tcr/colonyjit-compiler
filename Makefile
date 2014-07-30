@@ -1,21 +1,15 @@
-all: clean build try test
+all: clean transpile compile test
 
 clean:
 	rm -rf out/*
 
-count:
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | wc -l
-
-build:
+transpile:
 	cp src/helper.c out
 	cp src/main.cpp out
 	node src/index.js src/acorn_mod.js > out/compiled.c
 
-retry:
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 -D_GLIBCXX_FULLY_DYNAMIC_STRING
-
-try:
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1
+compile:
+	cd out; g++-4.9 main.cpp -O0 -o main -std=gnu++1y -w -g -ggdb 2>&1
 
 run:
 	cd out; ./main
@@ -25,6 +19,3 @@ test:
 	@./src/test.js > ./out/js.test
 	@diff ./out/c.test ./out/js.test
 	@rm ./out/*.test
-
-tryh: build
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | head -n 45

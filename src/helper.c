@@ -422,7 +422,7 @@ typedef struct {
 	int ecmaVersion;
 	bool strictSemicolons;
 	bool allowTrailingCommas;
-	bool forbidReserved;
+	std::string forbidReserved;
 	bool allowReturnOutsideFunction;
 	bool locations;
 	void (*onComment)();
