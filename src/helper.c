@@ -207,6 +207,7 @@ public:
     using vector::end;
     RegExpVector operator*(const RegExpVector & ) const;
     RegExpVector operator+(const RegExpVector & ) const;
+    operator bool() { return (size() != 0); }
     bool operator&&(bool value ) {
     	return false && value;
     }
@@ -217,7 +218,7 @@ public:
 
 RegExpVector::RegExpVector ()
 {
-
+	push_back("");
 }
 
 RegExpVector::~RegExpVector ()
@@ -278,7 +279,7 @@ struct keyword_t {
 };
 
 bool operator== (struct keyword_t & left, struct keyword_t & right){
-    return left.type == right.type && left.keyword == right.keyword;
+    return left._id == right._id;
 }
 
 bool operator!= (struct keyword_t & left, struct keyword_t & right){

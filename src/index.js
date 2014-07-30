@@ -370,6 +370,7 @@ transform([
 
   ['Literal', function (node) {
     if (node.value instanceof RegExp) {
+      // throw new Error('Cannot regexp')
       node.update('RegExp(' + JSON.stringify(node.toString()) + ')');
     }
 
@@ -391,6 +392,11 @@ replace(/([a-z.]+)\.onComment\(/ig, 'onComment($1, ');
 replace(/([a-z.]+)\.slice\(/ig, 'slice($1, ');
 replace(/([a-z.]+)\.charAt\(/ig, 'charAt($1, ');
 replace(/([a-z.]+)\.charCodeAt\(/ig, 'charCodeAt($1, ');
+
+// Replace regexes.
+replace(/RegExp\(("[^"]*")\)\.(test|exec)\(/ig, function (_, r, fn) {
+  return fn + '(([](std::string arg)->bool { return false; }), ';
+})
 
 // Replace strict-mode operators.
 replace(/===/g, '==');
