@@ -33,6 +33,8 @@ int main (int argc, char **argv)
   // parse dat
   jsparse(input, input_len, my_onclosenode);
 
+  printf("done.\n");
+
   free(input);
   return 0;
 }
