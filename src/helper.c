@@ -41,6 +41,11 @@ bool ISNULL (double val)
 	return *((uint32_t*) &val) == DBL_NULL_VAL;
 }
 
+bool ISNULL (std::string str)
+{
+	return str.length() == 0;
+}
+
 enum {
 	ATOM_NULL,
 	ATOM_TRUE,
