@@ -86,7 +86,7 @@ int charCodeAt(std::string input, int idx)
 	if (idx < 0 || input.length() <= idx) {
 		return -1;
 	}
-	return input.at(idx);
+	return input.c_str()[idx];
 }
 
 std::string charAt(std::string input, int idx)
