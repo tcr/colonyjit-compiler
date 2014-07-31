@@ -31,7 +31,7 @@ bool ISNOTNULL (std::string str)
 }
 
 #define null nullptr
-#define Infinity INFINITY
+#define Infinity 0x7FFFFFFF
 
 uint32_t DBL_NULL_VAL = 0x7fc00001;
 #define DBL_NULL *((double*) (&DBL_NULL_VAL))
@@ -39,6 +39,11 @@ uint32_t DBL_NULL_VAL = 0x7fc00001;
 bool ISNULL (double val)
 {
 	return *((uint32_t*) &val) == DBL_NULL_VAL;
+}
+
+bool ISNULL (std::string str)
+{
+	return str.length() == 0;
 }
 
 enum {
@@ -52,14 +57,14 @@ std::string fromCharCode (int c) {
 	return std::string(1, (char) c);
 }
 
-int parseInt (std::string c) {
+double parseInt (std::string c) {
 	if (c.length() == 0) {
 		return nan("");
 	}
 	return std::stoi(c);
 }
 
-int parseInt (std::string c, int radix) {
+double parseInt (std::string c, int radix) {
 	if (c.length() == 0) {
 		return nan("");
 	}
@@ -81,7 +86,7 @@ int charCodeAt(std::string input, int idx)
 	if (idx < 0 || input.length() <= idx) {
 		return -1;
 	}
-	return input.at(idx);
+	return input.c_str()[idx];
 }
 
 std::string charAt(std::string input, int idx)
@@ -272,10 +277,10 @@ struct keyword_t {
 	bool isAssign;
 	bool isLoop;
 	bool isUpdate;
-	char* keyword;
+	const char* keyword;
 	bool postfix;
 	bool prefix;
-	char* type;
+	const char* type;
 };
 
 bool operator== (struct keyword_t & left, struct keyword_t & right){
@@ -422,7 +427,7 @@ typedef struct {
 	int ecmaVersion;
 	bool strictSemicolons;
 	bool allowTrailingCommas;
-	bool forbidReserved;
+	std::string forbidReserved;
 	bool allowReturnOutsideFunction;
 	bool locations;
 	void (*onComment)();

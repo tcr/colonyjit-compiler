@@ -1,30 +1,21 @@
-all: clean build try test
+all: clean transpile compile test
 
 clean:
 	rm -rf out/*
 
-count:
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | wc -l
+transpile:
+	cp src/* out
+	node lib/transpile.js lib/acorn_mod.js > out/compiled.c
 
-build:
-	cp src/helper.c out
-	cp src/main.cpp out
-	node src/index.js src/acorn_mod.js > out/compiled.c
-
-retry:
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 -D_GLIBCXX_FULLY_DYNAMIC_STRING
-
-try:
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1
+compile:
+	cd out; g++-4.9 jsparser.cpp -O2 -c -o jsparser.a -std=gnu++1y -g -ggdb 2>&1
+	cd out; g++-4.9 jsparser.a main.c -O2 -o main -g -ggdb 2>&1
 
 run:
 	cd out; ./main
 
 test:
-	@cd out; ./main > ./c.test
-	@./src/test.js > ./out/js.test
-	@diff ./out/c.test ./out/js.test
+	@./out/main ./lib/input.js > ./out/c.test
+	@./lib/test.js ./lib/input.js > ./out/js.test
+	diff ./out/c.test ./out/js.test
 	@rm ./out/*.test
-
-tryh: build
-	cd out; g++-4.9 main.cpp -o main -std=gnu++1y -w -g -ggdb -fpermissive 2>&1 | head -n 45
