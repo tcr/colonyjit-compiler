@@ -57,6 +57,11 @@ std::string fromCharCode (int c) {
 	return std::string(1, (char) c);
 }
 
+std::string fromCharCode (int c, int d) {
+	char buf[2] = {(char) c, (char) d};
+	return std::string((const char*) buf, 2);
+}
+
 double parseInt (std::string c) {
 	if (c.length() == 0) {
 		return nan("");
@@ -360,11 +365,15 @@ class Node {
 	std::string sourceFile;
 	std::vector<int> range;
 	Node* body;
-	std::vector<Node*> bodyarr;
+	std::vector<Node*> bodylist;
 	Node* label;
 	Node* test;
+	Node* declaration;
+	Node* source;
+	std::vector<Node*> specifiers;
 	Node* consequent;
 	std::vector<Node*> consequents;
+	std::vector<Node*> defaults;
 	Node* alternate;
 	Node* argument;
 	Node* discriminant;
@@ -396,9 +405,23 @@ class Node {
 	Node* id;
 	Node* param;
 	std::vector<Node*> params;
+	std::vector<Node*> blocks;
 	Node* rest;
 	Node* guard;
 	std::string name;
+	bool generator;
+	bool of;
+	Node* quasi;
+	std::vector<Node*> quasis;
+	Node* tag;
+	bool delegate;
+	bool _default;
+	bool _static;
+	Node* filter;
+	bool method;
+	bool tail;
+	bool shorthand;
+	Node* superClass;
 
     Node ();
 };
@@ -415,13 +438,29 @@ bool ISNULL (Node* t)
 	return t == nullptr;
 }
 
-
+int Number (bool fact)
+{
+	return (int) fact;
+}
 
 
 
 /**
  * options struct
  */
+
+/*
+{ecmaVersion: 5,
+	strictSemicolons: false,
+	allowTrailingCommas: true,
+	forbidReserved: "",
+	allowReturnOutsideFunction: false,
+	locations: false,
+	ranges: true,
+	program: null,
+	sourceFile: "",
+	directSourceFile: ""}; 
+*/
 
 typedef struct {
 	int ecmaVersion;
@@ -430,7 +469,7 @@ typedef struct {
 	std::string forbidReserved;
 	bool allowReturnOutsideFunction;
 	bool locations;
-	void (*onComment)();
+	// void (*onComment)();
 	bool ranges;
 	Node* program;
 	std::string sourceFile;
@@ -443,10 +482,10 @@ typedef struct {
  * this should be auto-generated...
  */
 
-void finishToken (keyword_t type, std::string val);
-void finishToken (keyword_t type, struct regexp_t value) { finishToken(type, ""); }
-void finishToken (keyword_t type, double value) { finishToken(type, ""); }
-void finishToken (keyword_t type) { finishToken(type, ""); }
+int finishToken (keyword_t type, std::string val);
+int finishToken (keyword_t type, struct regexp_t value) { return finishToken(type, ""); }
+int finishToken (keyword_t type, double value) { return finishToken(type, ""); }
+int finishToken (keyword_t type) { return finishToken(type, ""); }
 
 void onComment(options_t options, bool what, std::string code, int start, int tokPos,
                         int startLoc, bool ok) {
@@ -457,3 +496,32 @@ void raise (int start, std::string message){
 	printf("ERROR: %s %d\n", message.c_str(), start);
 	exit(1);
 }
+
+void checkLVal (...)
+{
+}
+
+bool isUseStrict (...)
+{
+return false;
+}
+
+Node* toAssignable(Node* node, bool a, bool b)
+{
+	return node;
+}
+
+Node* toAssignable(Node* node, bool a)
+{
+	return node;
+}
+
+Node* toAssignable(Node* node)
+{
+	return node;
+}
+
+extern int tokEnd;
+extern int tokEndLoc;
+extern keyword_t tokType;
+extern std::string tokVal;
