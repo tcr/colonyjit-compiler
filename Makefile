@@ -5,7 +5,7 @@ clean:
 
 transpile:
 	cp src/* out
-	node lib/transpile.js lib/acorn_mod.js > out/compiled.c
+	node lib/transpile.js lib/input.js > out/compiled.c
 
 compile:
 	cd out; g++-4.9 jsparser.cpp -O2 -c -o jsparser.a -std=gnu++1y -g -ggdb 2>&1
