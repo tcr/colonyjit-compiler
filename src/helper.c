@@ -391,7 +391,6 @@ class Node {
 	std::vector<Node*> declarations;
 	std::string kind;
 	std::vector<Node*> expressions;
-	std::string opr;
 	bool prefix;
 	Node* property;
 	bool computed;
@@ -417,6 +416,7 @@ class Node {
 	bool delegate;
 	bool _default;
 	bool _static;
+	std::string _operator;
 	Node* filter;
 	bool method;
 	bool tail;
