@@ -760,63 +760,63 @@ function readToken_eq_excl(code:number) { // '=!', '=>'
   return finishOp(code === 61 ? _eq : _prefix, 1);
 }
 
-function getTokenFromCode(code:number) {
+function getTokenFromCode(code:number):boolean {
   // Special rules work inside ES6 template strings.
   if (inTemplate) {
     // '`' and '${' have special meanings, but they should follow string (can be empty)
     if (tokType === _string) {
       if (code === 96) { // '`'
         ++tokPos;
-        return finishToken(_bquote);
+        finishToken(_bquote); return true;
       }
       if (code === 36 && input.charCodeAt(tokPos + 1) === 123) { // '${'
         tokPos += 2;
-        return finishToken(_dollarBraceL);
+        finishToken(_dollarBraceL); return true;
       }
     }
     // anything else is considered string literal
-    return readString();
+    readString(); return true;
   }
 
   switch (code) {
   // The interpretation of a dot depends on whether it is followed
   // by a digit or another two dots.
   case 46: // '.'
-    return readToken_dot();
+    readToken_dot(); return true;
 
   // Punctuation tokens.
-  case 40: ++tokPos; return finishToken(_parenL);
-  case 41: ++tokPos; return finishToken(_parenR);
-  case 59: ++tokPos; return finishToken(_semi);
-  case 44: ++tokPos; return finishToken(_comma);
-  case 91: ++tokPos; return finishToken(_bracketL);
-  case 93: ++tokPos; return finishToken(_bracketR);
-  case 123: ++tokPos; return finishToken(_braceL);
-  case 125: ++tokPos; return finishToken(_braceR);
-  case 58: ++tokPos; return finishToken(_colon);
-  case 63: ++tokPos; return finishToken(_question);
+  case 40: ++tokPos; finishToken(_parenL); return true;
+  case 41: ++tokPos; finishToken(_parenR); return true;
+  case 59: ++tokPos; finishToken(_semi); return true;
+  case 44: ++tokPos; finishToken(_comma); return true;
+  case 91: ++tokPos; finishToken(_bracketL); return true;
+  case 93: ++tokPos; finishToken(_bracketR); return true;
+  case 123: ++tokPos; finishToken(_braceL); return true;
+  case 125: ++tokPos; finishToken(_braceR); return true;
+  case 58: ++tokPos; finishToken(_colon); return true;
+  case 63: ++tokPos; finishToken(_question); return true;
   
   case 96: // '`'
     if (options.ecmaVersion >= 6) {
       ++tokPos;
-      return finishToken(_bquote);
+      finishToken(_bquote); return true;
     }
 
   case 48: // '0'
     var next = input.charCodeAt(tokPos + 1);
-    if (next === 120 || next === 88) return readRadixNumber(16); // '0x', '0X' - hex number
+    if (next === 120 || next === 88) { readRadixNumber(16); return true; } // '0x', '0X' - hex number
     if (options.ecmaVersion >= 6) {
-      if (next === 111 || next === 79) return readRadixNumber(8); // '0o', '0O' - octal number
-      if (next === 98 || next === 66) return readRadixNumber(2); // '0b', '0B' - binary number
+      if (next === 111 || next === 79) { readRadixNumber(8); return true; } // '0o', '0O' - octal number
+      if (next === 98 || next === 66) { readRadixNumber(2); return true; } // '0b', '0B' - binary number
     }
   // Anything else beginning with a digit is an integer, octal
   // number, or float.
   case 49: case 50: case 51: case 52: case 53: case 54: case 55: case 56: case 57: // 1-9
-    return readNumber(false);
+    readNumber(false); return true;
 
   // Quotes produce strings.
   case 34: case 39: // '"', "'"
-    return readString(code);
+    readString(code); return true;
 
   // Operators are parsed inline in tiny state machines. '=' (61) is
   // often referred to. `finishOp` simply skips the amount of
@@ -824,28 +824,28 @@ function getTokenFromCode(code:number) {
   // of the type given by its first argument.
 
   case 47: // '/'
-    return readToken_slash();
+    readToken_slash(); return true;
 
   case 37: case 42: // '%*'
-    return readToken_mult_modulo(code);
+    readToken_mult_modulo(code); return true;
 
   case 124: case 38: // '|&'
-    return readToken_pipe_amp(code);
+    readToken_pipe_amp(code); return true;
 
   case 94: // '^'
-    return readToken_caret();
+    readToken_caret(); return true;
 
   case 43: case 45: // '+-'
-    return readToken_plus_min(code);
+    readToken_plus_min(code); return true;
 
   case 60: case 62: // '<>'
-    return readToken_lt_gt(code);
+    readToken_lt_gt(code); return true;
 
   case 61: case 33: // '=!'
-    return readToken_eq_excl(code);
+    readToken_eq_excl(code); return true;
 
   case 126: // '~'
-    return finishOp(_prefix, 1);
+    finishOp(_prefix, 1); return true;
   }
 
   return false;
@@ -863,16 +863,13 @@ function readToken(forceRegexp?:boolean) {
   // identifiers, so '\' also dispatches to that.
   if (!inTemplate && (isIdentifierStart(code) || code === 92 /* '\' */)) return readWord();
 
-  var tok = getTokenFromCode(code);
-
-  if (tok === false) {
+  if (getTokenFromCode(code) == false) {
     // If we are here, we either found a non-ASCII identifier
     // character, or something that's entirely disallowed.
     var ch = String.fromCharCode(code);
     if (ch === "\\" || nonASCIIidentifierStart.test(ch)) return readWord();
     raise(tokPos, "Unexpected character '" + ch + "'");
   }
-  return tok;
 }
 
 function finishOp(type:Token, size:number) {
@@ -1920,7 +1917,7 @@ function parseExprOps(noIn:boolean) {
 // defer further parser to one of its callers when it encounters an
 // operator that has a lower precedence than the set it is parsing.
 
-function parseExprOp(left:Node, minPrec:number, noIn:boolean) {
+function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
   var prec = tokType.binop;
   if (prec != null && (!noIn || tokType !== _in)) {
     if (prec > minPrec) {
@@ -1973,7 +1970,7 @@ function parseExprSubscripts() {
   return parseSubscripts(parseExprAtom());
 }
 
-function parseSubscripts(base:Node, noCalls?:boolean) {
+function parseSubscripts(base:Node, noCalls?:boolean):Node {
   if (eat(_dot)) {
     var node = startNodeFrom(base);
     node.object = base;
