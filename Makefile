@@ -21,7 +21,7 @@ run:
 	cd out; ./main
 
 test:
-	@./out/main ./lib/input.js > ./out/c.test
-	@./lib/test.js ./lib/input.js > ./out/js.test
+	@./out/main ./lib/example.js | tee ./out/c.test
+	@./lib/test.js ./lib/example.js > ./out/js.test
 	diff ./out/c.test ./out/js.test
 	@rm ./out/*.test

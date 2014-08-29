@@ -1286,6 +1286,7 @@ function finishNode(node:Node, type:Token) {
   //   node.loc.end = lastEndLoc;
   if (options.ranges)
     node.range[1] = lastEnd;
+  __c__('jsparse_callback(type.c_str());');
   return node;
 }
 
