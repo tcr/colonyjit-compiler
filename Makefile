@@ -1,3 +1,5 @@
+.PHONY: test
+
 all: clean transpile compile test
 
 clean:
@@ -21,7 +23,8 @@ run:
 	cd out; ./main
 
 test:
-	@./out/main ./lib/example.js | tee ./out/c.test
+	@./out/main ./lib/example.js | tee ./out/c.test > /dev/null
 	@./lib/test.js ./lib/example.js > ./out/js.test
-	diff ./out/c.test ./out/js.test
+	diff ./out/c.test ./out/js.test 
+	@echo "If there was no output, all tests passed."
 	@rm ./out/*.test
