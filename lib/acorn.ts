@@ -94,7 +94,7 @@ export var defaultOptions:Options = {
   // format as tokenize() returns. Note that you are not
   // allowed to call the parser from the callback—that will
   // corrupt its internal state.
-  // onToken: function () { },
+  onToken: function () { },
   // A function can be passed as `onComment` option, which will
   // cause Acorn to call that function with `(block, text, start,
   // end)` parameters whenever a comment is skipped. `block` is a
@@ -105,7 +105,7 @@ export var defaultOptions:Options = {
   // passed, the full `{line, column}` locations of the start and
   // end of the comments. Note that you are not allowed to call the
   // parser from the callback—that will corrupt its internal state.
-  // onComment: function () { },
+  onComment: function () { },
   // Nodes have their start and end characters offsets recorded in
   // `start` and `end` properties (directly on the node, rather than
   // the `loc` object, which holds line/column data. To also add a
@@ -156,7 +156,7 @@ export function getLineInfo (input:string, offset:number) {
   return {line: line, column: offset - cur};
 };
 
-export function getCurrentToken () {
+function getCurrentToken () {
   var token = {
     type: tokType,
     value: tokVal,
@@ -165,10 +165,10 @@ export function getCurrentToken () {
     startLoc: <Position> null,
     endLoc: <Position> null
   };
-  // if (options.locations) {
-  //   token.startLoc = tokStartLoc;
-  //   token.endLoc = tokEndLoc;
-  // }
+  if (options.locations) {
+    token.startLoc = tokStartLoc;
+    token.endLoc = tokEndLoc;
+  }
   return token;
 };
 
@@ -425,7 +425,7 @@ export var tokTypes = {bracketL: _bracketL, bracketR: _bracketR, braceL: _braceL
                     dot: _dot, ellipsis: _ellipsis, question: _question, slash: _slash, eq: _eq,
                     name: _name, eof: _eof, num: _num, regexp: _regexp, string: _string,
                     arrow: _arrow, bquote: _bquote, dollarBraceL: _dollarBraceL};
-// for (var kw in keywordTypes) (<{[index:string]:any}><any>tokTypes)["_" + kw] = (<{[index:string]:any}><any>keywordTypes)[kw];
+for (var kw in keywordTypes) (<{[index:string]:any}><any>tokTypes)["_" + kw] = (<{[index:string]:any}><any>keywordTypes)[kw];
 
 // This is a trick taken from Esprima. It turns out that, on
 // non-Chrome browsers, to check whether a string is in a set, a
@@ -577,45 +577,45 @@ function initTokenState() {
 
 function finishToken(type:Token, val?:any) {
   tokEnd = tokPos;
-  // if (options.locations) tokEndLoc = new Position;
+  if (options.locations) tokEndLoc = new Position;
   tokType = type;
   if (type !== _bquote || inTemplate) skipSpace();
   tokVal = val;
   tokRegexpAllowed = type.beforeExpr;
-  // if (options.onToken) {
-  //   options.onToken(getCurrentToken());
-  // }
+  if (options.onToken) {
+    options.onToken(getCurrentToken());
+  }
 }
 
 function skipBlockComment() {
-  // var startLoc = options.onComment && options.locations && new Position;
+  var startLoc = options.onComment && options.locations && new Position;
   var start = tokPos, end = input.indexOf("*/", tokPos += 2);
   if (end === -1) raise(tokPos - 2, "Unterminated comment");
   tokPos = end + 2;
-  // if (options.locations) {
-  //   lineBreak.lastIndex = start;
-  //   var match:RegExpExecArray;
-  //   while ((match = lineBreak.exec(input)) && match.index < tokPos) {
-  //     ++tokCurLine;
-  //     tokLineStart = match.index + match[0].length;
-  //   }
-  // }
-  // if (options.onComment)
-  //   options.onComment(true, input.slice(start + 2, end), start, tokPos,
-  //                     startLoc, options.locations && new Position);
+  if (options.locations) {
+    lineBreak.lastIndex = start;
+    var match:RegExpExecArray;
+    while ((match = lineBreak.exec(input)) && match.index < tokPos) {
+      ++tokCurLine;
+      tokLineStart = match.index + match[0].length;
+    }
+  }
+  if (options.onComment)
+    options.onComment(true, input.slice(start + 2, end), start, tokPos,
+                      startLoc, options.locations && new Position);
 }
 
 function skipLineComment() {
   var start = tokPos;
-  // var startLoc = options.onComment && options.locations && new Position;
+  var startLoc = options.onComment && options.locations && new Position;
   var ch = input.charCodeAt(tokPos+=2);
   while (tokPos < inputLen && ch !== 10 && ch !== 13 && ch !== 8232 && ch !== 8233) {
     ++tokPos;
     ch = input.charCodeAt(tokPos);
   }
-  // if (options.onComment)
-  //   options.onComment(false, input.slice(start + 2, tokPos), start, tokPos,
-  //                     startLoc, options.locations && new Position);
+  if (options.onComment)
+    options.onComment(false, input.slice(start + 2, tokPos), start, tokPos,
+                      startLoc, options.locations && new Position);
 }
 
 // Called at the start of the parse and after every token. Skips
@@ -632,16 +632,16 @@ function skipSpace() {
       if (next === 10) {
         ++tokPos;
       }
-      // if (options.locations) {
-      //   ++tokCurLine;
-      //   tokLineStart = tokPos;
-      // }
+      if (options.locations) {
+        ++tokCurLine;
+        tokLineStart = tokPos;
+      }
     } else if (ch === 10 || ch === 8232 || ch === 8233) {
       ++tokPos;
-      // if (options.locations) {
-      //   ++tokCurLine;
-      //   tokLineStart = tokPos;
-      // }
+      if (options.locations) {
+        ++tokCurLine;
+        tokLineStart = tokPos;
+      }
     } else if (ch > 8 && ch < 14) {
       ++tokPos;
     } else if (ch === 47) { // '/'
@@ -854,7 +854,7 @@ function getTokenFromCode(code:number):boolean {
 function readToken(forceRegexp?:boolean) {
   if (!forceRegexp) tokStart = tokPos;
   else tokPos = tokStart + 1;
-  // if (options.locations) tokStartLoc = new Position;
+  if (options.locations) tokStartLoc = new Position;
   if (forceRegexp) return readRegexp();
   if (tokPos >= inputLen) return finishToken(_eof);
 
@@ -1031,7 +1031,7 @@ function readString(quote?:number) {
         case 48: out += "\0"; break; // 0 -> '\0'
         case 13: if (input.charCodeAt(tokPos) === 10) ++tokPos; // '\r\n'
         case 10: // ' \n'
-          // if (options.locations) { tokLineStart = tokPos; ++tokCurLine; }
+          if (options.locations) { tokLineStart = tokPos; ++tokCurLine; }
           break;
         default: out += String.fromCharCode(ch); break;
         }
@@ -1044,10 +1044,10 @@ function readString(quote?:number) {
             ++tokPos;
             ch = 10;
           }
-          // if (options.locations) {
-          //   ++tokCurLine;
-          //   tokLineStart = tokPos;
-          // }
+          if (options.locations) {
+            ++tokCurLine;
+            tokLineStart = tokPos;
+          }
         } else {
           raise(tokStart, "Unterminated string constant");
         }
@@ -1153,12 +1153,12 @@ function next() {
 function setStrict(strct:boolean) {
   strict = strct;
   tokPos = tokStart;
-  // if (options.locations) {
-  //   while (tokPos < tokLineStart) {
-  //     tokLineStart = input.lastIndexOf("\n", tokLineStart - 2) + 1;
-  //     --tokCurLine;
-  //   }
-  // }
+  if (options.locations) {
+    while (tokPos < tokLineStart) {
+      tokLineStart = input.lastIndexOf("\n", tokLineStart - 2) + 1;
+      --tokCurLine;
+    }
+  }
   skipSpace();
   readToken();
 }
@@ -1176,7 +1176,7 @@ export class SourceLocation {
   source:string;
 };
 
-class Node {
+export class Node {
   constructor() {
     this.type = null;
     this.start = tokStart;
@@ -1251,8 +1251,8 @@ class Node {
 
 function startNode():Node {
   var node = new Node();
-  // if (options.locations)
-  //   node.loc = new SourceLocation();
+  if (options.locations)
+    node.loc = new SourceLocation();
   if (options.directSourceFile)
     node.sourceFile = options.directSourceFile;
   if (options.ranges)
@@ -1267,10 +1267,10 @@ function startNode():Node {
 function startNodeFrom(other:Node) {
   var node = new Node();
   node.start = other.start;
-  // if (options.locations) {
-  //   node.loc = new SourceLocation();
-  //   node.loc.start = other.loc.start;
-  // }
+  if (options.locations) {
+    node.loc = new SourceLocation();
+    node.loc.start = other.loc.start;
+  }
   if (options.ranges)
     node.range = [other.range[0], 0];
 
@@ -1279,11 +1279,11 @@ function startNodeFrom(other:Node) {
 
 // Finish an AST node, adding `type` and `end` properties.
 
-function finishNode(node:Node, type:Token) {
+function finishNode(node:Node, type:string) {
   node.type = type;
   node.end = lastEnd;
-  // if (options.locations)
-  //   node.loc.end = lastEndLoc;
+  if (options.locations)
+    node.loc.end = lastEndLoc;
   if (options.ranges)
     node.range[1] = lastEnd;
   __c__('jsparse_callback(type.c_str());');
@@ -1489,7 +1489,7 @@ function checkLVal(expr:Node, isBinding?:boolean) {
 
 function parseTopLevel(program:Node) {
   lastStart = lastEnd = tokPos;
-  // if (options.locations) lastEndLoc = new Position;
+  if (options.locations) lastEndLoc = new Position;
   inFunction = inGenerator = strict = false;
   labels = [];
   readToken();
@@ -1622,7 +1622,7 @@ function parseForStatement(node:Node) {
   }
   var init:Node = parseExpression(false, true);
   if (tokType === _in || (tokType === _name && tokVal === "of")) {
-    // checkLVal(init);
+    checkLVal(init);
     return parseForIn(node, init);
   }
   return parseFor(node, init);
@@ -1837,7 +1837,7 @@ function parseVar(node:Node, noIn:boolean, kind:string) {
   for (;;) {
     var decl = startNode();
     decl.id = options.ecmaVersion >= 6 ? toAssignable(parseExprAtom()) : parseIdent();
-    // checkLVal(decl.id, true);
+    checkLVal(decl.id, true);
     if (eat(_eq)) {
       decl.init = parseExpression(true, noIn);
     } else if (kind === _const.keyword) {
@@ -1883,7 +1883,7 @@ function parseMaybeAssign(noIn:boolean) {
     var node = startNodeFrom(left);
     node.operator = tokVal;
     node.left = tokType === _eq ? toAssignable(left) : left;
-    // checkLVal(left);
+    checkLVal(left);
     next();
     node.right = parseMaybeAssign(noIn);
     return finishNode(node, "AssignmentExpression");
@@ -1958,7 +1958,7 @@ function parseMaybeUnary() {
     node.operator = tokVal;
     node.prefix = false;
     node.argument = expr;
-    // checkLVal(expr);
+    checkLVal(expr);
     next();
     expr = finishNode(node, "UpdateExpression");
   }
@@ -2065,10 +2065,10 @@ function parseExprAtom() {
     }
     val.start = tokStart1;
     val.end = lastEnd;
-    // if (options.locations) {
-    //   val.loc.start = tokStartLoc1;
-    //   val.loc.end = lastEndLoc;
-    // }
+    if (options.locations) {
+      val.loc.start = tokStartLoc1;
+      val.loc.end = lastEndLoc;
+    }
     if (options.ranges) {
       val.range = [tokStart1, lastEnd];
     }
@@ -2552,7 +2552,7 @@ function parseImportSpecifiers() {
     if (tokType !== _name || tokVal !== "as") unexpected();
     next();
     // node.name = parseIdent();
-    // checkLVal(node.name, true);
+    checkLVal(node.name, true);
     nodes.push(finishNode(node, "ImportBatchSpecifier"));
     return nodes;
   }
@@ -2560,7 +2560,7 @@ function parseImportSpecifiers() {
     // import defaultObj, { x, y as z } from '...'
     var node = startNode();
     node.id = parseIdent();
-    // checkLVal(node.id, true);
+    checkLVal(node.id, true);
     node.name = null;
     node.default = true;
     nodes.push(finishNode(node, "ImportSpecifier"));
@@ -2581,7 +2581,7 @@ function parseImportSpecifiers() {
     } else {
       node.name = null;
     }
-    // checkLVal(node.name || node.id, true);
+    checkLVal(node.name || node.id, true);
     node.default = false;
     nodes.push(finishNode(node, "ImportSpecifier"));
   }
@@ -2612,7 +2612,7 @@ function parseComprehension(node:Node, isGenerator:boolean) {
     next();
     expect(_parenL);
     block.left = toAssignable(parseExprAtom());
-    // checkLVal(block.left, true);
+    checkLVal(block.left, true);
     if (tokType !== _name || tokVal !== "of") unexpected();
     next();
     // `of` property is here for compatibility with Esprima's AST
