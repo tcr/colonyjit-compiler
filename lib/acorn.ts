@@ -21,14 +21,14 @@
 // [dammit]: acorn_loose.js
 // [walk]: util/walk.js
 
-// "use strict";
+"use strict";
 
-interface GetTokenFn {
+export interface GetTokenFn {
   (forceRegexp?:boolean): any;
   jumpTo: any;
 }
 
-interface Options {
+export interface Options {
   ecmaVersion?: number;
   strictSemicolons?: boolean;
   allowTrailingCommas?: boolean;
@@ -43,7 +43,7 @@ interface Options {
   directSourceFile?: any;
 };
 
-var version = "0.6.1";
+export var version = "0.6.1";
 
 // The main exported interface (under `self.acorn` when in the
 // browser) is a `parse` function that takes a code string and
@@ -54,7 +54,7 @@ var version = "0.6.1";
 
 var options:Options, input:string, inputLen:number, sourceFile:string;
 
-function parse (inpt:string, opts:any) {
+export function parse (inpt:string, opts:any) {
   input = String(inpt); inputLen = input.length;
   setOptions(opts);
   initTokenState();
@@ -64,7 +64,7 @@ function parse (inpt:string, opts:any) {
 // A second optional argument can be given to further configure
 // the parser process. These options are recognized:
 
-var defaultOptions:Options = {
+export var defaultOptions:Options = {
   // `ecmaVersion` indicates the ECMAScript version to parse. Must
   // be either 3, or 5, or 6. This influences support for strict
   // mode, the set of reserved words, support for getters and
@@ -144,7 +144,7 @@ function setOptions(opts:Options) {
 // offset. `input` should be the code string that the offset refers
 // into.
 
-function getLineInfo (input:string, offset:number) {
+export function getLineInfo (input:string, offset:number) {
   for (var line = 1, cur = 0;;) {
     lineBreak.lastIndex = cur;
     var match = lineBreak.exec(input);
@@ -156,7 +156,7 @@ function getLineInfo (input:string, offset:number) {
   return {line: line, column: offset - cur};
 };
 
-function getCurrentToken () {
+export function getCurrentToken () {
   var token = {
     type: tokType,
     value: tokVal,
@@ -179,7 +179,7 @@ function getCurrentToken () {
 // very modular. Performing another parse or call to `tokenize` will
 // reset the internal state, and invalidate existing tokenizers.
 
-function tokenize (inpt:string, opts:any) {
+export function tokenize (inpt:string, opts:any) {
   input = String(inpt); inputLen = input.length;
   setOptions(opts);
   initTokenState();
@@ -297,7 +297,7 @@ var empty:Node[] = [];
 
 // ## Token types
 
-interface Token {
+export interface Token {
   type?:string;
   keyword?:string;
   beforeExpr?:boolean;
@@ -362,7 +362,7 @@ var _in:Token = {keyword: "in", binop: 7, beforeExpr: true};
 
 // Map keyword names to token types.
 
-var keywordTypes:{[index:string]: Token} = {"break": _break, "case": _case, "catch": _catch,
+export var keywordTypes:{[index:string]: Token} = {"break": _break, "case": _case, "catch": _catch,
                     "continue": _continue, "debugger": _debugger, "default": _default,
                     "do": _do, "else": _else, "finally": _finally, "for": _for,
                     "function": _function, "if": _if, "return": _return, "switch": _switch,
@@ -420,7 +420,7 @@ var _star:Token = {binop: 10, beforeExpr: true};
 // Provide access to the token types for external users of the
 // tokenizer.
 
-var tokTypes = {bracketL: _bracketL, bracketR: _bracketR, braceL: _braceL, braceR: _braceR,
+export var tokTypes = {bracketL: _bracketL, bracketR: _bracketR, braceL: _braceL, braceR: _braceR,
                     parenL: _parenL, parenR: _parenR, comma: _comma, semi: _semi, colon: _colon,
                     dot: _dot, ellipsis: _ellipsis, question: _question, slash: _slash, eq: _eq,
                     name: _name, eof: _eof, num: _num, regexp: _regexp, string: _string,
@@ -526,7 +526,7 @@ var lineBreak = /\r\n|[\n\r\u2028\u2029]/g;
 
 // Test whether a given character code starts an identifier.
 
-function isIdentifierStart (code:number) {
+export function isIdentifierStart (code:number) {
   if (code < 65) return code === 36;
   if (code < 91) return true;
   if (code < 97) return code === 95;
@@ -536,7 +536,7 @@ function isIdentifierStart (code:number) {
 
 // Test whether a given character is part of an identifier.
 
-function isIdentifierChar (code:number) {
+export function isIdentifierChar (code:number) {
   if (code < 48) return code === 36;
   if (code < 58) return true;
   if (code < 65) return false;
@@ -551,7 +551,7 @@ function isIdentifierChar (code:number) {
 // These are used when `options.locations` is on, for the
 // `tokStartLoc` and `tokEndLoc` properties.
 
-class Position {
+export class Position {
   constructor () {
     this.line = tokCurLine;
     this.column = tokPos - tokLineStart;
@@ -1165,7 +1165,7 @@ function setStrict(strct:boolean) {
 
 // Start an AST node, attaching a start offset.
 
-class SourceLocation {
+export class SourceLocation {
   constructor() {
     this.start = tokStartLoc;
     this.end = null;
@@ -2628,21 +2628,3 @@ function parseComprehension(node:Node, isGenerator:boolean) {
   node.generator = isGenerator;
   return finishNode(node, "ComprehensionExpression");
 }
-
-// Exports.
-
-var api:any = {
-  version: version,
-  defaultOptions: defaultOptions,
-  getLineInfo: getLineInfo,
-  tokenize: tokenize,
-  keywordTypes: keywordTypes,
-  tokTypes: tokTypes,
-  SourceLocation: SourceLocation,
-  Position: Position,
-  Node: Node,
-  isIdentifierStart: isIdentifierStart,
-  isIdentifierChar: isIdentifierChar,
-};
-
-export = api;
