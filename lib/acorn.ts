@@ -863,7 +863,9 @@ function readToken(forceRegexp?:boolean) {
   // identifiers, so '\' also dispatches to that.
   if (!inTemplate && (isIdentifierStart(code) || code === 92 /* '\' */)) return readWord();
 
-  if (getTokenFromCode(code) == false) {
+  var tok = getTokenFromCode(code);
+
+  if (tok === false) {
     // If we are here, we either found a non-ASCII identifier
     // character, or something that's entirely disallowed.
     var ch = String.fromCharCode(code);
@@ -901,15 +903,13 @@ function readRegexp() {
   // here (don't ask).
   var mods = readWord1();
   if (mods && !/^[gmsiy]*$/.test(mods)) raise(start, "Invalid regular expression flag");
-  // try {
+  try { //JS
     var value = new RegExp(content, mods);
-  // } catch (e) {
-    // if (e instanceof SyntaxError) raise(start, "Error parsing regular expression: " + e.message);
-    // raise(e);
-    if (value == null) {
-      raise(start, 'Error parsing regular expression.');
-    }
-  // }
+  } catch (e) { //JS
+    if (e instanceof SyntaxError) raise(start, "Error parsing regular expression: " + e.message); //JS
+    raise(e); //JS
+    //C if (value.length() == 0) { raise(start, "Error parsing regular expression."); }
+  } //JS
   return finishToken(_regexp, value);
 }
 
@@ -1286,7 +1286,7 @@ function finishNode(node:Node, type:string) {
     node.loc.end = lastEndLoc;
   if (options.ranges)
     node.range[1] = lastEnd;
-  __c__('jsparse_callback(type.c_str());');
+  //C jsparse_callback(type.c_str());
   return node;
 }
 
@@ -1430,18 +1430,18 @@ function checkPropClash(prop:Node, propHash:any) {
   }
   var kind = prop.kind || "init", other:any;
   if (has(propHash, name)) {
-    // other = propHash[name];
-    // var isGetSet = Number(kind !== "init");
-    // if ((strict || isGetSet) && other[kind] || !(isGetSet ^ other.init))
-    //   raise(key.start, "Redefinition of property");
+    other = propHash[name];
+    var isGetSet = Number(kind !== "init");
+    if ((strict || isGetSet) && other[kind] || !(isGetSet ^ other.init))
+      raise(key.start, "Redefinition of property");
   } else {
-    // other = propHash[name] = {
-    //   init: false,
-    //   get: false,
-    //   set: false
-    // };
+    other = propHash[name] = {
+      init: false,
+      get: false,
+      set: false
+    };
   }
-  // other[kind] = true;
+  other[kind] = true;
 }
 
 // Verify that a node is an lval — something that can be assigned
@@ -1615,9 +1615,9 @@ function parseForStatement(node:Node) {
     next();
     parseVar(init, true, varKind);
     finishNode(init, "VariableDeclaration");
-    // if ((tokType === _in || (tokType === _name && tokVal === "of")) && init.declarations.length === 1 &&
-    //     !(isLet && init.declarations[0].init))
-    //   return parseForIn(node, init);
+    if ((tokType === _in || (tokType === _name && tokVal === "of")) && init.declarations.length === 1 &&
+        !(isLet && init.declarations[0].init))
+      return parseForIn(node, init);
     return parseFor(node, init);
   }
   var init:Node = parseExpression(false, true);
@@ -1945,9 +1945,8 @@ function parseMaybeUnary() {
     tokRegexpAllowed = true;
     next();
     node.argument = parseMaybeUnary();
-    // if (update) checkLVal(node.argument);
-    // else 
-    if (strict && node.operator === "delete" &&
+    if (update) checkLVal(node.argument);
+    else if (strict && node.operator === "delete" &&
              node.argument.type === "Identifier")
       raise(node.start, "Deleting local variable in strict mode");
     return finishNode(node, update ? "UpdateExpression" : "UnaryExpression");
@@ -2029,7 +2028,7 @@ function parseExprAtom() {
 
   case _null: case _true: case _false:
     var node = startNode();
-    // node.value = tokType.atomValue;
+    node.value = tokType.atomValue;
     node.raw = tokType.keyword;
     next();
     return finishNode(node, "Literal");
@@ -2135,7 +2134,6 @@ function parseSpread() {
 
 function parseTemplate() {
   var node = startNode();
-  /*
   node.expressions = [];
   node.quasis = [];
   inTemplate = true;
@@ -2157,14 +2155,13 @@ function parseTemplate() {
     expect(_braceR);
   }
   inTemplate = false;
-  */
   return finishNode(node, "TemplateLiteral");
 }
 
 // Parse an object literal.
 
 function parseObj() {
-  var node = startNode(), first = true;//, propHash = {};
+  var node = startNode(), first = true, propHash = {};
   node.properties = [];
   next();
   while (!eat(_braceR)) {
@@ -2199,7 +2196,7 @@ function parseObj() {
       prop.shorthand = true;
     } else unexpected();
 
-    // checkPropClash(prop, propHash);
+    checkPropClash(prop, propHash);
     node.properties.push(finishNode(prop, "Property"));
   }
   return finishNode(node, "ObjectExpression");
@@ -2334,14 +2331,14 @@ function parseFunctionBody(node:Node, allowExpression:boolean) {
   
   if (isExpression) {
     node.body = parseExpression(true);
-    // node.expression = true;
+    node.expression = true;
   } else {
     // Start a new scope with regard to labels and the `inFunction`
     // flag (restore them to their old value afterwards).
     var oldInFunc = inFunction, oldInGen = inGenerator, oldLabels = labels;
     inFunction = true; inGenerator = node.generator; labels = [];
     node.body = parseBlock(true);
-    // node.expression = false;
+    node.expression = false;
     inFunction = oldInFunc; inGenerator = oldInGen; labels = oldLabels;
   }
 
@@ -2349,13 +2346,13 @@ function parseFunctionBody(node:Node, allowExpression:boolean) {
   // are not repeated, and it does not try to bind the words `eval`
   // or `arguments`.
   if (strict || !isExpression && node.body.bodylist.length && isUseStrict(node.body.bodylist[0])) {
-    // var nameHash = {};
-    // if (node.id)
-    //   checkFunctionParam(node.id, nameHash);
-    // for (var i = 0; i < node.params.length; i++)
-    //   checkFunctionParam(node.params[i], nameHash);
-    // if (node.rest)
-    //   checkFunctionParam(node.rest, nameHash);
+    var nameHash = {};
+    if (node.id)
+      checkFunctionParam(node.id, nameHash);
+    for (var i = 0; i < node.params.length; i++)
+      checkFunctionParam(node.params[i], nameHash);
+    if (node.rest)
+      checkFunctionParam(node.rest, nameHash);
   }
 }
 
@@ -2372,7 +2369,7 @@ function parseClass(node:Node, isStatement:boolean) {
     node.id = null;
   }
   node.superClass = eat(_extends) ? parseExpression() : null;
-  var classBody = startNode();// methodHash = {}, staticMethodHash = {};
+  var classBody = startNode(), methodHash = {}, staticMethodHash = {};
   classBody.bodylist = [];
   expect(_braceL);
   while (!eat(_braceR)) {
@@ -2394,7 +2391,7 @@ function parseClass(node:Node, isStatement:boolean) {
       method.kind = "";
     }
     method.value = parseMethod(isGenerator);
-    // checkPropClash(method, method.static ? staticMethodHash : methodHash);
+    checkPropClash(method, method.static ? staticMethodHash : methodHash);
     classBody.bodylist.push(finishNode(method, "MethodDefinition"));
     eat(_semi);
   }
@@ -2455,14 +2452,14 @@ function parseExport(node:Node) {
   if (tokType === _var || tokType === _const || tokType === _let || tokType === _function || tokType === _class) {
     node.declaration = parseStatement();
     node.default = false;
-    node.specifiers = [];
+    node.specifiers = null;
     node.source = null;
   } else
   // export default ...;
   if (eat(_default)) {
     node.declaration = parseExpression(true);
     node.default = true;
-    node.specifiers = [];
+    node.specifiers = null;
     node.source = null;
     semicolon();
   } else {
@@ -2508,7 +2505,7 @@ function parseExportSpecifiers() {
       node.id = parseIdent();
       if (tokType === _name && tokVal === "as") {
         next();
-        // node.name = parseIdent(true);
+        node.name = parseIdent(true);
       } else {
         node.name = null;
       }
@@ -2551,7 +2548,7 @@ function parseImportSpecifiers() {
     next();
     if (tokType !== _name || tokVal !== "as") unexpected();
     next();
-    // node.name = parseIdent();
+    node.name = parseIdent();
     checkLVal(node.name, true);
     nodes.push(finishNode(node, "ImportBatchSpecifier"));
     return nodes;
@@ -2577,7 +2574,7 @@ function parseImportSpecifiers() {
     node.id = parseIdent(true);
     if (tokType === _name && tokVal === "as") {
       next();
-      // node.name = parseIdent();
+      node.name = parseIdent();
     } else {
       node.name = null;
     }

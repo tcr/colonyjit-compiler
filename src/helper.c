@@ -506,6 +506,11 @@ bool isUseStrict (...)
 return false;
 }
 
+Node* parseTemplate()
+{
+	return nullptr;
+}
+
 Node* toAssignable(Node* node, bool a, bool b)
 {
 	return node;
