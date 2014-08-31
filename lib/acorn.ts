@@ -340,8 +340,8 @@ var _break:Token = {keyword: "break"}, _case:Token = {keyword: "case", beforeExp
 var _continue:Token = {keyword: "continue"}, _debugger:Token = {keyword: "debugger"}, _default:Token = {keyword: "default"};
 var _do:Token = {keyword: "do", isLoop: true}, _else:Token = {keyword: "else", beforeExpr: true};
 var _finally:Token = {keyword: "finally"}, _for:Token = {keyword: "for", isLoop: true}, _function:Token = {keyword: "function"};
-var _if:Token = {keyword: "if"}, _return = {keyword: "return", beforeExpr: true}, _switch:Token = {keyword: "switch"};
-var _throw:Token = {keyword: "throw", beforeExpr: true}, _try = {keyword: "try"}, _var:Token = {keyword: "var"};
+var _if:Token = {keyword: "if"}, _return:Token = {keyword: "return", beforeExpr: true}, _switch:Token = {keyword: "switch"};
+var _throw:Token = {keyword: "throw", beforeExpr: true}, _try:Token = {keyword: "try"}, _var:Token = {keyword: "var"};
 var _let:Token = {keyword: "let"}, _const:Token = {keyword: "const"};
 var _while:Token = {keyword: "while", isLoop: true}, _with:Token = {keyword: "with"}, _new:Token = {keyword: "new", beforeExpr: true};
 var _this:Token = {keyword: "this"};
@@ -920,14 +920,14 @@ function readRegexp() {
 function readInt(radix:number, len?:number) {
   var start = tokPos, total = 0;
   for (var i = 0, e = len == null ? Infinity : len; i < e; ++i) {
-    var code = input.charCodeAt(tokPos), intval:number;
-    if (code >= 97) intval = code - 97 + 10; // a
-    else if (code >= 65) intval = code - 65 + 10; // A
-    else if (code >= 48 && code <= 57) intval = code - 48; // 0-9
-    else intval = Infinity;
-    if (intval >= radix) break;
+    var code = input.charCodeAt(tokPos), val:number;
+    if (code >= 97) val = code - 97 + 10; // a
+    else if (code >= 65) val = code - 65 + 10; // A
+    else if (code >= 48 && code <= 57) val = code - 48; // 0-9
+    else val = Infinity;
+    if (val >= radix) break;
     ++tokPos;
-    total = total * radix + intval;
+    total = total * radix + val;
   }
   if (tokPos === start || len != null && tokPos - start !== len) return null;
 
@@ -936,10 +936,10 @@ function readInt(radix:number, len?:number) {
 
 function readRadixNumber(radix:number) {
   tokPos += 2; // 0x
-  var intval = readInt(radix);
-  if (intval == null) raise(tokStart + 2, "Expected number in radix " + radix);
+  var val = readInt(radix);
+  if (val == null) raise(tokStart + 2, "Expected number in radix " + radix);
   if (isIdentifierStart(input.charCodeAt(tokPos))) raise(tokPos, "Identifier directly after number");
-  return finishToken(_num, intval);
+  return finishToken(_num, val);
 }
 
 // Read an integer, octal integer, or floating-point number.
@@ -961,12 +961,12 @@ function readNumber(startsWithDot:boolean) {
   }
   if (isIdentifierStart(input.charCodeAt(tokPos))) raise(tokPos, "Identifier directly after number");
 
-  var str = input.slice(start, tokPos), intval:number;
-  if (isFloat) intval = parseFloat(str);
-  else if (!octal || str.length === 1) intval = parseInt(str, 10);
+  var str = input.slice(start, tokPos), val:number;
+  if (isFloat) val = parseFloat(str);
+  else if (!octal || str.length === 1) val = parseInt(str, 10);
   else if (/[89]/.test(str) || strict) raise(start, "Invalid number");
-  else intval = parseInt(str, 8);
-  return finishToken(_num, intval);
+  else val = parseInt(str, 8);
+  return finishToken(_num, val);
 }
 
 // Read a string value, interpreting backslash-escapes.
@@ -1819,14 +1819,14 @@ function parseFor(node:Node, init:Node) {
 // same from parser's perspective.
 
 function parseForIn(node:Node, init:Node) {
-  var exprtype = tokType === _in ? "ForInStatement" : "ForOfStatement";
+  var type = tokType === _in ? "ForInStatement" : "ForOfStatement";
   next();
   node.left = init;
   node.right = parseExpression();
   expect(_parenR);
   node.body = parseStatement();
   labels.pop();
-  return finishNode(node, exprtype);
+  return finishNode(node, type);
 }
 
 // Parse a list of variable declarations.
