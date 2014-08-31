@@ -5,8 +5,14 @@
 #include <string.h>
 #include <stddef.h>
 
-void my_onclosenode (const char *type) {
-  printf("type %s\n", type);
+void my_onopennode (struct Node_C C) {
+  // printf("type %s\n", C.type);
+  printf("-> enter %s\n", C.type);
+}
+
+void my_onclosenode (struct Node_C C) {
+  // printf("type %s\n", C.type);
+  printf("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
 }
 
 int main (int argc, char **argv)
@@ -31,7 +37,7 @@ int main (int argc, char **argv)
   fclose(fp);
 
   // parse dat
-  jsparse(input, input_len, my_onclosenode);
+  jsparse(input, input_len, my_onopennode, my_onclosenode);
 
   printf("done.\n");
 

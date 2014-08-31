@@ -884,7 +884,7 @@ function finishOp(type:Token, size:number) {
 // since a '/' inside a '[]' set does not end the expression.
 
 function readRegexp() {
-  var content = "", escaped:boolean, inClass:boolean, start = tokPos;
+  var content:string = "", escaped:boolean, inClass:boolean, start = tokPos;
   for (;;) {
     if (tokPos >= inputLen) raise(start, "Unterminated regular expression");
     var ch = input.charAt(tokPos);
@@ -897,7 +897,7 @@ function readRegexp() {
     } else escaped = false;
     ++tokPos;
   }
-  var content:string = input.slice(start, tokPos);
+  content = input.slice(start, tokPos);
   ++tokPos;
   // Need to use `readWord1` because '\uXXXX' sequences are allowed
   // here (don't ask).
@@ -1279,14 +1279,19 @@ function startNodeFrom(other:Node) {
 
 // Finish an AST node, adding `type` and `end` properties.
 
-function finishNode(node:Node, type:string) {
+function enterNode(node:Node, type:string) {
   node.type = type;
+  //C jsparse_callback_open(convert_to_Node_C(node));
+  return node;
+}
+
+function finishNode(node:Node) {
   node.end = lastEnd;
   if (options.locations)
     node.loc.end = lastEndLoc;
   if (options.ranges)
     node.range[1] = lastEnd;
-  //C jsparse_callback(type.c_str());
+  //C jsparse_callback_close(convert_to_Node_C(node));
   return node;
 }
 
@@ -1502,7 +1507,8 @@ function parseTopLevel(program:Node) {
     if (first && isUseStrict(stmt)) setStrict(true);
     first = false;
   }
-  return finishNode(node, "Program");
+  enterNode(node, "Program");
+  return finishNode(node);
 }
 
 var loopLabel:Label = {kind: "loop"}, switchLabel:Label = {kind: "switch"};
@@ -1577,13 +1583,15 @@ function parseBreakContinueStatement(node:Node, keyword:string) {
     }
   }
   if (i === labels.length) raise(node.start, "Unsyntactic " + keyword);
-  return finishNode(node, isBreak ? "BreakStatement" : "ContinueStatement");
+  enterNode(node, isBreak ? "BreakStatement" : "ContinueStatement");
+  return finishNode(node);
 }
 
 function parseDebuggerStatement(node:Node) {
   next();
   semicolon();
-  return finishNode(node, "DebuggerStatement");
+  enterNode(node, "DebuggerStatement");
+  return finishNode(node);
 }
 
 function parseDoStatement(node:Node) {
@@ -1594,7 +1602,8 @@ function parseDoStatement(node:Node) {
   expect(_while);
   node.test = parseParenExpression();
   semicolon();
-  return finishNode(node, "DoWhileStatement");
+  enterNode(node, "DoWhileStatement");
+  return finishNode(node);
 }
 
 // Disambiguating between a `for` and a `for`/`in` or `for`/`of`
@@ -1614,7 +1623,8 @@ function parseForStatement(node:Node) {
     var init = startNode(), varKind = tokType.keyword, isLet = tokType === _let;
     next();
     parseVar(init, true, varKind);
-    finishNode(init, "VariableDeclaration");
+    enterNode(init, "VariableDeclaration");
+    finishNode(init);
     if ((tokType === _in || (tokType === _name && tokVal === "of")) && init.declarations.length === 1 &&
         !(isLet && init.declarations[0].init))
       return parseForIn(node, init);
@@ -1638,7 +1648,8 @@ function parseIfStatement(node:Node) {
   node.test = parseParenExpression();
   node.consequent = parseStatement();
   node.alternate = eat(_else) ? parseStatement() : null;
-  return finishNode(node, "IfStatement");
+  enterNode(node, "IfStatement");
+  return finishNode(node);
 }
 
 function parseReturnStatement(node:Node) {
@@ -1652,7 +1663,8 @@ function parseReturnStatement(node:Node) {
 
   if (eat(_semi) || canInsertSemicolon()) node.argument = null;
   else { node.argument = parseExpression(); semicolon(); }
-  return finishNode(node, "ReturnStatement");
+  enterNode(node, "ReturnStatement");
+  return finishNode(node);
 }
 
 function parseSwitchStatement(node:Node) {
@@ -1669,7 +1681,7 @@ function parseSwitchStatement(node:Node) {
   for (var cur:Node, sawDefault:boolean; tokType != _braceR;) {
     if (tokType === _case || tokType === _default) {
       var isCase = tokType === _case;
-      if (cur) finishNode(cur, "SwitchCase");
+      if (cur) { enterNode(cur, "SwitchCase"); finishNode(cur); }
       node.cases.push(cur = startNode());
       cur.consequents = [];
       next();
@@ -1684,10 +1696,11 @@ function parseSwitchStatement(node:Node) {
       cur.consequents.push(parseStatement());
     }
   }
-  if (cur) finishNode(cur, "SwitchCase");
+  if (cur) { enterNode(cur, "SwitchCase"); finishNode(cur); }
   next(); // Closing brace
   labels.pop();
-  return finishNode(node, "SwitchStatement");
+  enterNode(node, "SwitchStatement");
+  return finishNode(node);
 }
 
 function parseThrowStatement(node:Node) {
@@ -1696,7 +1709,8 @@ function parseThrowStatement(node:Node) {
     raise(lastEnd, "Illegal newline after throw");
   node.argument = parseExpression();
   semicolon();
-  return finishNode(node, "ThrowStatement");
+  enterNode(node, "ThrowStatement");
+  return finishNode(node);
 }
 
 function parseTryStatement(node:Node) {
@@ -1713,20 +1727,23 @@ function parseTryStatement(node:Node) {
     expect(_parenR);
     clause.guard = null;
     clause.body = parseBlock();
-    node.handler = finishNode(clause, "CatchClause");
+    enterNode(clause, "CatchClause");
+    node.handler = finishNode(clause);
   }
   node.guardedHandlers = empty;
   node.finalizer = eat(_finally) ? parseBlock() : null;
   if (!node.handler && !node.finalizer)
     raise(node.start, "Missing catch or finally clause");
-  return finishNode(node, "TryStatement");
+  enterNode(node, "TryStatement");
+  return finishNode(node);
 }
 
 function parseVarStatement(node:Node, kind:string) {
   next();
   parseVar(node, false, kind);
   semicolon();
-  return finishNode(node, "VariableDeclaration");
+  enterNode(node, "VariableDeclaration");
+  return finishNode(node);
 }
 
 function parseWhileStatement(node:Node) {
@@ -1735,7 +1752,8 @@ function parseWhileStatement(node:Node) {
   labels.push(loopLabel);
   node.body = parseStatement();
   labels.pop();
-  return finishNode(node, "WhileStatement");
+  enterNode(node, "WhileStatement");
+  return finishNode(node);
 }
 
 function parseWithStatement(node:Node) {
@@ -1743,12 +1761,14 @@ function parseWithStatement(node:Node) {
   next();
   node.object = parseParenExpression();
   node.body = parseStatement();
-  return finishNode(node, "WithStatement");
+  enterNode(node, "WithStatement");
+  return finishNode(node);
 }
 
 function parseEmptyStatement(node:Node) {
   next();
-  return finishNode(node, "EmptyStatement");
+  enterNode(node, "EmptyStatement");
+  return finishNode(node);
 }
 
 function parseLabeledStatement(node:Node, maybeName:string, expr:Node) {
@@ -1759,13 +1779,15 @@ function parseLabeledStatement(node:Node, maybeName:string, expr:Node) {
   node.body = parseStatement();
   labels.pop();
   node.label = expr;
-  return finishNode(node, "LabeledStatement");
+  enterNode(node, "LabeledStatement");
+  return finishNode(node);
 }
 
 function parseExpressionStatement(node:Node, expr:Node) {
   node.expression = expr;
   semicolon();
-  return finishNode(node, "ExpressionStatement");
+  enterNode(node, "ExpressionStatement");
+  return finishNode(node);
 }
 
 // Used for constructs like `switch` and `if` that insist on
@@ -1796,7 +1818,8 @@ function parseBlock(allowStrict?:boolean) {
     first = false;
   }
   if (strict && !oldStrict) setStrict(false);
-  return finishNode(node, "BlockStatement");
+  enterNode(node, "BlockStatement");
+  return finishNode(node);
 }
 
 // Parse a regular `for` loop. The disambiguation code in
@@ -1812,7 +1835,8 @@ function parseFor(node:Node, init:Node) {
   expect(_parenR);
   node.body = parseStatement();
   labels.pop();
-  return finishNode(node, "ForStatement");
+  enterNode(node, "ForStatement");
+  return finishNode(node);
 }
 
 // Parse a `for`/`in` and `for`/`of` loop, which are almost
@@ -1826,7 +1850,8 @@ function parseForIn(node:Node, init:Node) {
   expect(_parenR);
   node.body = parseStatement();
   labels.pop();
-  return finishNode(node, type);
+  enterNode(node, type);
+  return finishNode(node);
 }
 
 // Parse a list of variable declarations.
@@ -1845,7 +1870,8 @@ function parseVar(node:Node, noIn:boolean, kind:string) {
     } else {
       decl.init = null;
     }
-    node.declarations.push(finishNode(decl, "VariableDeclarator"));
+    enterNode(decl, "VariableDeclarator");
+    node.declarations.push(finishNode(decl));
     if (!eat(_comma)) break;
   }
   return node;
@@ -1869,7 +1895,8 @@ function parseExpression(noComma?:boolean, noIn?:boolean) {
     var node = startNodeFrom(expr);
     node.expressions = [expr];
     while (eat(_comma)) node.expressions.push(parseMaybeAssign(noIn));
-    return finishNode(node, "SequenceExpression");
+    enterNode(node, "SequenceExpression");
+    return finishNode(node);
   }
   return expr;
 }
@@ -1886,7 +1913,8 @@ function parseMaybeAssign(noIn:boolean) {
     checkLVal(left);
     next();
     node.right = parseMaybeAssign(noIn);
-    return finishNode(node, "AssignmentExpression");
+    enterNode(node, "AssignmentExpression");
+    return finishNode(node);
   }
   return left;
 }
@@ -1901,7 +1929,8 @@ function parseMaybeConditional(noIn:boolean) {
     node.consequent = parseExpression(true);
     expect(_colon);
     node.alternate = parseExpression(true, noIn);
-    return finishNode(node, "ConditionalExpression");
+    enterNode(node, "ConditionalExpression");
+    return finishNode(node);
   }
   return expr;
 }
@@ -1928,7 +1957,8 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
       var op = tokType;
       next();
       node.right = parseExprOp(parseMaybeUnary(), prec, noIn);
-      var exprNode = finishNode(node, (op === _logicalOR || op === _logicalAND) ? "LogicalExpression" : "BinaryExpression");
+      enterNode(node, (op === _logicalOR || op === _logicalAND) ? "LogicalExpression" : "BinaryExpression");
+      var exprNode = finishNode(node);
       return parseExprOp(exprNode, minPrec, noIn);
     }
   }
@@ -1949,7 +1979,8 @@ function parseMaybeUnary() {
     else if (strict && node.operator === "delete" &&
              node.argument.type === "Identifier")
       raise(node.start, "Deleting local variable in strict mode");
-    return finishNode(node, update ? "UpdateExpression" : "UnaryExpression");
+    enterNode(node, update ? "UpdateExpression" : "UnaryExpression");
+    return finishNode(node);
   }
   var expr = parseExprSubscripts();
   while (tokType.postfix && !canInsertSemicolon()) {
@@ -1959,7 +1990,8 @@ function parseMaybeUnary() {
     node.argument = expr;
     checkLVal(expr);
     next();
-    expr = finishNode(node, "UpdateExpression");
+    enterNode(node, "UpdateExpression");
+    expr = finishNode(node);
   }
   return expr;
 }
@@ -1973,27 +2005,31 @@ function parseExprSubscripts() {
 function parseSubscripts(base:Node, noCalls?:boolean):Node {
   if (eat(_dot)) {
     var node = startNodeFrom(base);
+    enterNode(node, "MemberExpression");
     node.object = base;
     node.property = parseIdent(true);
     node.computed = false;
-    return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
+    return parseSubscripts(finishNode(node), noCalls);
   } else if (eat(_bracketL)) {
     var node = startNodeFrom(base);
     node.object = base;
     node.property = parseExpression();
     node.computed = true;
     expect(_bracketR);
-    return parseSubscripts(finishNode(node, "MemberExpression"), noCalls);
+    enterNode(node, "MemberExpression");
+    return parseSubscripts(finishNode(node), noCalls);
   } else if (!noCalls && eat(_parenL)) {
     var node = startNodeFrom(base);
+    enterNode(node, "CallExpression");
     node.callee = base;
     node.arguments = parseExprList(_parenR, false);
-    return parseSubscripts(finishNode(node, "CallExpression"), noCalls);
+    return parseSubscripts(finishNode(node), noCalls);
   } else if (tokType === _bquote) {
     var node = startNodeFrom(base);
     node.tag = base;
     node.quasi = parseTemplate();
-    return parseSubscripts(finishNode(node, "TaggedTemplateExpression"), noCalls);
+    enterNode(node, "TaggedTemplateExpression");
+    return parseSubscripts(finishNode(node), noCalls);
   } return base;
 }
 
@@ -2007,7 +2043,8 @@ function parseExprAtom() {
   case _this:
     var node = startNode();
     next();
-    return finishNode(node, "ThisExpression");
+    enterNode(node, "ThisExpression");
+    return finishNode(node);
   
   case _yield:
     if (inGenerator) return parseYield();
@@ -2024,14 +2061,16 @@ function parseExprAtom() {
     node.value = tokVal;
     node.raw = input.slice(tokStart, tokEnd);
     next();
-    return finishNode(node, "Literal");
+    enterNode(node, "Literal");
+    return finishNode(node);
 
   case _null: case _true: case _false:
     var node = startNode();
     node.value = tokType.atomValue;
     node.raw = tokType.keyword;
     next();
-    return finishNode(node, "Literal");
+    enterNode(node, "Literal");
+    return finishNode(node);
 
   case _parenL:
     var tokStartLoc1 = tokStartLoc, tokStart1 = tokStart, val:Node, exprList:Node[];
@@ -2081,7 +2120,8 @@ function parseExprAtom() {
       return parseComprehension(node, false);
     }
     node.elements = parseExprList(_bracketR, true, true);
-    return finishNode(node, "ArrayExpression");
+    enterNode(node, "ArrayExpression");
+    return finishNode(node);
 
   case _braceL:
     return parseObj();
@@ -2118,7 +2158,8 @@ function parseNew() {
   node.callee = parseSubscripts(parseExprAtom(), true);
   if (eat(_parenL)) node.arguments = parseExprList(_parenR, false);
   else node.arguments = empty;
-  return finishNode(node, "NewExpression");
+  enterNode(node, "NewExpression");
+  return finishNode(node);
 }
 
 // Parse spread element '...expr'
@@ -2127,7 +2168,8 @@ function parseSpread() {
   var node = startNode();
   next();
   node.argument = parseExpression(true);
-  return finishNode(node, "SpreadElement");
+  enterNode(node, "SpreadElement");
+  return finishNode(node);
 }
 
 // Parse template expression.
@@ -2143,7 +2185,8 @@ function parseTemplate() {
     elem.value = {cooked: tokVal, raw: input.slice(tokStart, tokEnd)};
     elem.tail = false;
     next();
-    node.quasis.push(finishNode(elem, "TemplateElement"));
+    enterNode(elem, "TemplateElement");
+    node.quasis.push(finishNode(elem));
     if (eat(_bquote)) { // '`', end of template
       elem.tail = true;
       break;
@@ -2155,7 +2198,8 @@ function parseTemplate() {
     expect(_braceR);
   }
   inTemplate = false;
-  return finishNode(node, "TemplateLiteral");
+  enterNode(node, "TemplateLiteral");
+  return finishNode(node);
 }
 
 // Parse an object literal.
@@ -2197,9 +2241,11 @@ function parseObj() {
     } else unexpected();
 
     checkPropClash(prop, propHash);
-    node.properties.push(finishNode(prop, "Property"));
+    enterNode(prop, "Property");
+    node.properties.push(finishNode(prop));
   }
-  return finishNode(node, "ObjectExpression");
+  enterNode(node, "ObjectExpression");
+  return finishNode(node);
 }
 
 function parsePropertyName(prop:Node) {
@@ -2241,7 +2287,8 @@ function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:bool
   }
   parseFunctionParams(node);
   parseFunctionBody(node, allowExpressionBody);
-  return finishNode(node, isStatement ? "FunctionDeclaration" : "FunctionExpression");
+  enterNode(node, isStatement ? "FunctionDeclaration" : "FunctionExpression");
+  return finishNode(node);
 }
 
 // Parse object or class method.
@@ -2258,7 +2305,8 @@ function parseMethod(isGenerator:boolean) {
     allowExpressionBody = false;
   }
   parseFunctionBody(node, allowExpressionBody);
-  return finishNode(node, "FunctionExpression");
+  enterNode(node, "FunctionExpression");
+  return finishNode(node);
 }
 
 // Parse arrow function expression with given parameters.
@@ -2290,7 +2338,8 @@ function parseArrowExpression(node:Node, params:Node[]) {
   if (!hasDefaults) node.defaults = [];
 
   parseFunctionBody(node, true);
-  return finishNode(node, "ArrowFunctionExpression");
+  enterNode(node, "ArrowFunctionExpression");
+  return finishNode(node);
 }
 
 // Parse function parameters.
@@ -2392,11 +2441,14 @@ function parseClass(node:Node, isStatement:boolean) {
     }
     method.value = parseMethod(isGenerator);
     checkPropClash(method, method.static ? staticMethodHash : methodHash);
-    classBody.bodylist.push(finishNode(method, "MethodDefinition"));
+    enterNode(method, "MethodDefinition");
+    classBody.bodylist.push(finishNode(method));
     eat(_semi);
   }
-  node.body = finishNode(classBody, "ClassBody");
-  return finishNode(node, isStatement ? "ClassDeclaration" : "ClassExpression");
+  enterNode(classBody, "ClassBody");
+  node.body = finishNode(classBody);
+  enterNode(node, isStatement ? "ClassDeclaration" : "ClassExpression");
+  return finishNode(node);
 }
 
 // Parses a comma-separated list of expressions, and returns them as
@@ -2441,7 +2493,8 @@ function parseIdent(liberal?:boolean) {
   }
   tokRegexpAllowed = false;
   next();
-  return finishNode(node, "Identifier");
+  enterNode(node, "Identifier");
+  return finishNode(node);
 }
 
 // Parses module export declaration.
@@ -2480,7 +2533,8 @@ function parseExport(node:Node) {
       node.source = null;
     }
   }
-  return finishNode(node, "ExportDeclaration");
+  enterNode(node, "ExportDeclaration");
+  return finishNode(node);
 }
 
 // Parses a comma-separated list of module exports.
@@ -2491,7 +2545,8 @@ function parseExportSpecifiers() {
     // export * from '...'
     var node = startNode();
     next();
-    nodes.push(finishNode(node, "ExportBatchSpecifier"));
+    enterNode(node, "ExportBatchSpecifier");
+    nodes.push(finishNode(node));
   } else {
     // export { x, y as z } [from '...']
     expect(_braceL);
@@ -2509,7 +2564,8 @@ function parseExportSpecifiers() {
       } else {
         node.name = null;
       }
-      nodes.push(finishNode(node, "ExportSpecifier"));
+      enterNode(node, "ExportSpecifier");
+      nodes.push(finishNode(node));
     }
   }
   return nodes;
@@ -2536,7 +2592,8 @@ function parseImport(node:Node) {
     // (it doesn't support mixed default + named yet)
     node.kind = node.specifiers[0].default ? "default" : "named";
   }
-  return finishNode(node, "ImportDeclaration");
+  enterNode(node, "ImportDeclaration");
+  return finishNode(node);
 }
 
 // Parses a comma-separated list of module imports.
@@ -2550,7 +2607,8 @@ function parseImportSpecifiers() {
     next();
     node.name = parseIdent();
     checkLVal(node.name, true);
-    nodes.push(finishNode(node, "ImportBatchSpecifier"));
+    enterNode(node, "ImportBatchSpecifier");
+    nodes.push(finishNode(node));
     return nodes;
   }
   if (tokType === _name) {
@@ -2560,7 +2618,8 @@ function parseImportSpecifiers() {
     checkLVal(node.id, true);
     node.name = null;
     node.default = true;
-    nodes.push(finishNode(node, "ImportSpecifier"));
+    enterNode(node, "ImportSpecifier");
+    nodes.push(finishNode(node));
     if (!eat(_comma)) return nodes;
   }
   expect(_braceL);
@@ -2580,7 +2639,8 @@ function parseImportSpecifiers() {
     }
     checkLVal(node.name || node.id, true);
     node.default = false;
-    nodes.push(finishNode(node, "ImportSpecifier"));
+    enterNode(node, "ImportSpecifier");
+    nodes.push(finishNode(node));
   }
   return nodes;
 }
@@ -2597,7 +2657,8 @@ function parseYield() {
     node.delegate = eat(_star);
     node.argument = parseExpression(true);
   }
-  return finishNode(node, "YieldExpression");
+  enterNode(node, "YieldExpression");
+  return finishNode(node);
 }
 
 // Parses array and generator comprehensions.
@@ -2617,11 +2678,13 @@ function parseComprehension(node:Node, isGenerator:boolean) {
     block.of = true;
     block.right = parseExpression();
     expect(_parenR);
-    node.blocks.push(finishNode(block, "ComprehensionBlock"));
+    enterNode(block, "ComprehensionBlock");
+    node.blocks.push(finishNode(block));
   }
   node.filter = eat(_if) ? parseParenExpression() : null;
   node.body = parseExpression();
   expect(isGenerator ? _parenR : _bracketR);
   node.generator = isGenerator;
-  return finishNode(node, "ComprehensionExpression");
+  enterNode(node, "ComprehensionExpression");
+  return finishNode(node);
 }

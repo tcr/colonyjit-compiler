@@ -443,6 +443,16 @@ int Number (bool fact)
 	return (int) fact;
 }
 
+struct Node_C convert_to_Node_C (Node* node) {
+	struct Node_C C;
+	C.type = node->type.c_str();
+	C.start = node->start;
+	C.end = node->end;
+	C.name = node->name.c_str();
+	C.raw = node->raw.c_str();
+	C.arguments = node->arguments.size();
+	return C;
+}
 
 
 /**
