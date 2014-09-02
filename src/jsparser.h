@@ -49,6 +49,7 @@ int end;
 int arguments;
 // Node* key;
 // Node* value;
+const char* value_string;
 const char* raw;
 // int elements;
 // int properties;

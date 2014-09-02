@@ -443,6 +443,8 @@ int Number (bool fact)
 	return (int) fact;
 }
 
+#include <string.h>
+
 struct Node_C convert_to_Node_C (Node* node) {
 	struct Node_C C;
 	C.type = node->type.c_str();
@@ -450,6 +452,13 @@ struct Node_C convert_to_Node_C (Node* node) {
 	C.end = node->end;
 	C.name = node->name.c_str();
 	C.raw = node->raw.c_str();
+	//TODO: real value here
+	if (strlen(C.raw) != 0) {
+		C.value_string = (const char*) malloc(strlen(C.raw) - 2);
+		strncpy((char*) C.value_string, &C.raw[1], strlen(C.raw) - 2);
+	} else {
+		C.value_string = 0;
+	}
 	C.arguments = node->arguments.size();
 	return C;
 }
