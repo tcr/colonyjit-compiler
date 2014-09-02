@@ -152,47 +152,71 @@ int lastIndexOf(std::string input, std::string needle, int offset)
  * any type
  */
 
-struct js_t {
-	int type;
-	union {
-		bool value_bool;
-		double value_double;
-		std::string* value_string;
-	};
-};
-
-enum {
+typedef enum {
 	JS_NULL,
 	JS_DOUBLE,
 	JS_STRING,
-	JS_BOOLEAN
-} js_t_val;
+	JS_BOOLEAN,
+	JS_OBJECT
+} js_any_type_val;
 
-struct js_t js_null_t() {
-	struct js_t val = {};
-	val.type = JS_NULL;
-	return val;
+class js_any_type {
+	public:
+		js_any_type_val type;
+		bool value_bool;
+		double value_double;
+		std::string value_string;
+		void* value_node;
+
+		js_any_type();
+		js_any_type(std::string value);
+		js_any_type(bool value);
+		js_any_type(double value);
+		js_any_type(void* value);
+
+	std::string& operator= (std::string & right){
+		this->type = JS_STRING;
+		this->value_string = right;
+		return right;
+	}
+
+	bool operator== (const char* str) {
+		return this->type == JS_STRING && this->value_string == str;
+	}
+	bool operator!= (const char* str) {
+		return this->type != JS_STRING || this->value_string != str;
+	}
+
+	operator std::string const &() const { return this->value_string; }
+	operator void* const &() const { return this->value_node; }
+};
+
+std::string operator+ (std::string left, js_any_type & right){
+    return left + right.value_string;
 }
 
-struct js_t js_string_t(std::string* str) {
-	struct js_t val = {};
-	val.type = JS_STRING;
-	val.value_string = str;
-	return val;
+js_any_type::js_any_type() {
+	this->type = JS_NULL;
 }
 
-struct js_t js_double_t(double value) {
-	struct js_t val = {};
-	val.type = JS_DOUBLE;
-	val.value_double = value;
-	return val;
+js_any_type::js_any_type(std::string value) {
+	this->type = JS_STRING;
+	this->value_string = value;
 }
 
-struct js_t js_bool_t(bool value) {
-	struct js_t val = {};
-	val.type = JS_BOOLEAN;
-	val.value_bool = value;
-	return val;
+js_any_type::js_any_type(bool value) {
+	this->type = JS_BOOLEAN;
+	this->value_bool = value;
+}
+
+js_any_type::js_any_type(double value) {
+	this->type = JS_DOUBLE;
+	this->value_double = value;
+}
+
+js_any_type::js_any_type(void* value) {
+	this->type = JS_OBJECT;
+	this->value_node = value;
 }
 
 
@@ -397,7 +421,7 @@ class Node {
 	Node* callee;
 	std::vector<Node*> arguments;
 	Node* key;
-	Node* value;
+	js_any_type value;
 	std::string raw;
 	std::vector<Node*> elements;
 	std::vector<Node*> properties;
@@ -452,13 +476,7 @@ struct Node_C convert_to_Node_C (Node* node) {
 	C.end = node->end;
 	C.name = node->name.c_str();
 	C.raw = node->raw.c_str();
-	//TODO: real value here
-	if (strlen(C.raw) != 0) {
-		C.value_string = (const char*) malloc(strlen(C.raw) - 2);
-		strncpy((char*) C.value_string, &C.raw[1], strlen(C.raw) - 2);
-	} else {
-		C.value_string = 0;
-	}
+	C.value_string = node->value.value_string.c_str();
 	C.arguments = node->arguments.size();
 	return C;
 }
@@ -501,10 +519,13 @@ typedef struct {
  * this should be auto-generated...
  */
 
-int finishToken (keyword_t type, std::string val);
-int finishToken (keyword_t type, struct regexp_t value) { return finishToken(type, ""); }
-int finishToken (keyword_t type, double value) { return finishToken(type, ""); }
-int finishToken (keyword_t type) { return finishToken(type, ""); }
+int finishToken (keyword_t type, js_any_type val);
+int finishToken (keyword_t type, std::string value) { return finishToken(type, js_any_type(value)); }
+int finishToken (keyword_t type, bool value) { return finishToken(type, js_any_type(value)); }
+int finishToken (keyword_t type, double value) { return finishToken(type, value); }
+int finishToken (keyword_t type, int value) { return finishToken(type, (double) value); }
+int finishToken (keyword_t type, struct regexp_t value) { return finishToken(type, ""); } // TODO
+int finishToken (keyword_t type) { return finishToken(type, js_any_type()); }
 
 void onComment(options_t options, bool what, std::string code, int start, int tokPos,
                         int startLoc, bool ok) {
@@ -544,8 +565,3 @@ Node* toAssignable(Node* node)
 {
 	return node;
 }
-
-extern int tokEnd;
-extern int tokEndLoc;
-extern keyword_t tokType;
-extern std::string tokVal;
