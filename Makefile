@@ -10,3 +10,6 @@ all:
 
 clean:
 	rm -rf *.dSYM lj jscompiler out.bc || true
+
+test:
+	tinytap -e luajit loader.lua

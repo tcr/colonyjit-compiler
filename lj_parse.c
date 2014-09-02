@@ -2792,8 +2792,8 @@ void my_onopennode (struct Node_C C) {
   if (my_nodematch("Literal")) {
     ExpDesc* args = js_stack_top(0);
     expr_init(args, VKSTR, 0);
-    printf("literal '%s' %d\n", C.raw, strlen(C.raw));
-    GCstr *s = lj_str_new(my_fs->L, C.raw, strlen(C.raw));
+    printf("literal '%s' %d\n", C.value_string, strlen(C.value_string));
+    GCstr *s = lj_str_new(my_fs->L, C.value_string, strlen(C.value_string));
     args->u.sval = s;
 
     // Call Expression tail
