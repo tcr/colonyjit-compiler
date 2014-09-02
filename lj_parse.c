@@ -2752,6 +2752,8 @@ ExpDesc* js_stack_top (size_t mod)
     return ret;
 }
 
+int js_ismethod = 0;
+
 FuncState *my_fs;
 
 #define my_nodematch(T) (strncmp(C.type, T, strlen(T)) == 0)
@@ -2762,12 +2764,27 @@ void my_onopennode (struct Node_C C) {
   if (my_nodematch("Identifier")) {
     ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
-    var_lookup_(my_fs, s, ident, 1);
+    
+    if (js_ismethod) {
+      ExpDesc key;
+      expr_init(&key, VKSTR, 0);
+      key.u.sval = s;
+      bcemit_method(my_fs, ident, &key);
+    } else {
+      var_lookup_(my_fs, s, ident, 1);
+    }
+  }
+
+  if (my_nodematch("MemberExpression")) {
+    // ExpDesc* ident = js_stack_push();
+    js_ismethod = 1;
   }
 
   if (my_nodematch("CallExpression")) {
     ExpDesc* ident = js_stack_top(0);
-    expr_tonextreg(my_fs, ident);
+    if (!js_ismethod) {
+      expr_tonextreg(my_fs, ident);
+    }
     ExpDesc* args = js_stack_push();
     (void) args;
   }
@@ -2789,6 +2806,14 @@ void my_onclosenode (struct Node_C C) {
 
   // printf("type %s\n", C.type);
   printf("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
+
+  // if (my_nodematch("MemberExpression")) {
+  //   expr_init(&key, VKSTR, 0);
+  //   e->u.sval = lj_str_new(my_fs->L, C.name, strlen(C.name));
+  //   lj_lex_next(ls);
+  //   expr_str(ls, &key);
+  //   bcemit_method(fs, v, &key);
+  // }
 
   if (my_nodematch("ExpressionStatement")) {
     ExpDesc* expr = js_stack_top(0);
@@ -2892,14 +2917,14 @@ GCproto *js_parse(LexState *ls)
 
 static void w_append_write (const void*p, size_t sz)
 {
-        FILE *pFile =fopen("out.bc", "a");
+        FILE *pFile =fopen("bytecode.lua", "a");
         fwrite(p, sz, 1, pFile);
         fclose(pFile);
 }
 
 static void w_trunc_write ()
 {
-        FILE *pFile =fopen("out.bc", "w");
+        FILE *pFile =fopen("bytecode.lua", "w");
         fwrite(NULL, 0, 1, pFile);
         fclose(pFile);
 }
@@ -2980,11 +3005,10 @@ int main (int argc, char **argv)
   fclose(fp);
 
   lua_State *L;
+  L = luaL_newstate();
 
   w_trunc_write();
 
-  // all Lua contexts are held in this structure
-  L = luaL_newstate();
   js_loadx(L, js_luareader, NULL, "helloworld", "b");
 
   free(my_input);

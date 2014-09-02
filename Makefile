@@ -3,10 +3,10 @@ all:
 	./jscompiler test.js
 	@echo ''
 	@echo "bytecode:"
-	luajit -bl out.bc
+	luajit -bl bytecode.lua
 	@echo ''
 	@echo "test:"
-	luajit out.bc
+	luajit loader.lua
 
 clean:
 	rm -rf *.dSYM lj jscompiler out.bc || true
