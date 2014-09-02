@@ -919,7 +919,7 @@ function readRegexp() {
 
 function readInt(radix:number, len?:number) {
   var start = tokPos, total = 0;
-  for (var i = 0, e = len == null ? Infinity : len; i < e; ++i) {
+  for (var i = 0; !len || i < len; ++i) {
     var code = input.charCodeAt(tokPos), val:number;
     if (code >= 97) val = code - 97 + 10; // a
     else if (code >= 65) val = code - 65 + 10; // A

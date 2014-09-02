@@ -152,14 +152,6 @@ int lastIndexOf(std::string input, std::string needle, int offset)
  * any type
  */
 
-typedef enum {
-	JS_NULL,
-	JS_DOUBLE,
-	JS_STRING,
-	JS_BOOLEAN,
-	JS_OBJECT
-} js_any_type_val;
-
 class js_any_type {
 	public:
 		js_any_type_val type;
@@ -210,6 +202,7 @@ js_any_type::js_any_type(bool value) {
 }
 
 js_any_type::js_any_type(double value) {
+	printf("WOW %f\n", value);
 	this->type = JS_DOUBLE;
 	this->value_double = value;
 }
@@ -476,7 +469,9 @@ struct Node_C convert_to_Node_C (Node* node) {
 	C.end = node->end;
 	C.name = node->name.c_str();
 	C.raw = node->raw.c_str();
+	C.value_type = node->value.type;
 	C.value_string = node->value.value_string.c_str();
+	C.value_double = node->value.value_double;
 	C.arguments = node->arguments.size();
 	return C;
 }
@@ -522,8 +517,11 @@ typedef struct {
 int finishToken (keyword_t type, js_any_type val);
 int finishToken (keyword_t type, std::string value) { return finishToken(type, js_any_type(value)); }
 int finishToken (keyword_t type, bool value) { return finishToken(type, js_any_type(value)); }
-int finishToken (keyword_t type, double value) { return finishToken(type, value); }
-int finishToken (keyword_t type, int value) { return finishToken(type, (double) value); }
+int finishToken (keyword_t type, double value) { return finishToken(type, js_any_type(value)); }
+int finishToken (keyword_t type, int value) {
+	printf("asint %d\n", value);
+	return finishToken(type, (double) value);
+}
 int finishToken (keyword_t type, struct regexp_t value) { return finishToken(type, ""); } // TODO
 int finishToken (keyword_t type) { return finishToken(type, js_any_type()); }
 

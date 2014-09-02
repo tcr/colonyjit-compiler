@@ -7,6 +7,16 @@ extern "C" {
 
 #ifndef _JS_PARSER_H_
 
+	
+
+typedef enum {
+	JS_NULL,
+	JS_DOUBLE,
+	JS_STRING,
+	JS_BOOLEAN,
+	JS_OBJECT
+} js_any_type_val;
+
 struct Node_C {
 const char* type;
 int start;
@@ -49,7 +59,9 @@ int end;
 int arguments;
 // Node* key;
 // Node* value;
+js_any_type_val value_type;
 const char* value_string;
+double value_double;
 const char* raw;
 // int elements;
 // int properties;
