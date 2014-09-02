@@ -2718,8 +2718,9 @@ static void parse_chunk(LexState *ls)
 
 
 
-
-
+/**************************************************************************
+** BELOW IS ORIGINAL CODE
+**************************************************************************/
 
 #include "../jsparser.cpp/out/jsparser.h"
 #include <stdio.h>
@@ -2727,118 +2728,117 @@ static void parse_chunk(LexState *ls)
 #include <lj_bcdump.h>
 #include <lua.h>
 #include <lauxlib.h>
+#include <assert.h>
 
-ExpDesc ident;
-ExpDesc memberv;
-ExpDesc args;
-BCIns ins;
+ExpDesc js_stack[100];
+size_t js_stack_idx = 0;
+
+ExpDesc* js_stack_push ()
+{
+    ExpDesc* ret = &js_stack[js_stack_idx];
+    js_stack_idx++;
+    return ret;
+}
+
+void js_stack_pop ()
+{
+    js_stack_idx--;
+    assert(js_stack_idx >= 0);
+}
+
+ExpDesc* js_stack_top (size_t mod)
+{
+    ExpDesc* ret = &js_stack[js_stack_idx + mod];
+    return ret;
+}
 
 FuncState *my_fs;
 
 #define my_nodematch(T) (strncmp(C.type, T, strlen(T)) == 0)
 
 void my_onopennode (struct Node_C C) {
-  // printf("type %s\n", C.type);
   printf("-> enter %s\n", C.type);
 
-/*
-  if MemberExpression {
-    memberv = ident;
-    expr_toanyreg(fs, memberv);
-  }
-*/
-
   if (my_nodematch("Identifier")) {
+    ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
-    var_lookup_(my_fs, s, &ident, 1);
+    var_lookup_(my_fs, s, ident, 1);
   }
 
   if (my_nodematch("CallExpression")) {
-    expr_tonextreg(my_fs, &ident);
-    // parse_args(ls, &ident);
+    ExpDesc* ident = js_stack_top(0);
+    expr_tonextreg(my_fs, ident);
+    ExpDesc* args = js_stack_push();
+    (void) args;
   }
 
   if (my_nodematch("Literal")) {
-    expr_init(&args, VKSTR, 0);
+    ExpDesc* args = js_stack_top(0);
+    expr_init(args, VKSTR, 0);
     printf("literal '%s' %d\n", C.raw, strlen(C.raw));
     GCstr *s = lj_str_new(my_fs->L, C.raw, strlen(C.raw));
-    args.u.sval = s;
+    args->u.sval = s;
 
     // Call Expression tail
-    expr_tonextreg(my_fs, &args);
+    expr_tonextreg(my_fs, args);
   }
-
-/*
-  if CallExpression {
-    expr_tonextreg(fs, memberv);
-    // after each
-    // expr_tonextreg(ls->fs, v);
-  }
-
-  if Literal {
-    // dispatch to single register
-    ins = BCINS_AD(BC_KSTR, reg, const_str(fs, e));
-  }
-*/
 }
 
 void my_onclosenode (struct Node_C C) {
+  BCIns ins;
+
   // printf("type %s\n", C.type);
   printf("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
 
   if (my_nodematch("ExpressionStatement")) {
+    ExpDesc* expr = js_stack_top(0);
+
+    if (expr->k == VCALL) {  /* Function call statement. */
+      setbc_b(bcptr(my_fs, expr), 1);  /* No results. */
+    } else {  /* Start of an assignment. */
+      // vl.prev = NULL;
+      // parse_assignment(ls, &vl, 1);
+      printf("[TODO]\n");
+    }
+
     lua_assert(my_fs->framesize >= my_fs->freereg &&
          my_fs->freereg >= my_fs->nactvar);
     my_fs->freereg = my_fs->nactvar;
   }
 
   if (my_nodematch("CallExpression")) {
+    ExpDesc* ident = js_stack_top(-1);
+    ExpDesc* args = js_stack_top(0);
+
     if (C.arguments == 0) { // f().
-      args.k = VVOID;
+      args->k = VVOID;
     } else {
-      if (args.k == VCALL)  /* f(a, b, g()) or f(a, b, ...). */
-        setbc_b(bcptr(my_fs, &args), 0);  /* Pass on multiple results. */
+      if (args->k == VCALL)  /* f(a, b, g()) or f(a, b, ...). */
+        setbc_b(bcptr(my_fs, args), 0);  /* Pass on multiple results. */
     }
 
     BCReg base;
 
-    lua_assert(&ident->k == VNONRELOC);
-    base = ident.u.s.info;  /* Base register for call. */
-    if (args.k == VCALL) {
-      ins = BCINS_ABC(BC_CALLM, base, 2, args.u.s.aux - base - 1);
+    lua_assert(ident->k == VNONRELOC);
+    base = ident->u.s.info;  /* Base register for call. */
+    if (args->k == VCALL) {
+      ins = BCINS_ABC(BC_CALLM, base, 2, args->u.s.aux - base - 1);
     } else {
-      if (args.k != VVOID)
-        expr_tonextreg(my_fs, &args);
+      if (args->k != VVOID)
+        expr_tonextreg(my_fs, args);
       ins = BCINS_ABC(BC_CALL, base, 2, my_fs->freereg - base);
     }
-    expr_init(&ident, VCALL, bcemit_INS(my_fs, ins));
-    ident.u.s.aux = base;
+    expr_init(ident, VCALL, bcemit_INS(my_fs, ins));
+    ident->u.s.aux = base;
     my_fs->bcbase[my_fs->pc - 1].line = 0;
     my_fs->freereg = base+1;  /* Leave one result by default. */
-  }
 
-/*
-  if (strcmp(C.type, "ExpressionStatement") == 0) {
-    lua_assert(ls->fs->framesize >= ls->fs->freereg &&
-         ls->fs->freereg >= ls->fs->nactvar);
-    ls->fs->freereg = ls->fs->nactvar;
+    js_stack_pop();
   }
-
-  if CallExpression {
-    // parse_args
-    if (ls->token == ')') {
-      args.k = VVOID;
-    } else {
-      expr_list(ls, &args);
-      if (args.k == VCALL)
-        setbc_b(bcptr(fs, &args), 0);
-    }
-  }      
-      parse_args(ls, v);
-*/
 }
 
-static const char*my_input = "print('JONATHAM MCKAY');";
+static char* my_input;
+static size_t my_input_len = 0;
 
 /* Entry point of bytecode parser. */
 GCproto *js_parse(LexState *ls)
@@ -2950,9 +2950,7 @@ LUA_API int js_loadx(lua_State *L, lua_Reader reader, void *data,
   return status;
 }
 
-const char * js_luareader (lua_State *L,
-                                    void *data,
-                                    size_t *size)
+const char * js_luareader (lua_State *L, void *data, size_t *size)
 {
   static size_t len = -1;
   *size = len == -1 ? strlen(my_input) : 0;
@@ -2960,20 +2958,35 @@ const char * js_luareader (lua_State *L,
   return my_input;
 }
 
-int main (void)
+int main (int argc, char **argv)
 {
-  printf("Parsing '%s'\n", my_input);
+  if (argc < 1) {
+    printf("Usage: test path.js\n");
+    return 1;
+  }
 
-  
+  // Read in a file.
+  FILE *fp;
+  fp = fopen(argv[1], "rb");
+  if (fp == NULL) {
+    printf("no file found\n");
+    return 1;
+  }
+  fseek(fp, 0, SEEK_END); // seek to end of file
+  my_input_len = ftell(fp); // get current file pointer
+  fseek(fp, 0, SEEK_SET); // seek back to beginning of file
+  my_input = (char*) malloc(my_input_len);
+  fread(my_input, my_input_len, 1, fp);
+  fclose(fp);
+
   lua_State *L;
 
   w_trunc_write();
 
   // all Lua contexts are held in this structure
   L = luaL_newstate();
-  printf("well %p\n", L);
-
   js_loadx(L, js_luareader, NULL, "helloworld", "b");
-  printf("#BYE\n");
+
+  free(my_input);
   return 0;
 }
