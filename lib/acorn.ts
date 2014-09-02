@@ -915,7 +915,7 @@ function readRegexp() {
 
 // Read an integer in the given radix. Return null if zero digits
 // were read, the integer value otherwise. When `len` is given, this
-// will return `null` unless the integer has exactly `len` digits.
+// will return `NaN` unless the integer has exactly `len` digits.
 
 function readInt(radix:number, len?:number) {
   var start = tokPos, total = 0;
@@ -929,7 +929,7 @@ function readInt(radix:number, len?:number) {
     ++tokPos;
     total = total * radix + val;
   }
-  if (tokPos === start || len != null && tokPos - start !== len) return null;
+  if (tokPos === start || (len && tokPos - start !== len)) return NaN;
 
   return total;
 }
@@ -937,7 +937,7 @@ function readInt(radix:number, len?:number) {
 function readRadixNumber(radix:number) {
   tokPos += 2; // 0x
   var val = readInt(radix);
-  if (val == null) raise(tokStart + 2, "Expected number in radix " + radix);
+  if (isNaN(val)) raise(tokStart + 2, "Expected number in radix " + radix);
   if (isIdentifierStart(input.charCodeAt(tokPos))) raise(tokPos, "Identifier directly after number");
   return finishToken(_num, val);
 }
@@ -946,7 +946,7 @@ function readRadixNumber(radix:number) {
 
 function readNumber(startsWithDot:boolean) {
   var start = tokPos, isFloat = false, octal = input.charCodeAt(tokPos) === 48;
-  if (!startsWithDot && readInt(10) === null) raise(start, "Invalid number");
+  if (!startsWithDot && isNaN(readInt(10))) raise(start, "Invalid number");
   if (input.charCodeAt(tokPos) === 46) {
     ++tokPos;
     readInt(10);
@@ -956,7 +956,7 @@ function readNumber(startsWithDot:boolean) {
   if (next === 69 || next === 101) { // 'eE'
     next = input.charCodeAt(++tokPos);
     if (next === 43 || next === 45) ++tokPos; // '+-'
-    if (readInt(10) === null) raise(start, "Invalid number");
+    if (isNaN(readInt(10))) raise(start, "Invalid number");
     isFloat = true;
   }
   if (isIdentifierStart(input.charCodeAt(tokPos))) raise(tokPos, "Identifier directly after number");
@@ -1061,7 +1061,7 @@ function readString(quote?:number) {
 
 function readHexChar(len:number) {
   var n = readInt(16, len);
-  if (n === null) raise(tokStart, "Bad character escape sequence");
+  if (isNaN(n)) raise(tokStart, "Bad character escape sequence");
   return n;
 }
 

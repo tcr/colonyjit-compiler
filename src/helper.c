@@ -2,6 +2,11 @@
 #include <string>
 #include <vector>
 
+double NaN = strtod("NaN", NULL);
+double Infinity = strtod("Inf", NULL);
+
+#define isNaN isnan
+
 #define LOGICALOR(A,B) ({ auto left = A; left ? left : B; })
 
 bool operator&& (std::string & left, bool right){
@@ -31,7 +36,6 @@ bool ISNOTNULL (std::string str)
 }
 
 #define null nullptr
-#define Infinity 0x7FFFFFFF
 
 uint32_t DBL_NULL_VAL = 0x7fc00001;
 #define DBL_NULL *((double*) (&DBL_NULL_VAL))
@@ -202,7 +206,6 @@ js_any_type::js_any_type(bool value) {
 }
 
 js_any_type::js_any_type(double value) {
-	printf("WOW %f\n", value);
 	this->type = JS_DOUBLE;
 	this->value_double = value;
 }
