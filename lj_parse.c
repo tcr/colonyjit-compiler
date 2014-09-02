@@ -2829,6 +2829,8 @@ void my_onclosenode (struct Node_C C) {
     lua_assert(my_fs->framesize >= my_fs->freereg &&
          my_fs->freereg >= my_fs->nactvar);
     my_fs->freereg = my_fs->nactvar;
+
+    js_ismethod = 0;
   }
 
   if (my_nodematch("CallExpression")) {
@@ -2858,6 +2860,7 @@ void my_onclosenode (struct Node_C C) {
     my_fs->bcbase[my_fs->pc - 1].line = 0;
     my_fs->freereg = base+1;  /* Leave one result by default. */
 
+    js_stack_pop();
     js_stack_pop();
   }
 }
