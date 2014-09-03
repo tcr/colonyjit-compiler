@@ -4,4 +4,8 @@ _G.console = {
 	end
 }
 
+_G.typeof = function (arg)
+	return type(arg)
+end
+
 require('bytecode')

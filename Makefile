@@ -5,6 +5,9 @@ all:
 	@echo "bytecode:"
 	luajit -bl bytecode.lua
 	@echo ''
+	@echo 'vs:'
+	luajit -bl test.lua
+	@echo ''
 	@echo "test:"
 	luajit loader.lua
 

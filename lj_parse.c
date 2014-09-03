@@ -2785,6 +2785,7 @@ void my_onopennode (struct Node_C C) {
     if (!js_ismethod) {
       expr_tonextreg(my_fs, ident);
     }
+    js_ismethod = 0;
     ExpDesc* args = js_stack_push();
     (void) args;
   }
@@ -2795,7 +2796,6 @@ void my_onopennode (struct Node_C C) {
     switch (C.value_type) {
       case JS_STRING:
         expr_init(args, VKSTR, 0);
-        printf("literal '%s' %d\n", C.value_string, strlen(C.value_string));
         s = lj_str_new(my_fs->L, C.value_string, strlen(C.value_string));
         args->u.sval = s;
         break;
@@ -2839,11 +2839,11 @@ void my_onclosenode (struct Node_C C) {
       printf("[TODO]\n");
     }
 
+    js_stack_pop();
+
     lua_assert(my_fs->framesize >= my_fs->freereg &&
          my_fs->freereg >= my_fs->nactvar);
     my_fs->freereg = my_fs->nactvar;
-
-    js_ismethod = 0;
   }
 
   if (my_nodematch("CallExpression")) {
@@ -2861,19 +2861,14 @@ void my_onclosenode (struct Node_C C) {
 
     lua_assert(ident->k == VNONRELOC);
     base = ident->u.s.info;  /* Base register for call. */
-    if (args->k == VCALL) {
-      ins = BCINS_ABC(BC_CALLM, base, 2, args->u.s.aux - base - 1);
-    } else {
-      if (args->k != VVOID)
-        expr_tonextreg(my_fs, args);
-      ins = BCINS_ABC(BC_CALL, base, 2, my_fs->freereg - base);
-    }
+    if (args->k != VVOID)
+      expr_tonextreg(my_fs, args);
+    ins = BCINS_ABC(BC_CALL, base, 2, my_fs->freereg - base);
     expr_init(ident, VCALL, bcemit_INS(my_fs, ins));
     ident->u.s.aux = base;
     my_fs->bcbase[my_fs->pc - 1].line = 0;
     my_fs->freereg = base+1;  /* Leave one result by default. */
 
-    js_stack_pop();
     js_stack_pop();
   }
 }
@@ -3027,6 +3022,6 @@ int main (int argc, char **argv)
 
   js_loadx(L, js_luareader, NULL, "helloworld", "b");
 
-  free(my_input);
+  // free(my_input);
   return 0;
 }
