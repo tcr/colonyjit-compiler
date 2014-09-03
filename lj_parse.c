@@ -2752,67 +2752,96 @@ ExpDesc* js_stack_top (size_t mod)
     return ret;
 }
 
+typedef enum {
+  JS_COND_NONE,
+  JS_COND_CONSEQUENT
+} js_stack_cond;
+
+typedef struct {
+  int level;
+  js_stack_cond cond;
+} js_stack_level;
+
+js_stack_level js_stack_levels[100];
+int js_stack_levels_idx = 0;
+
 int js_ismethod = 0;
+
+
+
 
 FuncState *my_fs;
 
 #define my_nodematch(T) (strncmp(C.type, T, strlen(T)) == 0)
+#define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0)
 
-void my_onopennode (struct Node_C C) {
-  printf("-> enter %s\n", C.type);
 
-  if (my_nodematch("Identifier")) {
-    ExpDesc* ident = js_stack_top(0);
-    GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
-    
-    if (js_ismethod) {
-      ExpDesc key;
-      expr_init(&key, VKSTR, 0);
-      key.u.sval = s;
-      bcemit_method(my_fs, ident, &key);
-    } else {
-      var_lookup_(my_fs, s, ident, 1);
-    }
-  }
+void my_onopennode (const char* type) {
+  printf("well %s\n", type);
 
-  if (my_nodematch("MemberExpression")) {
+  if (my_streq(type, "parseSubscripts")) {
+    printf("--parsesubscripts\n");
     // ExpDesc* ident = js_stack_push();
     js_ismethod = 1;
   }
 
-  if (my_nodematch("CallExpression")) {
+  if (my_streq(type, "parseExprList")) {
+    printf("--parseexprlist\n");
     ExpDesc* ident = js_stack_top(0);
-    if (!js_ismethod) {
-      expr_tonextreg(my_fs, ident);
-    }
-    js_ismethod = 0;
+    // if (!js_ismethod) {
+    //   expr_tonextreg(my_fs, ident);
+    // }
+    // js_ismethod = 0;
     ExpDesc* args = js_stack_push();
     (void) args;
   }
-
-  if (my_nodematch("Literal")) {
-    GCstr *s = NULL;
-    ExpDesc* args = js_stack_top(0);
-    switch (C.value_type) {
-      case JS_STRING:
-        expr_init(args, VKSTR, 0);
-        s = lj_str_new(my_fs->L, C.value_string, strlen(C.value_string));
-        args->u.sval = s;
-        break;
-
-      case JS_DOUBLE:
-        expr_init(args, VKNUM, 0);
-        setnumV(&args->u.nval, C.value_double);
-        break;
-
-      default:
-        assert(0);
-    }
-
-    // Call Expression tail
-    expr_tonextreg(my_fs, args);
-  }
 }
+
+// void my_onopennode_old (struct Node_C C) {
+  // js_stack_levels[js_stack_levels_idx].level += 1;
+
+  // printf("-> enter %s\n", C.type);
+
+  // if (my_nodematch("UnaryExpression")) {
+  //   if (my_streq(C._operator, "typeof")) {
+  //     ExpDesc* ident = js_stack_top(0);
+  //     GCstr *s = lj_str_new(my_fs->L, C._operator, strlen(C._operator));
+  //     var_lookup_(my_fs, s, ident, 1);
+  //     expr_tonextreg(my_fs, ident);
+  //     ExpDesc* args = js_stack_push();
+  //     (void) args;
+  //   }
+
+  //   else {
+  //     printf("TODO: UnaryExpression\n");
+  //   }
+  // }
+
+  // if (my_nodematch("IfStatement")) {
+    // BCPos flist;
+    // BCPos escapelist = NO_JMP;
+    // // flist = parse_then(ls);
+
+    // ExpDesc* cond = js_stack_push();
+    // (void) cond;
+
+    // js_stack_levels_idx++;
+    // js_stack_levels[js_stack_levels_idx].level = 0;
+    // js_stack_levels[js_stack_levels_idx].cond = JS_COND_CONSEQUENT;
+
+    // ... parse dat
+    // if (v.k == VKNIL) v.k = VKFALSE;
+    // bcemit_branch_t(my_fs, &v);
+
+    // flist = expr_cond(ls);
+    
+    // ... parse statement
+    // jmp_append(fs, &escapelist, flist);
+    // jmp_tohere(fs, escapelist);
+
+    // return condexit;
+//   }
+// }
 
 void my_onclosenode (struct Node_C C) {
   BCIns ins;
@@ -2828,7 +2857,24 @@ void my_onclosenode (struct Node_C C) {
   //   bcemit_method(fs, v, &key);
   // }
 
+  if (my_nodematch("Identifier")) {
+    ExpDesc* ident = js_stack_top(0);
+    GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
+    
+      printf("ISAMETHOD %d\n", js_ismethod);
+    if (js_ismethod) {
+      ExpDesc key;
+      expr_init(&key, VKSTR, 0);
+      key.u.sval = s;
+      bcemit_method(my_fs, ident, &key);
+    } else {
+      var_lookup_(my_fs, s, ident, 1);
+    }
+  }
+
   if (my_nodematch("ExpressionStatement")) {
+    js_ismethod = 0;
+    
     ExpDesc* expr = js_stack_top(0);
 
     if (expr->k == VCALL) {  /* Function call statement. */
@@ -2836,7 +2882,7 @@ void my_onclosenode (struct Node_C C) {
     } else {  /* Start of an assignment. */
       // vl.prev = NULL;
       // parse_assignment(ls, &vl, 1);
-      printf("[TODO]\n");
+      printf("TODO: assignment\n");
     }
 
     js_stack_pop();
@@ -2846,7 +2892,9 @@ void my_onclosenode (struct Node_C C) {
     my_fs->freereg = my_fs->nactvar;
   }
 
-  if (my_nodematch("CallExpression")) {
+  if (my_nodematch("CallExpression") || (my_nodematch("UnaryExpression") && my_streq(C._operator, "typeof"))) {
+    js_ismethod = 0;
+
     ExpDesc* ident = js_stack_top(-1);
     ExpDesc* args = js_stack_top(0);
 
@@ -2871,6 +2919,43 @@ void my_onclosenode (struct Node_C C) {
 
     js_stack_pop();
   }
+
+  if (my_nodematch("Literal")) {
+    GCstr *s = NULL;
+    ExpDesc* args = js_stack_top(0);
+    switch (C.value_type) {
+      case JS_STRING:
+        expr_init(args, VKSTR, 0);
+        s = lj_str_new(my_fs->L, C.value_string, strlen(C.value_string));
+        args->u.sval = s;
+        break;
+
+      case JS_DOUBLE:
+        expr_init(args, VKNUM, 0);
+        setnumV(&args->u.nval, C.value_double);
+        break;
+
+      default:
+        assert(0);
+    }
+
+    // Call Expression tail
+    expr_tonextreg(my_fs, args);
+  }
+
+  // if (js_stack_levels[js_stack_levels_idx].level > -1) {
+  //   js_stack_levels[js_stack_levels_idx].level -= 1;
+  // }
+  // if (js_stack_levels[js_stack_levels_idx].level == 0) {
+  //   switch (js_stack_levels[js_stack_levels_idx].cond) {
+  //     case JS_COND_CONSEQUENT:
+  //       printf("now it's a consequent\n");
+  //       break;
+  //   }
+  //   if (js_stack_levels_idx > 0) {
+  //     js_stack_levels_idx--;
+  //   }
+  // }
 }
 
 static char* my_input;
