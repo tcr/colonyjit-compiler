@@ -55,6 +55,7 @@ export var version = "0.6.1";
 var options:Options, input:string, inputLen:number, sourceFile:string;
 
 export function parse (inpt:string, opts:any) {
+  //C jsparse_callback_open("parse");
   input = String(inpt); inputLen = input.length;
   setOptions(opts);
   initTokenState();
@@ -1286,7 +1287,6 @@ function startNodeFrom(other:Node) {
 
 function enterNode(node:Node, type:string) {
   node.type = type;
-  //C jsparse_callback_open(convert_to_Node_C(node));
   return node;
 }
 
@@ -1498,6 +1498,7 @@ function checkLVal(expr:Node, isBinding?:boolean) {
 // to its body instead of creating a new node.
 
 function parseTopLevel(program:Node) {
+  //C jsparse_callback_open("parseTopLevel");
   lastStart = lastEnd = tokPos;
   if (options.locations) lastEndLoc = new Position;
   inFunction = inGenerator = strict = false;
@@ -1526,6 +1527,7 @@ var loopLabel:Label = {kind: "loop"}, switchLabel:Label = {kind: "switch"};
 // does not help.
 
 function parseStatement() {
+  //C jsparse_callback_open("parseStatement");
   if (tokType === _slash || tokType === _assign && tokVal == "/=")
     readToken(true);
 
@@ -1569,6 +1571,7 @@ function parseStatement() {
 }
 
 function parseBreakContinueStatement(node:Node, keyword:string) {
+  //C jsparse_callback_open("parseBreakContinueStatement");
   var isBreak = keyword == "break";
   next();
   if (eat(_semi) || canInsertSemicolon()) node.label = null;
@@ -1593,6 +1596,7 @@ function parseBreakContinueStatement(node:Node, keyword:string) {
 }
 
 function parseDebuggerStatement(node:Node) {
+  //C jsparse_callback_open("parseDebuggerStatement");
   next();
   semicolon();
   enterNode(node, "DebuggerStatement");
@@ -1600,6 +1604,7 @@ function parseDebuggerStatement(node:Node) {
 }
 
 function parseDoStatement(node:Node) {
+  //C jsparse_callback_open("parseDoStatement");
   next();
   labels.push(loopLabel);
   node.body = parseStatement();
@@ -1620,6 +1625,7 @@ function parseDoStatement(node:Node) {
 // is a regular `for` loop.
 
 function parseForStatement(node:Node) {
+  //C jsparse_callback_open("parseForStatement");
   next();
   labels.push(loopLabel);
   expect(_parenL);
@@ -1644,20 +1650,23 @@ function parseForStatement(node:Node) {
 }
 
 function parseFunctionStatement(node:Node) {
+  //C jsparse_callback_open("parseFunctionStatement");
   next();
   return parseFunction(node, true);
 }
 
 function parseIfStatement(node:Node) {
+  //C jsparse_callback_open("parseIfStatement");
+  enterNode(node, "IfStatement");
   next();
   node.test = parseParenExpression();
   node.consequent = parseStatement();
   node.alternate = eat(_else) ? parseStatement() : null;
-  enterNode(node, "IfStatement");
   return finishNode(node);
 }
 
 function parseReturnStatement(node:Node) {
+  //C jsparse_callback_open("parseReturnStatement");
   if (!inFunction && !options.allowReturnOutsideFunction)
     raise(tokStart, "'return' outside of function");
   next();
@@ -1673,6 +1682,7 @@ function parseReturnStatement(node:Node) {
 }
 
 function parseSwitchStatement(node:Node) {
+  //C jsparse_callback_open("parseSwitchStatement");
   next();
   node.discriminant = parseParenExpression();
   node.cases = [];
@@ -1709,6 +1719,7 @@ function parseSwitchStatement(node:Node) {
 }
 
 function parseThrowStatement(node:Node) {
+  //C jsparse_callback_open("parseThrowStatement");
   next();
   if (newline.test(input.slice(lastEnd, tokStart)))
     raise(lastEnd, "Illegal newline after throw");
@@ -1719,6 +1730,7 @@ function parseThrowStatement(node:Node) {
 }
 
 function parseTryStatement(node:Node) {
+  //C jsparse_callback_open("parseTryStatement");
   next();
   node.block = parseBlock();
   node.handler = null;
@@ -1744,6 +1756,7 @@ function parseTryStatement(node:Node) {
 }
 
 function parseVarStatement(node:Node, kind:string) {
+  //C jsparse_callback_open("parseVarStatement");
   next();
   parseVar(node, false, kind);
   semicolon();
@@ -1752,6 +1765,7 @@ function parseVarStatement(node:Node, kind:string) {
 }
 
 function parseWhileStatement(node:Node) {
+  //C jsparse_callback_open("parseWhileStatement");
   next();
   node.test = parseParenExpression();
   labels.push(loopLabel);
@@ -1762,6 +1776,7 @@ function parseWhileStatement(node:Node) {
 }
 
 function parseWithStatement(node:Node) {
+  //C jsparse_callback_open("parseWithStatement");
   if (strict) raise(tokStart, "'with' in strict mode");
   next();
   node.object = parseParenExpression();
@@ -1771,12 +1786,14 @@ function parseWithStatement(node:Node) {
 }
 
 function parseEmptyStatement(node:Node) {
+  //C jsparse_callback_open("parseEmptyStatement");
   next();
   enterNode(node, "EmptyStatement");
   return finishNode(node);
 }
 
 function parseLabeledStatement(node:Node, maybeName:string, expr:Node) {
+  //C jsparse_callback_open("parseLabeledStatement");
   for (var i = 0; i < labels.length; ++i)
     if (labels[i].name === maybeName) raise(expr.start, "Label '" + maybeName + "' is already declared");
   var kind = tokType.isLoop ? "loop" : tokType === _switch ? "switch" : null;
@@ -1789,6 +1806,7 @@ function parseLabeledStatement(node:Node, maybeName:string, expr:Node) {
 }
 
 function parseExpressionStatement(node:Node, expr:Node) {
+  //C jsparse_callback_open("parseExpressionStatement");
   node.expression = expr;
   semicolon();
   enterNode(node, "ExpressionStatement");
@@ -1799,6 +1817,7 @@ function parseExpressionStatement(node:Node, expr:Node) {
 // parentheses around their expression.
 
 function parseParenExpression() {
+  //C jsparse_callback_open("parseParenExpression");
   expect(_parenL);
   var val = parseExpression();
   expect(_parenR);
@@ -1810,6 +1829,7 @@ function parseParenExpression() {
 // function bodies).
 
 function parseBlock(allowStrict?:boolean) {
+  //C jsparse_callback_open("parseBlock");
   var node = startNode(), first = true, strict = false, oldStrict:boolean;
   node.bodylist = [];
   expect(_braceL);
@@ -1832,6 +1852,7 @@ function parseBlock(allowStrict?:boolean) {
 // expression.
 
 function parseFor(node:Node, init:Node) {
+  //C jsparse_callback_open("parseFor");
   node.init = init;
   expect(_semi);
   node.test = tokType === _semi ? null : parseExpression();
@@ -1848,6 +1869,7 @@ function parseFor(node:Node, init:Node) {
 // same from parser's perspective.
 
 function parseForIn(node:Node, init:Node) {
+  //C jsparse_callback_open("parseForIn");
   var type = tokType === _in ? "ForInStatement" : "ForOfStatement";
   next();
   node.left = init;
@@ -1862,6 +1884,7 @@ function parseForIn(node:Node, init:Node) {
 // Parse a list of variable declarations.
 
 function parseVar(node:Node, noIn:boolean, kind:string) {
+  //C jsparse_callback_open("parseVar");
   node.declarations = [];
   node.kind = kind;
   for (;;) {
@@ -1895,6 +1918,7 @@ function parseVar(node:Node, noIn:boolean, kind:string) {
 // or the `in` operator (in for loops initalization expressions).
 
 function parseExpression(noComma?:boolean, noIn?:boolean) {
+  //C jsparse_callback_open("parseExpression");
   var expr = parseMaybeAssign(noIn);
   if (!noComma && tokType === _comma) {
     var node = startNodeFrom(expr);
@@ -1910,6 +1934,7 @@ function parseExpression(noComma?:boolean, noIn?:boolean) {
 // operators like `+=`.
 
 function parseMaybeAssign(noIn:boolean) {
+  //C jsparse_callback_open("parseMaybeAssign");
   var left = parseMaybeConditional(noIn);
   if (tokType.isAssign) {
     var node = startNodeFrom(left);
@@ -1927,6 +1952,7 @@ function parseMaybeAssign(noIn:boolean) {
 // Parse a ternary conditional (`?:`) operator.
 
 function parseMaybeConditional(noIn:boolean) {
+  //C jsparse_callback_open("parseMaybeConditional");
   var expr = parseExprOps(noIn);
   if (eat(_question)) {
     var node = startNodeFrom(expr);
@@ -1943,6 +1969,7 @@ function parseMaybeConditional(noIn:boolean) {
 // Start the precedence parser.
 
 function parseExprOps(noIn:boolean) {
+  //C jsparse_callback_open("parseExprOps");
   return parseExprOp(parseMaybeUnary(), -1, noIn);
 }
 
@@ -1953,6 +1980,7 @@ function parseExprOps(noIn:boolean) {
 // operator that has a lower precedence than the set it is parsing.
 
 function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
+  //C jsparse_callback_open("parseExprOp");
   var prec = tokType.binop;
   if (prec != null && (!noIn || tokType !== _in)) {
     if (prec > minPrec) {
@@ -1962,7 +1990,7 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
       var op = tokType;
       next();
       node.right = parseExprOp(parseMaybeUnary(), prec, noIn);
-      enterNode(node, (op === _logicalOR || op === _logicalAND) ? "LogicalExpression" : "BinaryExpression");
+      // enterNode(node, (op === _logicalOR || op === _logicalAND) ? "LogicalExpression" : "BinaryExpression");
       var exprNode = finishNode(node);
       return parseExprOp(exprNode, minPrec, noIn);
     }
@@ -1973,18 +2001,19 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
 // Parse unary operators, both prefix and postfix.
 
 function parseMaybeUnary() {
+  //C jsparse_callback_open("parseMaybeUnary");
   if (tokType.prefix) {
     var node = startNode(), update = tokType.isUpdate;
     node.operator = tokVal;
     node.prefix = true;
     tokRegexpAllowed = true;
     next();
+    enterNode(node, update ? "UpdateExpression" : "UnaryExpression");
     node.argument = parseMaybeUnary();
     if (update) checkLVal(node.argument);
     else if (strict && node.operator === "delete" &&
              node.argument.type === "Identifier")
       raise(node.start, "Deleting local variable in strict mode");
-    enterNode(node, update ? "UpdateExpression" : "UnaryExpression");
     return finishNode(node);
   }
   var expr = parseExprSubscripts();
@@ -2004,10 +2033,12 @@ function parseMaybeUnary() {
 // Parse call, dot, and `[]`-subscript expressions.
 
 function parseExprSubscripts() {
+  //C jsparse_callback_open("parseExprSubscripts");
   return parseSubscripts(parseExprAtom());
 }
 
 function parseSubscripts(base:Node, noCalls?:boolean):Node {
+  //C jsparse_callback_open("parseSubscripts");
   if (eat(_dot)) {
     var node = startNodeFrom(base);
     enterNode(node, "MemberExpression");
@@ -2044,6 +2075,7 @@ function parseSubscripts(base:Node, noCalls?:boolean):Node {
 // or `{}`.
 
 function parseExprAtom() {
+  //C jsparse_callback_open("parseExprAtom");
   switch (tokType) {
   case _this:
     var node = startNode();
@@ -2158,6 +2190,7 @@ function parseExprAtom() {
 // least, not without wrapping it in parentheses. Thus, it uses the
 
 function parseNew() {
+  //C jsparse_callback_open("parseNew");
   var node = startNode();
   next();
   node.callee = parseSubscripts(parseExprAtom(), true);
@@ -2170,6 +2203,7 @@ function parseNew() {
 // Parse spread element '...expr'
 
 function parseSpread() {
+  //C jsparse_callback_open("parseSpread");
   var node = startNode();
   next();
   node.argument = parseExpression(true);
@@ -2180,6 +2214,7 @@ function parseSpread() {
 // Parse template expression.
 
 function parseTemplate() {
+  //C jsparse_callback_open("parseTemplate");
   var node = startNode();
   node.expressions = [];
   node.quasis = [];
@@ -2210,6 +2245,7 @@ function parseTemplate() {
 // Parse an object literal.
 
 function parseObj() {
+  //C jsparse_callback_open("parseObj");
   var node = startNode(), first = true, propHash = {};
   node.properties = [];
   next();
@@ -2254,6 +2290,7 @@ function parseObj() {
 }
 
 function parsePropertyName(prop:Node) {
+  //C jsparse_callback_open("parsePropertyName");
   if (options.ecmaVersion >= 6) {
     if (eat(_bracketL)) {
       prop.computed = true;
@@ -2283,6 +2320,7 @@ function initFunction(node:Node) {
 // `isStatement` parameter).
 
 function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:boolean) {
+  //C jsparse_callback_open("parseFunction");
   initFunction(node);
   if (options.ecmaVersion >= 6) {
     node.generator = eat(_star);
@@ -2299,6 +2337,7 @@ function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:bool
 // Parse object or class method.
 
 function parseMethod(isGenerator:boolean) {
+  //C jsparse_callback_open("parseMethod");
   var node = startNode();
   initFunction(node);
   parseFunctionParams(node);
@@ -2317,6 +2356,7 @@ function parseMethod(isGenerator:boolean) {
 // Parse arrow function expression with given parameters.
 
 function parseArrowExpression(node:Node, params:Node[]) {
+  //C jsparse_callback_open("parseArrowExpression");
   initFunction(node);
 
   var defaults = node.defaults, hasDefaults = false;
@@ -2350,6 +2390,7 @@ function parseArrowExpression(node:Node, params:Node[]) {
 // Parse function parameters.
 
 function parseFunctionParams(node:Node) {
+  //C jsparse_callback_open("parseFunctionParams");
   var defaults:Node[] = [], hasDefaults = false;
   
   expect(_parenL);
@@ -2381,6 +2422,7 @@ function parseFunctionParams(node:Node) {
 // Parse function body and check parameters.
 
 function parseFunctionBody(node:Node, allowExpression:boolean) {
+  //C jsparse_callback_open("parseFunctionBody");
   var isExpression = allowExpression && tokType !== _braceL;
   
   if (isExpression) {
@@ -2414,6 +2456,7 @@ function parseFunctionBody(node:Node, allowExpression:boolean) {
 // `isStatement` parameter).
 
 function parseClass(node:Node, isStatement:boolean) {
+  //C jsparse_callback_open("parseClass");
   next();
   if (tokType === _name) {
     node.id = parseIdent();
@@ -2463,6 +2506,7 @@ function parseClass(node:Node, isStatement:boolean) {
 // for array literals).
 
 function parseExprList(close:Token, allowTrailingComma?:boolean, allowEmpty?:boolean) {
+  //C jsparse_callback_open("parseExprList");
   var elts:Node[] = [], first = true;
   while (!eat(close)) {
     if (!first) {
@@ -2481,6 +2525,7 @@ function parseExprList(close:Token, allowTrailingComma?:boolean, allowEmpty?:boo
 // identifiers.
 
 function parseIdent(liberal?:boolean) {
+  //C jsparse_callback_open("parseIdent");
   var node = startNode();
   if (liberal && options.forbidReserved == "everywhere") liberal = false;
   if (tokType === _name) {
@@ -2505,6 +2550,7 @@ function parseIdent(liberal?:boolean) {
 // Parses module export declaration.
 
 function parseExport(node:Node) {
+  //C jsparse_callback_open("parseExport");
   next();
   // export var|const|let|function|class ...;
   if (tokType === _var || tokType === _const || tokType === _let || tokType === _function || tokType === _class) {
@@ -2545,6 +2591,7 @@ function parseExport(node:Node) {
 // Parses a comma-separated list of module exports.
 
 function parseExportSpecifiers() {
+  //C jsparse_callback_open("parseExportSpecifiers");
   var nodes:Node[] = [], first = true;
   if (tokType === _star) {
     // export * from '...'
@@ -2579,6 +2626,7 @@ function parseExportSpecifiers() {
 // Parses import declaration.
 
 function parseImport(node:Node) {
+  //C jsparse_callback_open("parseImport");
   next();
   // import '...';
   if (tokType === _string) {
@@ -2604,6 +2652,7 @@ function parseImport(node:Node) {
 // Parses a comma-separated list of module imports.
 
 function parseImportSpecifiers() {
+  //C jsparse_callback_open("parseImportSpecifiers");
   var nodes:Node[] = [], first = true;
   if (tokType === _star) {
     var node = startNode();
@@ -2653,6 +2702,7 @@ function parseImportSpecifiers() {
 // Parses yield expression inside generator.
 
 function parseYield() {
+  //C jsparse_callback_open("parseYield");
   var node = startNode();
   next();
   if (eat(_semi) || canInsertSemicolon()) {
@@ -2669,6 +2719,7 @@ function parseYield() {
 // Parses array and generator comprehensions.
 
 function parseComprehension(node:Node, isGenerator:boolean) {
+  //C jsparse_callback_open("parseComprehension");
   node.blocks = [];
   while (tokType === _for) {
     var block = startNode();

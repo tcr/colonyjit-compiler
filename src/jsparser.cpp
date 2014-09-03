@@ -1,6 +1,6 @@
 #include "jsparser.h"
 
-void (*jsparse_callback_open)(struct Node_C C) = NULL;
+void (*jsparse_callback_open)(const char* fn) = NULL;
 void (*jsparse_callback_close)(struct Node_C C) = NULL;
 
 // Include source
@@ -8,7 +8,7 @@ void (*jsparse_callback_close)(struct Node_C C) = NULL;
 #include "compiled.c"
 
 void jsparse (const char* buf, size_t buf_len,
-	void (*jsparse_callback_open_)(struct Node_C C),
+	void (*jsparse_callback_open_)(const char* fn),
 	void (*jsparse_callback_close_)(struct Node_C C))
 {
 	jsparse_callback_open = jsparse_callback_open_;

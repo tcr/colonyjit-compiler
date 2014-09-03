@@ -80,7 +80,7 @@ const char* name;
 // bool delegate;
 // bool _default;
 // bool _static;
-// const char* _operator;
+const char* _operator;
 // Node* filter;
 // bool method;
 // bool tail;
@@ -89,7 +89,7 @@ const char* name;
 };
 
 void jsparse (const char* buf, size_t buf_len,
-	void (*jsparse_callback_open_)(struct Node_C C),
+	void (*jsparse_callback_open_)(const char* state),
 	void (*jsparse_callback_close_)(struct Node_C C));
 
 #endif

@@ -476,6 +476,7 @@ struct Node_C convert_to_Node_C (Node* node) {
 	C.value_string = node->value.value_string.c_str();
 	C.value_double = node->value.value_double;
 	C.arguments = node->arguments.size();
+	C._operator = node->_operator.c_str();
 	return C;
 }
 

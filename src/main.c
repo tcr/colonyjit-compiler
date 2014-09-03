@@ -5,9 +5,9 @@
 #include <string.h>
 #include <stddef.h>
 
-void my_onopennode (struct Node_C C) {
-  // printf("type %s\n", C.type);
-  printf("-> enter %s\n", C.type);
+void my_onopennode (const char* fn) {
+  // printf("type %s\n", fn);
+  printf("-> enter %s\n", fn);
 }
 
 void my_onclosenode (struct Node_C C) {
