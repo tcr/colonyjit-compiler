@@ -2795,6 +2795,15 @@ void my_onopennode (const char* type) {
     ExpDesc* args = js_stack_push();
     (void) args;
   }
+
+  if (my_streq(type, "typeof")) {
+    ExpDesc* ident = js_stack_top(0);
+    GCstr *s = lj_str_new(my_fs->L, type, strlen(type));
+    var_lookup_(my_fs, s, ident, 1);
+    expr_tonextreg(my_fs, ident);
+    ExpDesc* args = js_stack_push();
+    (void) args;
+  }
 }
 
 // void my_onopennode_old (struct Node_C C) {
