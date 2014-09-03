@@ -362,6 +362,11 @@ var _in:Token = {keyword: "in", binop: 7, beforeExpr: true};
 
 // Map keyword names to token types.
 
+var _typeof:Token = {keyword: "typeof", prefix: true, beforeExpr: true}
+var _instanceof:Token = {keyword: "instanceof", binop: 7, beforeExpr: true};
+var _void:Token = {keyword: "void", prefix: true, beforeExpr: true};
+var _delete:Token = {keyword: "delete", prefix: true, beforeExpr: true};
+
 export var keywordTypes:{[index:string]: Token} = {"break": _break, "case": _case, "catch": _catch,
                     "continue": _continue, "debugger": _debugger, "default": _default,
                     "do": _do, "else": _else, "finally": _finally, "for": _for,
@@ -369,10 +374,10 @@ export var keywordTypes:{[index:string]: Token} = {"break": _break, "case": _cas
                     "throw": _throw, "try": _try, "var": _var, "let": _let, "const": _const,
                     "while": _while, "with": _with,
                     "null": _null, "true": _true, "false": _false, "new": _new, "in": _in,
-                    "instanceof": {keyword: "instanceof", binop: 7, beforeExpr: true}, "this": _this,
-                    "typeof": {keyword: "typeof", prefix: true, beforeExpr: true},
-                    "void": {keyword: "void", prefix: true, beforeExpr: true},
-                    "delete": {keyword: "delete", prefix: true, beforeExpr: true},
+                    "instanceof": _instanceof, "this": _this,
+                    "typeof": _typeof,
+                    "void": _void,
+                    "delete": _delete,
                     "class": _class, "extends": _extends,
                     "export": _export, "import": _import, "yield": _yield};
 
