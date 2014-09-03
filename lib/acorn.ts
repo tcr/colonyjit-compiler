@@ -493,11 +493,11 @@ var isStrictBadIdWord = makePredicate("eval arguments");
 
 // And the keywords.
 
-var ecma5AndLessKeywords = "break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this";
+// var ecma5AndLessKeywords = "break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this";
 
-var isEcma5AndLessKeyword = makePredicate(ecma5AndLessKeywords);
+var isEcma5AndLessKeyword = makePredicate("break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this");
 
-var isEcma6Keyword = makePredicate(ecma5AndLessKeywords + " let const class extends export import yield");
+var isEcma6Keyword = makePredicate("break case catch continue debugger default do else finally for function if return switch throw try var while with null true false instanceof typeof void delete new in this let const class extends export import yield");
 
 var isKeyword = isEcma5AndLessKeyword;
 
