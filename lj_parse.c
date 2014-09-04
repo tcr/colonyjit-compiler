@@ -784,8 +784,8 @@ static void bcemit_arith(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 {
   BCReg rb, rc, t;
   uint32_t op;
-  if (foldarith(opr, e1, e2))
-    return;
+  // if (foldarith(opr, e1, e2))
+  //   return;
   if (opr == OPR_POW) {
     op = BC_POW;
     rc = expr_toanyreg(fs, e2);
@@ -2816,6 +2816,12 @@ void my_onopennode (const char* type) {
     js_ismethod = 1;
   }
 
+  if (my_streq(type, "parseExprList-next")) {
+    printf("--parseExprList-next\n");
+    ExpDesc* args = js_stack_top(0);
+    expr_tonextreg(my_fs, args);
+  }
+
   if (my_streq(type, "parseExprList")) {
     printf("--parseexprlist\n");
     ExpDesc* ident = js_stack_top(0);
@@ -2842,7 +2848,7 @@ void my_onopennode (const char* type) {
     printf("-- operator ==\n");
 
     ExpDesc* e = js_stack_top(0);
-    if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+    bcemit_binop_left(fs, OPR_EQ, e);
 
     ExpDesc* e2 = js_stack_push();
     (void) e2;
@@ -2852,7 +2858,17 @@ void my_onopennode (const char* type) {
     printf("-- operator !=\n");
 
     ExpDesc* e = js_stack_top(0);
-    if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+    bcemit_binop_left(fs, OPR_NE, e);
+
+    ExpDesc* e2 = js_stack_push();
+    (void) e2;
+  }
+
+  if (my_streq(type, "+")) {
+    printf("-- operator +\n");
+
+    ExpDesc* e = js_stack_top(0);
+    bcemit_binop_left(fs, OPR_ADD, e);
 
     ExpDesc* e2 = js_stack_push();
     (void) e2;
@@ -2902,8 +2918,10 @@ void my_onopennode (const char* type) {
   if (my_streq(type, "if-end")) {
     printf("--if-end\n");
 
-    ExpDesc* test = js_stack_push();
+    ExpDesc* test = js_stack_top(0);
     jmp_tohere(fs, test->f);
+
+    js_stack_pop();
   }
 
   // if (my_streq(type, "parseStatement")) {
@@ -2996,6 +3014,11 @@ void my_onclosenode (struct Node_C C) {
     my_fs->freereg = my_fs->nactvar;
   }
 
+  if ((my_nodematch("UnaryExpression") && my_streq(C._operator, "typeof"))) {
+    ExpDesc* args = js_stack_top(0);
+    expr_tonextreg(my_fs, args);
+  }
+
   if (my_nodematch("CallExpression") || (my_nodematch("UnaryExpression") && my_streq(C._operator, "typeof"))) {
     ExpDesc* ident = js_stack_top(-1);
     ExpDesc* args = js_stack_top(0);
@@ -3040,9 +3063,6 @@ void my_onclosenode (struct Node_C C) {
       default:
         assert(0);
     }
-
-    // Call Expression tail
-    expr_tonextreg(my_fs, args);
   }
 
   if (my_nodematch("BinaryExpression")) {
@@ -3057,6 +3077,11 @@ void my_onclosenode (struct Node_C C) {
     else if (my_streq(C._operator, "!=")) {
       printf("binaryexpr !=\n");
       bcemit_comp(my_fs, OPR_NE, e1, e2);
+    }
+
+    else if (my_streq(C._operator, "+")) {
+      printf("binaryexpr +\n");
+      bcemit_arith(my_fs, OPR_ADD, e1, e2);
     }
 
     else {

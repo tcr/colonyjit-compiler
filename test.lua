@@ -1,1 +1,1 @@
-console:log(type(255) == type(42))
+print(5 + 5);
