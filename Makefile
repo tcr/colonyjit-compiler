@@ -7,17 +7,15 @@ luajit/src/libluajit.a:
 	cd luajit; make
 
 dump-cmp:
+	@echo "test.js (javascript) bytecode:"
+	./colonyjit-compiler test.js 2>/dev/null | luajit -bl -
 	@echo ''
-	@echo "bytecode:"
-	./colonyjit-compiler tests/test.js 2>/dev/null | luajit -bl -
-	@echo ''
-	@echo 'vs:'
+	@echo 'test.lua bytecode:'
 	luajit -bl test.lua
-	@echo ''
 
 dump-test:
 	@echo "test:"
-	./colonyjit-compiler tests/test.js | luajit loader.lua
+	./colonyjit-compiler test.js | luajit loader.lua
 
 clean:
 	rm -rf *.dSYM lj colonyjit-compiler bytecode.lua || true
