@@ -2848,6 +2848,16 @@ void my_onopennode (const char* type) {
     (void) e2;
   }
 
+  if (my_streq(type, "!=")) {
+    printf("-- operator !=\n");
+
+    ExpDesc* e = js_stack_top(0);
+    if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+
+    ExpDesc* e2 = js_stack_push();
+    (void) e2;
+  }
+
   if (my_streq(type, "if-test")) {
     printf("--if-test\n");
 
@@ -3042,6 +3052,15 @@ void my_onclosenode (struct Node_C C) {
     if (my_streq(C._operator, "==")) {
       printf("binaryexpr ==\n");
       bcemit_comp(my_fs, OPR_EQ, e1, e2);
+    }
+
+    else if (my_streq(C._operator, "!=")) {
+      printf("binaryexpr !=\n");
+      bcemit_comp(my_fs, OPR_NE, e1, e2);
+    }
+
+    else {
+      assert(0);
     }
 
     js_stack_pop(); // pop e2
