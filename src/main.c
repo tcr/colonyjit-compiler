@@ -7,12 +7,12 @@
 
 void my_onopennode (const char* fn) {
   // printf("type %s\n", fn);
-  printf("-> enter %s\n", fn);
+  // printf("-> enter %s\n", fn);
 }
 
 void my_onclosenode (struct Node_C C) {
-  // printf("type %s\n", C.type);
-  printf("<- finish %s %s '%s' %d\n", C.type, C.name, C.value_string, C.arguments);
+  printf("type %s\n", C.type);
+  // printf("<- finish %s %s '%s' %d\n", C.type, C.name, C.value_string, C.arguments);
 }
 
 int main (int argc, char **argv)

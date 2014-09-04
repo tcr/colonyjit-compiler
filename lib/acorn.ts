@@ -1656,12 +1656,21 @@ function parseFunctionStatement(node:Node) {
 }
 
 function parseIfStatement(node:Node) {
-  //C jsparse_callback_open("parseIfStatement");
+  //C jsparse_callback_open("if-start");
   enterNode(node, "IfStatement");
   next();
+  //C jsparse_callback_open("if-test");
   node.test = parseParenExpression();
+  //C jsparse_callback_open("if-consequent");
   node.consequent = parseStatement();
-  node.alternate = eat(_else) ? parseStatement() : null;
+  if (eat(_else)) {
+    //C jsparse_callback_open("if-alternate");
+    node.alternate = parseStatement();
+  } else {
+    //C jsparse_callback_open("if-no-alternate");
+    node.alternate = null;
+  }
+  //C jsparse_callback_open("if-end");
   return finishNode(node);
 }
 
@@ -1987,10 +1996,11 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
       var node = startNodeFrom(left);
       node.left = left;
       node.operator = tokVal;
+      //C jsparse_callback_open(tokVal.value_string.c_str());
       var op = tokType;
       next();
       node.right = parseExprOp(parseMaybeUnary(), prec, noIn);
-      // enterNode(node, (op === _logicalOR || op === _logicalAND) ? "LogicalExpression" : "BinaryExpression");
+      enterNode(node, (op === _logicalOR || op === _logicalAND) ? "LogicalExpression" : "BinaryExpression");
       var exprNode = finishNode(node);
       return parseExprOp(exprNode, minPrec, noIn);
     }
@@ -2001,7 +2011,7 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
 // Parse unary operators, both prefix and postfix.
 
 function parseMaybeUnary() {
-  //C jsparse_callback_open("parseMaybeUnary");
+  //C jsparse_callback_open(tokVal.value_string.c_str());
   if (tokType.prefix) {
     var node = startNode(), update = tokType.isUpdate;
     node.operator = tokVal;
