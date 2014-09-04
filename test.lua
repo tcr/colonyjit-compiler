@@ -1,2 +1,1 @@
-console:log('1..1')
-console:log('ok')
+console:log(type(255) == type(42))

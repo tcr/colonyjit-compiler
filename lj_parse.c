@@ -2737,13 +2737,25 @@ ExpDesc* js_stack_push ()
 {
     ExpDesc* ret = &js_stack[js_stack_idx];
     js_stack_idx++;
+
+printf("push: ");
+  for (int i = 0; i < js_stack_idx; i++) {
+    printf("[] ");
+  }
+  printf("\n");
     return ret;
 }
 
 void js_stack_pop ()
 {
+    assert(js_stack_idx >= 1);
     js_stack_idx--;
-    assert(js_stack_idx >= 0);
+
+  printf("pop: ");
+  for (int i = 0; i < js_stack_idx; i++) {
+    printf("[] ");
+  }
+  printf("\n");
 }
 
 ExpDesc* js_stack_top (size_t mod)
@@ -2775,9 +2787,28 @@ FuncState *my_fs;
 #define my_nodematch(T) (strncmp(C.type, T, strlen(T)) == 0)
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0)
 
+int consequent_onstatement = 0;
+int alternate_onstatement = 0;
+
+int is_statement;
 
 void my_onopennode (const char* type) {
-  printf("well %s\n", type);
+  FuncState *fs = my_fs;
+
+  // printf("well %s\n", type);
+
+  if (my_streq(type, "parseExpression") && is_statement) {
+    printf("--parseExpression (as a statement)\n");
+    ExpDesc* stat = js_stack_push();
+    (void) stat;
+  }
+
+  if (my_streq(type, "parseStatement")) {
+    printf("--parseStatement\n");
+    is_statement = 1;
+  } else {
+    is_statement = 0;
+  }
 
   if (my_streq(type, "parseSubscripts")) {
     printf("--parsesubscripts\n");
@@ -2797,6 +2828,8 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "typeof")) {
+    printf("--typeof\n");
+
     ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, type, strlen(type));
     var_lookup_(my_fs, s, ident, 1);
@@ -2804,6 +2837,66 @@ void my_onopennode (const char* type) {
     ExpDesc* args = js_stack_push();
     (void) args;
   }
+
+  if (my_streq(type, "==")) {
+    printf("-- operator ==\n");
+
+    ExpDesc* e = js_stack_top(0);
+    if (!expr_isk_nojump(e)) expr_toanyreg(fs, e);
+
+    ExpDesc* e2 = js_stack_push();
+    (void) e2;
+  }
+
+  if (my_streq(type, "if-test")) {
+    printf("--if-test\n");
+
+    ExpDesc* test = js_stack_push();
+    (void) test;
+  }
+
+  if (my_streq(type, "if-consequent")) {
+    printf("--if-consequent\n");
+
+    ExpDesc* test = js_stack_top(0);
+    // if (v.k == VKNIL) v.k = VKFALSE;
+    bcemit_branch_t(my_fs, test);
+
+    // ExpDesc* consequent = js_stack_push();
+    // (void) consequent;
+  }
+
+  if (my_streq(type, "if-alternate")) {
+    printf("--if-alternate\n");
+
+    ExpDesc* test = js_stack_top(0);
+    BCPos escapelist = NO_JMP;
+    BCPos flist = test->f;
+    jmp_append(my_fs, &escapelist, bcemit_jmp(my_fs));
+    jmp_tohere(my_fs, test->f);
+    test->f = escapelist;
+    
+    // ExpDesc* alternate = js_stack_push();
+    // (void) alternate;
+  }
+
+  if (my_streq(type, "if-no-alternate")) {
+    printf("--if-no-alternate\n");
+
+    ExpDesc* test = js_stack_top(0);
+    BCPos escapelist = NO_JMP;
+    jmp_append(fs, &escapelist, test->f);
+    test->f = escapelist;
+  }
+
+  if (my_streq(type, "if-end")) {
+    printf("--if-end\n");
+
+    ExpDesc* test = js_stack_push();
+    jmp_tohere(fs, test->f);
+  }
+
+  // if (my_streq(type, "parseStatement")) {
 }
 
 // void my_onopennode_old (struct Node_C C) {
@@ -2858,19 +2951,11 @@ void my_onclosenode (struct Node_C C) {
   // printf("type %s\n", C.type);
   printf("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
 
-  // if (my_nodematch("MemberExpression")) {
-  //   expr_init(&key, VKSTR, 0);
-  //   e->u.sval = lj_str_new(my_fs->L, C.name, strlen(C.name));
-  //   lj_lex_next(ls);
-  //   expr_str(ls, &key);
-  //   bcemit_method(fs, v, &key);
-  // }
-
   if (my_nodematch("Identifier")) {
     ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
     
-      printf("ISAMETHOD %d\n", js_ismethod);
+    printf("identifier js_ismethod %d\n", js_ismethod);
     if (js_ismethod) {
       ExpDesc key;
       expr_init(&key, VKSTR, 0);
@@ -2902,8 +2987,6 @@ void my_onclosenode (struct Node_C C) {
   }
 
   if (my_nodematch("CallExpression") || (my_nodematch("UnaryExpression") && my_streq(C._operator, "typeof"))) {
-    js_ismethod = 0;
-
     ExpDesc* ident = js_stack_top(-1);
     ExpDesc* args = js_stack_top(0);
 
@@ -2952,19 +3035,19 @@ void my_onclosenode (struct Node_C C) {
     expr_tonextreg(my_fs, args);
   }
 
-  // if (js_stack_levels[js_stack_levels_idx].level > -1) {
-  //   js_stack_levels[js_stack_levels_idx].level -= 1;
-  // }
-  // if (js_stack_levels[js_stack_levels_idx].level == 0) {
-  //   switch (js_stack_levels[js_stack_levels_idx].cond) {
-  //     case JS_COND_CONSEQUENT:
-  //       printf("now it's a consequent\n");
-  //       break;
-  //   }
-  //   if (js_stack_levels_idx > 0) {
-  //     js_stack_levels_idx--;
-  //   }
-  // }
+  if (my_nodematch("BinaryExpression")) {
+    ExpDesc* e1 = js_stack_top(-1);
+    ExpDesc* e2 = js_stack_top(0);
+
+    if (my_streq(C._operator, "==")) {
+      printf("binaryexpr ==\n");
+      bcemit_comp(my_fs, OPR_EQ, e1, e2);
+    }
+
+    js_stack_pop(); // pop e2
+  }
+
+  js_ismethod = 0;
 }
 
 static char* my_input;
