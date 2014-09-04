@@ -1,1 +1,1 @@
-print(5 + 5);
+console:log(emtpy('hi') or 'hey')
