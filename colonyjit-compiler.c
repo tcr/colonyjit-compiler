@@ -2847,35 +2847,27 @@ void my_onopennode (const char* type) {
     (void) args;
   }
 
-  if (my_streq(type, "==")) {
-    JS_DEBUG("-- operator ==\n");
-
-    ExpDesc* e = js_stack_top(0);
-    bcemit_binop_left(fs, OPR_EQ, e);
-
-    ExpDesc* e2 = js_stack_push();
-    (void) e2;
+  #define JS_OP_LEFT(OP, ID) if (my_streq(type, OP)) { \
+    JS_DEBUG("-- operator " OP "\n"); \
+    ExpDesc* e = js_stack_top(0); \
+    bcemit_binop_left(fs, ID, e); \
+    ExpDesc* e2 = js_stack_push(); \
+    (void) e2; \
   }
 
-  if (my_streq(type, "!=")) {
-    JS_DEBUG("-- operator !=\n");
-
-    ExpDesc* e = js_stack_top(0);
-    bcemit_binop_left(fs, OPR_NE, e);
-
-    ExpDesc* e2 = js_stack_push();
-    (void) e2;
-  }
-
-  if (my_streq(type, "+")) {
-    JS_DEBUG("-- operator +\n");
-
-    ExpDesc* e = js_stack_top(0);
-    bcemit_binop_left(fs, OPR_ADD, e);
-
-    ExpDesc* e2 = js_stack_push();
-    (void) e2;
-  }
+  JS_OP_LEFT("==", OPR_EQ);
+  JS_OP_LEFT("!=", OPR_NE);
+  JS_OP_LEFT("+", OPR_ADD);
+  JS_OP_LEFT("-", OPR_SUB);
+  JS_OP_LEFT("*", OPR_MUL);
+  JS_OP_LEFT("/", OPR_DIV);
+  JS_OP_LEFT("%", OPR_MOD);
+  JS_OP_LEFT("<", OPR_LT);
+  JS_OP_LEFT(">=", OPR_GE);
+  JS_OP_LEFT("<=", OPR_LE);
+  JS_OP_LEFT(">", OPR_GT);
+  JS_OP_LEFT("&&", OPR_AND);
+  JS_OP_LEFT("||", OPR_OR);
 
   if (my_streq(type, "if-test")) {
     JS_DEBUG("--if-test\n");
@@ -3069,25 +3061,38 @@ void my_onclosenode (struct Node_C C) {
   }
 
   if (my_nodematch("BinaryExpression")) {
+    JS_DEBUG("binaryexpr %s\n", C._operator);
+
     ExpDesc* e1 = js_stack_top(-1);
     ExpDesc* e2 = js_stack_top(0);
 
-    if (my_streq(C._operator, "==")) {
-      JS_DEBUG("binaryexpr ==\n");
+    if (my_streq(C._operator, "==")) {      
       bcemit_comp(my_fs, OPR_EQ, e1, e2);
-    }
-
-    else if (my_streq(C._operator, "!=")) {
-      JS_DEBUG("binaryexpr !=\n");
+    } else if (my_streq(C._operator, "!=")) {
       bcemit_comp(my_fs, OPR_NE, e1, e2);
-    }
-
-    else if (my_streq(C._operator, "+")) {
-      JS_DEBUG("binaryexpr +\n");
+    } else if (my_streq(C._operator, "+")) {
       bcemit_arith(my_fs, OPR_ADD, e1, e2);
-    }
-
-    else {
+    } else if (my_streq(C._operator, "-")) {
+      bcemit_arith(my_fs, OPR_SUB, e1, e2);
+    } else if (my_streq(C._operator, "*")) {
+      bcemit_arith(my_fs, OPR_MUL, e1, e2);
+    } else if (my_streq(C._operator, "/")) {
+      bcemit_arith(my_fs, OPR_DIV, e1, e2);
+    } else if (my_streq(C._operator, "%")) {
+      bcemit_arith(my_fs, OPR_MOD, e1, e2);
+    } else if (my_streq(C._operator, "<")) {
+      bcemit_arith(my_fs, OPR_LT, e1, e2);
+    } else if (my_streq(C._operator, ">=")) {
+      bcemit_arith(my_fs, OPR_GE, e1, e2);
+    } else if (my_streq(C._operator, "<=")) {
+      bcemit_arith(my_fs, OPR_LE, e1, e2);
+    } else if (my_streq(C._operator, ">")) {
+      bcemit_arith(my_fs, OPR_GT, e1, e2);
+    } else if (my_streq(C._operator, "&&")) {
+      bcemit_arith(my_fs, OPR_AND, e1, e2);
+    } else if (my_streq(C._operator, "||")) {
+      bcemit_arith(my_fs, OPR_OR, e1, e2);
+    } else {
       assert(0);
     }
 
