@@ -2521,6 +2521,7 @@ function parseExprList(close:Token, allowTrailingComma?:boolean, allowEmpty?:boo
   while (!eat(close)) {
     if (!first) {
       expect(_comma);
+      //C jsparse_callback_open("parseExprList-next");
       if (allowTrailingComma && options.allowTrailingCommas && eat(close)) break;
     } else first = false;
 
