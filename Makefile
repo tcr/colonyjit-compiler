@@ -1,6 +1,7 @@
 all:
+	cd parser; make
 	gcc-4.9 -o colonyjit-compiler -ggdb -pagezero_size 10000 -image_base 100000000 \
-		./luajit/src/libluajit.a ../jsparser.cpp/out/jsparser.a colonyjit-compiler.c -Iluajit/src -lstdc++ -std=c99
+		./luajit/src/libluajit.a ./parser/out/jsparser.a colonyjit-compiler.c -Iluajit/src -lstdc++ -std=c99
 
 dump-cmp:
 	@echo ''
@@ -20,3 +21,6 @@ clean:
 
 test:
 	tinytap -e "luajit loader.lua {}" tests/*.js
+
+update:
+	npm install

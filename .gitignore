@@ -2,3 +2,5 @@
 colonyjit-compiler
 out.bc
 bytecode.lua
+node_modules
+

@@ -1,0 +1,26 @@
+{
+  "name": "colonyjit-compiler",
+  "version": "0.0.0",
+  "description": "",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "dependencies": {
+    "falafel": "^0.3.1"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tcr/colonyjit-compiler.git"
+  },
+  "author": "",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/tcr/colonyjit-compiler/issues"
+  },
+  "homepage": "https://github.com/tcr/colonyjit-compiler"
+}
