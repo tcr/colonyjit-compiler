@@ -1,3 +1,6 @@
+#include  <fcntl.h>
+#define JS_DEBUG(...) fprintf(stderr, __VA_ARGS__)
+
 /*
 ** Lua parser (source code -> bytecode).
 ** Copyright (C) 2005-2014 Mike Pall. See Copyright Notice in luajit.h
@@ -2738,11 +2741,11 @@ ExpDesc* js_stack_push ()
     ExpDesc* ret = &js_stack[js_stack_idx];
     js_stack_idx++;
 
-printf("push: ");
+JS_DEBUG("push: ");
   for (int i = 0; i < js_stack_idx; i++) {
-    printf("[] ");
+    JS_DEBUG("[] ");
   }
-  printf("\n");
+  JS_DEBUG("\n");
     return ret;
 }
 
@@ -2751,11 +2754,11 @@ void js_stack_pop ()
     assert(js_stack_idx >= 1);
     js_stack_idx--;
 
-  printf("pop: ");
+  JS_DEBUG("pop: ");
   for (int i = 0; i < js_stack_idx; i++) {
-    printf("[] ");
+    JS_DEBUG("[] ");
   }
-  printf("\n");
+  JS_DEBUG("\n");
 }
 
 ExpDesc* js_stack_top (size_t mod)
@@ -2795,35 +2798,35 @@ int is_statement;
 void my_onopennode (const char* type) {
   FuncState *fs = my_fs;
 
-  // printf("well %s\n", type);
+  // JS_DEBUG("well %s\n", type);
 
   if (my_streq(type, "parseExpression") && is_statement) {
-    printf("--parseExpression (as a statement)\n");
+    JS_DEBUG("--parseExpression (as a statement)\n");
     ExpDesc* stat = js_stack_push();
     (void) stat;
   }
 
   if (my_streq(type, "parseStatement")) {
-    printf("--parseStatement\n");
+    JS_DEBUG("--parseStatement\n");
     is_statement = 1;
   } else {
     is_statement = 0;
   }
 
   if (my_streq(type, "parseSubscripts")) {
-    printf("--parsesubscripts\n");
+    JS_DEBUG("--parsesubscripts\n");
     // ExpDesc* ident = js_stack_push();
     js_ismethod = 1;
   }
 
   if (my_streq(type, "parseExprList-next")) {
-    printf("--parseExprList-next\n");
+    JS_DEBUG("--parseExprList-next\n");
     ExpDesc* args = js_stack_top(0);
     expr_tonextreg(my_fs, args);
   }
 
   if (my_streq(type, "parseExprList")) {
-    printf("--parseexprlist\n");
+    JS_DEBUG("--parseexprlist\n");
     ExpDesc* ident = js_stack_top(0);
     // if (!js_ismethod) {
     //   expr_tonextreg(my_fs, ident);
@@ -2834,7 +2837,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "typeof")) {
-    printf("--typeof\n");
+    JS_DEBUG("--typeof\n");
 
     ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, type, strlen(type));
@@ -2845,7 +2848,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "==")) {
-    printf("-- operator ==\n");
+    JS_DEBUG("-- operator ==\n");
 
     ExpDesc* e = js_stack_top(0);
     bcemit_binop_left(fs, OPR_EQ, e);
@@ -2855,7 +2858,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "!=")) {
-    printf("-- operator !=\n");
+    JS_DEBUG("-- operator !=\n");
 
     ExpDesc* e = js_stack_top(0);
     bcemit_binop_left(fs, OPR_NE, e);
@@ -2865,7 +2868,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "+")) {
-    printf("-- operator +\n");
+    JS_DEBUG("-- operator +\n");
 
     ExpDesc* e = js_stack_top(0);
     bcemit_binop_left(fs, OPR_ADD, e);
@@ -2875,14 +2878,14 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "if-test")) {
-    printf("--if-test\n");
+    JS_DEBUG("--if-test\n");
 
     ExpDesc* test = js_stack_push();
     (void) test;
   }
 
   if (my_streq(type, "if-consequent")) {
-    printf("--if-consequent\n");
+    JS_DEBUG("--if-consequent\n");
 
     ExpDesc* test = js_stack_top(0);
     // if (v.k == VKNIL) v.k = VKFALSE;
@@ -2893,7 +2896,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "if-alternate")) {
-    printf("--if-alternate\n");
+    JS_DEBUG("--if-alternate\n");
 
     ExpDesc* test = js_stack_top(0);
     BCPos escapelist = NO_JMP;
@@ -2907,7 +2910,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "if-no-alternate")) {
-    printf("--if-no-alternate\n");
+    JS_DEBUG("--if-no-alternate\n");
 
     ExpDesc* test = js_stack_top(0);
     BCPos escapelist = NO_JMP;
@@ -2916,7 +2919,7 @@ void my_onopennode (const char* type) {
   }
 
   if (my_streq(type, "if-end")) {
-    printf("--if-end\n");
+    JS_DEBUG("--if-end\n");
 
     ExpDesc* test = js_stack_top(0);
     jmp_tohere(fs, test->f);
@@ -2930,7 +2933,7 @@ void my_onopennode (const char* type) {
 // void my_onopennode_old (struct Node_C C) {
   // js_stack_levels[js_stack_levels_idx].level += 1;
 
-  // printf("-> enter %s\n", C.type);
+  // JS_DEBUG("-> enter %s\n", C.type);
 
   // if (my_nodematch("UnaryExpression")) {
   //   if (my_streq(C._operator, "typeof")) {
@@ -2943,7 +2946,7 @@ void my_onopennode (const char* type) {
   //   }
 
   //   else {
-  //     printf("TODO: UnaryExpression\n");
+  //     JS_DEBUG("TODO: UnaryExpression\n");
   //   }
   // }
 
@@ -2976,14 +2979,14 @@ void my_onopennode (const char* type) {
 void my_onclosenode (struct Node_C C) {
   BCIns ins;
 
-  // printf("type %s\n", C.type);
-  printf("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
+  // JS_DEBUG("type %s\n", C.type);
+  JS_DEBUG("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
 
   if (my_nodematch("Identifier")) {
     ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
     
-    printf("identifier js_ismethod %d\n", js_ismethod);
+    JS_DEBUG("identifier js_ismethod %d\n", js_ismethod);
     if (js_ismethod) {
       ExpDesc key;
       expr_init(&key, VKSTR, 0);
@@ -3004,7 +3007,7 @@ void my_onclosenode (struct Node_C C) {
     } else {  /* Start of an assignment. */
       // vl.prev = NULL;
       // parse_assignment(ls, &vl, 1);
-      printf("TODO: assignment\n");
+      JS_DEBUG("TODO: assignment\n");
     }
 
     js_stack_pop();
@@ -3070,17 +3073,17 @@ void my_onclosenode (struct Node_C C) {
     ExpDesc* e2 = js_stack_top(0);
 
     if (my_streq(C._operator, "==")) {
-      printf("binaryexpr ==\n");
+      JS_DEBUG("binaryexpr ==\n");
       bcemit_comp(my_fs, OPR_EQ, e1, e2);
     }
 
     else if (my_streq(C._operator, "!=")) {
-      printf("binaryexpr !=\n");
+      JS_DEBUG("binaryexpr !=\n");
       bcemit_comp(my_fs, OPR_NE, e1, e2);
     }
 
     else if (my_streq(C._operator, "+")) {
-      printf("binaryexpr +\n");
+      JS_DEBUG("binaryexpr +\n");
       bcemit_arith(my_fs, OPR_ADD, e1, e2);
     }
 
@@ -3147,27 +3150,9 @@ GCproto *js_parse(LexState *ls)
   return pt;
 }
 
-static void w_append_write (const void*p, size_t sz)
-{
-        FILE *pFile =fopen("bytecode.lua", "a");
-        fwrite(p, sz, 1, pFile);
-        fclose(pFile);
-}
-
-static void w_trunc_write ()
-{
-        FILE *pFile =fopen("bytecode.lua", "w");
-        fwrite(NULL, 0, 1, pFile);
-        fclose(pFile);
-}
-
 static int js_bcdump (lua_State *L, const void* p, size_t sz, void* ud)
 {
-        w_append_write(p, sz);
-  for (size_t i = 0; i < sz; i++) {
-    printf("%02x", ((uint8_t *) p)[i]);
-  }
-  printf("\n");
+  fwrite(p, 1, sz, stdout);
   return 0;
 }
 
@@ -3201,7 +3186,7 @@ LUA_API int js_loadx(lua_State *L, lua_Reader reader, void *data,
   ls.mode = mode;
   lj_str_initbuf(&ls.sb);
   status = lj_vm_cpcall(L, NULL, &ls, js_cpparser);
-  printf("status %d\n", status);
+  JS_DEBUG("status %d\n", status);
   lj_lex_cleanup(L, &ls);
   lj_gc_check(L);
   return status;
@@ -3218,7 +3203,7 @@ const char * js_luareader (lua_State *L, void *data, size_t *size)
 int main (int argc, char **argv)
 {
   if (argc < 1) {
-    printf("Usage: test path.js\n");
+    JS_DEBUG("Usage: test path.js\n");
     return 1;
   }
 
@@ -3226,7 +3211,7 @@ int main (int argc, char **argv)
   FILE *fp;
   fp = fopen(argv[1], "rb");
   if (fp == NULL) {
-    printf("no file found\n");
+    JS_DEBUG("no file found\n");
     return 1;
   }
   fseek(fp, 0, SEEK_END); // seek to end of file
@@ -3238,8 +3223,6 @@ int main (int argc, char **argv)
 
   lua_State *L;
   L = luaL_newstate();
-
-  w_trunc_write();
 
   js_loadx(L, js_luareader, NULL, "helloworld", "b");
 

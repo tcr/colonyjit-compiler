@@ -1,4 +1,4 @@
 *.dSYM
-jscompiler
+colonyjit-compiler
 out.bc
 bytecode.lua
