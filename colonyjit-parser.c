@@ -320,6 +320,7 @@ static void jmp_patchins(FuncState *fs, BCPos pc, BCPos dest)
 /* Append to jump list. */
 static void jmp_append(FuncState *fs, BCPos *l1, BCPos l2)
 {
+  // JS_DEBUG("APPENDING %d %d\n", *l1, l2);
   if (l2 == NO_JMP) {
     return;
   } else if (*l1 == NO_JMP) {
@@ -458,6 +459,7 @@ static void expr_discharge(FuncState *fs, ExpDesc *e)
     e->k = VNONRELOC;
     return;
   } else {
+    // JS_DEBUG("ISSSSS CONSTANT\n");
     return;
   }
   e->u.s.info = bcemit_INS(fs, ins);
@@ -724,6 +726,7 @@ static BCPos bcemit_branch(FuncState *fs, ExpDesc *e, int cond)
 /* Emit branch on true condition. */
 static void bcemit_branch_t(FuncState *fs, ExpDesc *e)
 {
+  JS_DEBUG("-------> %d %d\n", e->k, VCALL);
   BCPos pc;
   expr_discharge(fs, e);
   if (e->k == VKSTR || e->k == VKNUM || e->k == VKTRUE)
@@ -784,8 +787,8 @@ static void bcemit_arith(FuncState *fs, BinOpr opr, ExpDesc *e1, ExpDesc *e2)
 {
   BCReg rb, rc, t;
   uint32_t op;
-  if (foldarith(opr, e1, e2))
-    return;
+  // if (foldarith(opr, e1, e2))
+  //   return;
   if (opr == OPR_POW) {
     op = BC_POW;
     rc = expr_toanyreg(fs, e2);
@@ -888,6 +891,7 @@ static void bcemit_binop(FuncState *fs, BinOpr op, ExpDesc *e1, ExpDesc *e2)
     expr_discharge(fs, e2);
     jmp_append(fs, &e2->f, e1->f);
     *e1 = *e2;
+    JS_DEBUG("ok\n");
   } else if (op == OPR_OR) {
     lua_assert(e1->f == NO_JMP);  /* List must be closed. */
     expr_discharge(fs, e2);
@@ -2713,307 +2717,4 @@ static void parse_chunk(LexState *ls)
     ls->fs->freereg = ls->fs->nactvar;  /* Free registers after each stmt. */
   }
   synlevel_end(ls);
-}
-
-
-
-
-/**************************************************************************
-** BELOW IS ORIGINAL CODE
-**************************************************************************/
-
-#include "../jsparser.cpp/out/jsparser.h"
-#include <stdio.h>
-#include <lj_frame.h>
-#include <lj_bcdump.h>
-#include <lua.h>
-#include <lauxlib.h>
-#include <assert.h>
-
-ExpDesc js_stack[100];
-size_t js_stack_idx = 0;
-
-ExpDesc* js_stack_push ()
-{
-    ExpDesc* ret = &js_stack[js_stack_idx];
-    js_stack_idx++;
-    return ret;
-}
-
-void js_stack_pop ()
-{
-    js_stack_idx--;
-    assert(js_stack_idx >= 0);
-}
-
-ExpDesc* js_stack_top (size_t mod)
-{
-    ExpDesc* ret = &js_stack[js_stack_idx + mod];
-    return ret;
-}
-
-int js_ismethod = 0;
-
-FuncState *my_fs;
-
-#define my_nodematch(T) (strncmp(C.type, T, strlen(T)) == 0)
-
-void my_onopennode (struct Node_C C) {
-  printf("-> enter %s\n", C.type);
-
-  if (my_nodematch("Identifier")) {
-    ExpDesc* ident = js_stack_top(0);
-    GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
-    
-    if (js_ismethod) {
-      ExpDesc key;
-      expr_init(&key, VKSTR, 0);
-      key.u.sval = s;
-      bcemit_method(my_fs, ident, &key);
-    } else {
-      var_lookup_(my_fs, s, ident, 1);
-    }
-  }
-
-  if (my_nodematch("MemberExpression")) {
-    // ExpDesc* ident = js_stack_push();
-    js_ismethod = 1;
-  }
-
-  if (my_nodematch("CallExpression")) {
-    ExpDesc* ident = js_stack_top(0);
-    if (!js_ismethod) {
-      expr_tonextreg(my_fs, ident);
-    }
-    ExpDesc* args = js_stack_push();
-    (void) args;
-  }
-
-  if (my_nodematch("Literal")) {
-    ExpDesc* args = js_stack_top(0);
-    expr_init(args, VKSTR, 0);
-    printf("literal '%s' %d\n", C.value_string, strlen(C.value_string));
-    GCstr *s = lj_str_new(my_fs->L, C.value_string, strlen(C.value_string));
-    args->u.sval = s;
-
-    // Call Expression tail
-    expr_tonextreg(my_fs, args);
-  }
-}
-
-void my_onclosenode (struct Node_C C) {
-  BCIns ins;
-
-  // printf("type %s\n", C.type);
-  printf("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
-
-  // if (my_nodematch("MemberExpression")) {
-  //   expr_init(&key, VKSTR, 0);
-  //   e->u.sval = lj_str_new(my_fs->L, C.name, strlen(C.name));
-  //   lj_lex_next(ls);
-  //   expr_str(ls, &key);
-  //   bcemit_method(fs, v, &key);
-  // }
-
-  if (my_nodematch("ExpressionStatement")) {
-    ExpDesc* expr = js_stack_top(0);
-
-    if (expr->k == VCALL) {  /* Function call statement. */
-      setbc_b(bcptr(my_fs, expr), 1);  /* No results. */
-    } else {  /* Start of an assignment. */
-      // vl.prev = NULL;
-      // parse_assignment(ls, &vl, 1);
-      printf("[TODO]\n");
-    }
-
-    lua_assert(my_fs->framesize >= my_fs->freereg &&
-         my_fs->freereg >= my_fs->nactvar);
-    my_fs->freereg = my_fs->nactvar;
-
-    js_ismethod = 0;
-  }
-
-  if (my_nodematch("CallExpression")) {
-    ExpDesc* ident = js_stack_top(-1);
-    ExpDesc* args = js_stack_top(0);
-
-    if (C.arguments == 0) { // f().
-      args->k = VVOID;
-    } else {
-      if (args->k == VCALL)  /* f(a, b, g()) or f(a, b, ...). */
-        setbc_b(bcptr(my_fs, args), 0);  /* Pass on multiple results. */
-    }
-
-    BCReg base;
-
-    lua_assert(ident->k == VNONRELOC);
-    base = ident->u.s.info;  /* Base register for call. */
-    if (args->k == VCALL) {
-      ins = BCINS_ABC(BC_CALLM, base, 2, args->u.s.aux - base - 1);
-    } else {
-      if (args->k != VVOID)
-        expr_tonextreg(my_fs, args);
-      ins = BCINS_ABC(BC_CALL, base, 2, my_fs->freereg - base);
-    }
-    expr_init(ident, VCALL, bcemit_INS(my_fs, ins));
-    ident->u.s.aux = base;
-    my_fs->bcbase[my_fs->pc - 1].line = 0;
-    my_fs->freereg = base+1;  /* Leave one result by default. */
-
-    js_stack_pop();
-    js_stack_pop();
-  }
-}
-
-static char* my_input;
-static size_t my_input_len = 0;
-
-/* Entry point of bytecode parser. */
-GCproto *js_parse(LexState *ls)
-{
-  FuncState fs;
-  FuncScope bl;
-  GCproto *pt;
-
-  lua_State *L = ls->L;
-#ifdef LUAJIT_DISABLE_DEBUGINFO
-  ls->chunkname = lj_str_newlit(L, "=");
-#else
-  ls->chunkname = lj_str_newz(L, ls->chunkarg);
-#endif
-  setstrV(L, L->top, ls->chunkname);  /* Anchor chunkname string. */
-
-  incr_top(L);
-
-  my_fs = &fs;
-  
-  ls->level = 0;
-  
-  fs_init(ls, &fs);
-  fs.linedefined = 0;
-  fs.numparams = 0;
-  fs.bcbase = NULL;
-  fs.bclim = 0;
-  fs.flags |= PROTO_VARARG;  /* Main chunk is always a vararg func. */
-  fscope_begin(&fs, &bl, 0);
-  bcemit_AD(&fs, BC_FUNCV, 0, 0);  /* Placeholder. */
-  
-  // EXPECTED: Remove this bit, add our code.
-  /*
-  lj_lex_next(ls);
-  parse_chunk(ls);
-  if (ls->token != TK_eof)
-    err_token(ls, TK_eof);
-  */
-  synlevel_begin(ls);
-  jsparse(my_input, strlen(my_input), my_onopennode, my_onclosenode);
-  synlevel_end(ls);
-
-  pt = fs_finish(ls, ls->linenumber);
-  
-  L->top--;  /* Drop chunkname. */
-  lua_assert(fs.prev == NULL);
-  lua_assert(ls->fs == NULL);
-  lua_assert(pt->sizeuv == 0);
-  return pt;
-}
-
-static void w_append_write (const void*p, size_t sz)
-{
-        FILE *pFile =fopen("bytecode.lua", "a");
-        fwrite(p, sz, 1, pFile);
-        fclose(pFile);
-}
-
-static void w_trunc_write ()
-{
-        FILE *pFile =fopen("bytecode.lua", "w");
-        fwrite(NULL, 0, 1, pFile);
-        fclose(pFile);
-}
-
-static int js_bcdump (lua_State *L, const void* p, size_t sz, void* ud)
-{
-        w_append_write(p, sz);
-  for (size_t i = 0; i < sz; i++) {
-    printf("%02x", ((uint8_t *) p)[i]);
-  }
-  printf("\n");
-  return 0;
-}
-
-static TValue *js_cpparser(lua_State *L, lua_CFunction dummy, void *ud)
-{
-  LexState *ls = (LexState *)ud;
-  GCproto *pt;
-  GCfunc *fn;
-  int bc;
-  UNUSED(dummy);
-  cframe_errfunc(L->cframe) = -1;  /* Inherit error function. */
-  bc = lj_lex_setup(L, ls);
-  // if (ls->mode && !strchr(ls->mode, bc ? 'b' : 't')) {
-  //   setstrV(L, L->top++, lj_err_str(L, LJ_ERR_XMODE));
-  //   lj_err_throw(L, LUA_ERRSYNTAX);
-  // }
-  // pt = bc ? lj_bcread(ls) : js_parse(ls);
-  pt = js_parse(ls);
-  lj_bcwrite(L, pt, js_bcdump, NULL, 0);
-  return NULL;
-}
-
-LUA_API int js_loadx(lua_State *L, lua_Reader reader, void *data,
-          const char *chunkname, const char *mode)
-{
-  LexState ls;
-  int status;
-  ls.rfunc = reader;
-  ls.rdata = data;
-  ls.chunkarg = chunkname ? chunkname : "?";
-  ls.mode = mode;
-  lj_str_initbuf(&ls.sb);
-  status = lj_vm_cpcall(L, NULL, &ls, js_cpparser);
-  printf("status %d\n", status);
-  lj_lex_cleanup(L, &ls);
-  lj_gc_check(L);
-  return status;
-}
-
-const char * js_luareader (lua_State *L, void *data, size_t *size)
-{
-  static size_t len = -1;
-  *size = len == -1 ? strlen(my_input) : 0;
-  len++;
-  return my_input;
-}
-
-int main (int argc, char **argv)
-{
-  if (argc < 1) {
-    printf("Usage: test path.js\n");
-    return 1;
-  }
-
-  // Read in a file.
-  FILE *fp;
-  fp = fopen(argv[1], "rb");
-  if (fp == NULL) {
-    printf("no file found\n");
-    return 1;
-  }
-  fseek(fp, 0, SEEK_END); // seek to end of file
-  my_input_len = ftell(fp); // get current file pointer
-  fseek(fp, 0, SEEK_SET); // seek back to beginning of file
-  my_input = (char*) malloc(my_input_len);
-  fread(my_input, my_input_len, 1, fp);
-  fclose(fp);
-
-  lua_State *L;
-  L = luaL_newstate();
-
-  w_trunc_write();
-
-  js_loadx(L, js_luareader, NULL, "helloworld", "b");
-
-  free(my_input);
-  return 0;
 }
