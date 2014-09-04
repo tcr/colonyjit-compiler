@@ -140,6 +140,7 @@ void my_onopennode (const char* type) {
   }
 
   #define JS_OP_LEFT(OP, ID) if (my_streq(type, OP)) { \
+    js_ismethod = 0; \
     JS_DEBUG("-- operator " OP "\n"); \
     ExpDesc* e = js_stack_top(0); \
     bcemit_binop_left(fs, ID, e); \
@@ -246,6 +247,8 @@ void my_onclosenode (struct Node_C C) {
       // parse_assignment(ls, &vl, 1);
       JS_DEBUG("TODO: assignment\n");
     }
+
+    expr_tonextreg(my_fs, expr);
 
     js_stack_pop();
 

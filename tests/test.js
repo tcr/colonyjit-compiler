@@ -1,2 +1,2 @@
-console.log('1..1')
-console.log(empty('not ok') || 'ok')
+console.log('1..1');
+empty('not ok') || console.log('ok');
