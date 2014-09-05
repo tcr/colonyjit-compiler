@@ -230,7 +230,7 @@ void my_onopennode (const char* type) {
     JS_DEBUG("--ternary-alternate\n");
 
     ExpDesc* expr = js_stack_top(0);
-    // expr_tonextreg(my_fs, expr);
+    expr_tonextreg(my_fs, expr);
 
     ExpDesc* test = js_stack_top(-1);
     BCPos escapelist = NO_JMP;
@@ -270,7 +270,8 @@ void my_onclosenode (struct Node_C C) {
     ExpDesc* test = js_stack_top(-1);
     ExpDesc* result = js_stack_top(0);
 
-    // expr_tonextreg(my_fs, test);
+    my_fs->freereg--;
+    expr_tonextreg(my_fs, result);
     jmp_tohere(my_fs, test->f);
     *test = *result;
 
