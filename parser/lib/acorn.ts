@@ -1966,8 +1966,10 @@ function parseMaybeConditional(noIn:boolean) {
   if (eat(_question)) {
     var node = startNodeFrom(expr);
     node.test = expr;
+    //C jsparse_callback_open("ternary-consequent");
     node.consequent = parseExpression(true);
     expect(_colon);
+    //C jsparse_callback_open("ternary-alternate");
     node.alternate = parseExpression(true, noIn);
     enterNode(node, "ConditionalExpression");
     return finishNode(node);

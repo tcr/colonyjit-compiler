@@ -1,7 +1,9 @@
-all: luajit/src/libluajit.a
-	cd parser; make
+all: luajit/src/libluajit.a ./parser/out/jsparser.a
 	gcc-4.9 -o colonyjit-compiler -ggdb -pagezero_size 10000 -image_base 100000000 \
 		./luajit/src/libluajit.a ./parser/out/jsparser.a colonyjit-compiler.c -Iluajit/src -lstdc++ -std=c99
+
+./parser/out/jsparser.a:
+	cd parser; make
 
 luajit/src/libluajit.a:
 	cd luajit; make

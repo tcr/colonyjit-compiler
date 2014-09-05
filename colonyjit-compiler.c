@@ -212,6 +212,36 @@ void my_onopennode (const char* type) {
 
     js_stack_pop();
   }
+
+  if (my_streq(type, "ternary-consequent")) {
+    js_ismethod = 0;
+    JS_DEBUG("--ternary-consequent\n");
+
+    ExpDesc* test = js_stack_top(0);
+    // if (v.k == VKNIL) v.k = VKFALSE;
+    bcemit_branch_t(my_fs, test);
+
+    ExpDesc* consequent = js_stack_push();
+    (void) consequent;
+  }
+
+  if (my_streq(type, "ternary-alternate")) {
+    js_ismethod = 0;
+    JS_DEBUG("--ternary-alternate\n");
+
+    ExpDesc* expr = js_stack_top(0);
+    // expr_tonextreg(my_fs, expr);
+
+    ExpDesc* test = js_stack_top(-1);
+    BCPos escapelist = NO_JMP;
+    BCPos flist = test->f;
+    jmp_append(my_fs, &escapelist, bcemit_jmp(my_fs));
+    jmp_tohere(my_fs, test->f);
+    test->f = escapelist;
+    
+    // ExpDesc* alternate = js_stack_push();
+    // (void) alternate;
+  }
 }
 
 void my_onclosenode (struct Node_C C) {
@@ -233,6 +263,18 @@ void my_onclosenode (struct Node_C C) {
     } else {
       var_lookup_(my_fs, s, ident, 1);
     }
+  }
+
+  if (my_nodematch("ConditionalExpression")) {
+
+    ExpDesc* test = js_stack_top(-1);
+    ExpDesc* result = js_stack_top(0);
+
+    // expr_tonextreg(my_fs, test);
+    jmp_tohere(my_fs, test->f);
+    *test = *result;
+
+    js_stack_pop();
   }
 
   if (my_nodematch("ExpressionStatement")) {

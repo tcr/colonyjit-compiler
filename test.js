@@ -1,2 +1,2 @@
 console.log('1..1');
-console.log('ok');
+console.log(1 ? 'ok' : 'not ok');

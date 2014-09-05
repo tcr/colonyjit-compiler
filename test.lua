@@ -1,1 +1,1 @@
-console:log(emtpy('hi') or 'hey')
+console:log(42 and 'ok' or 'not ok')
