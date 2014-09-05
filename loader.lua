@@ -5,10 +5,15 @@ _G.console = {
 }
 
 _G.typeof = function (arg)
+	if arg == nil then return 'object'; end
 	return type(arg)
 end
 
 _G.empty = function () end
+
+_G.String = function (arg)
+	return tostring(arg)
+end
 
 local output
 if arg[1] ~= nil then

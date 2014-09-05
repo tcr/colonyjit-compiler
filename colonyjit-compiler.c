@@ -362,6 +362,10 @@ void my_onclosenode (struct Node_C C) {
           expr_init(args, VKFALSE, 0);
         }
 
+        else if (my_streq(C.raw, "null")) {
+          expr_init(args, VKNIL, 0);
+        }
+
         else {
           assert(0);
         }
