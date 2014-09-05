@@ -159,7 +159,7 @@ int lastIndexOf(std::string input, std::string needle, int offset)
 class js_any_type {
 	public:
 		js_any_type_val type;
-		bool value_bool;
+		bool value_boolean;
 		double value_double;
 		std::string value_string;
 		void* value_node;
@@ -202,7 +202,7 @@ js_any_type::js_any_type(std::string value) {
 
 js_any_type::js_any_type(bool value) {
 	this->type = JS_BOOLEAN;
-	this->value_bool = value;
+	this->value_boolean = value;
 }
 
 js_any_type::js_any_type(double value) {
@@ -475,6 +475,7 @@ struct Node_C convert_to_Node_C (Node* node) {
 	C.value_type = node->value.type;
 	C.value_string = node->value.value_string.c_str();
 	C.value_double = node->value.value_double;
+	C.value_boolean = node->value.value_boolean;
 	C.arguments = node->arguments.size();
 	C._operator = node->_operator.c_str();
 	return C;

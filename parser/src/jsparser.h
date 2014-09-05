@@ -59,6 +59,7 @@ int end;
 int arguments;
 // Node* key;
 // Node* value;
+int value_boolean;
 js_any_type_val value_type;
 const char* value_string;
 double value_double;

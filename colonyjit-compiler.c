@@ -8,7 +8,7 @@
 ** BELOW IS ORIGINAL CODE
 **************************************************************************/
 
-#include "../jsparser.cpp/out/jsparser.h"
+#include "parser/out/jsparser.h"
 #include <stdio.h>
 #include <lj_frame.h>
 #include <lj_bcdump.h>
@@ -336,6 +336,10 @@ void my_onclosenode (struct Node_C C) {
     GCstr *s = NULL;
     ExpDesc* args = js_stack_top(0);
     switch (C.value_type) {
+      case JS_BOOLEAN:
+        expr_init(args, C.value_boolean ? VKTRUE : VKFALSE, 0);
+        break;
+
       case JS_STRING:
         expr_init(args, VKSTR, 0);
         s = lj_str_new(my_fs->L, C.value_string, strlen(C.value_string));
@@ -348,7 +352,18 @@ void my_onclosenode (struct Node_C C) {
         break;
 
       default:
-        assert(0);
+        //TODO: Workaround for parser
+        if (my_streq(C.raw, "true")) {
+          expr_init(args, VKTRUE, 0);
+        }
+
+        else if (my_streq(C.raw, "false")) {
+          expr_init(args, VKFALSE, 0);
+        }
+
+        else {
+          assert(0);
+        }
     }
   }
 
