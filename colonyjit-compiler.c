@@ -92,6 +92,7 @@ void my_onopennode (const char* type) {
   if (my_streq(type, "parseStatement")) {
     JS_DEBUG("--parseStatement\n");
     is_statement = 1;
+    js_ismethod = 0;
   } else {
     is_statement = 0;
   }

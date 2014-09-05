@@ -1,1 +1,1 @@
-console:log(42 and 'ok' or 'not ok')
+if 1 then console:log('ok'); else console:log('not ok'); end
