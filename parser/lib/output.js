@@ -1305,12 +1305,14 @@ Node* parseVar(Node* node, bool noIn, std::string kind) {
     node->kind = kind;
     ; for (; ;)
 {
+         jsparse_callback_open("var-declarator"); 
         Node* decl = startNode(); 
         decl->id = options.ecmaVersion >= 6 ? toAssignable(parseExprAtom()) : parseIdent();
         {
         }
         if (eat(_eq)) {
 {
+             jsparse_callback_open("var-declarator-assign"); 
             decl->init = parseExpression(true, noIn);
         }
 } else if (kind==_const.keyword) {
@@ -1318,6 +1320,7 @@ Node* parseVar(Node* node, bool noIn, std::string kind) {
             unexpected();
         }
 } else {
+             jsparse_callback_open("var-declarator-no-assign"); 
             decl->init = null;
         }
         enterNode(decl, "VariableDeclarator");

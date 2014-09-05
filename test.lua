@@ -1,1 +1,0 @@
-if 1 then console:log('ok'); else console:log('not ok'); end

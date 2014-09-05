@@ -15,6 +15,8 @@ _G.String = function (arg)
 	return tostring(arg)
 end
 
+_G.undefined = nil
+
 local output
 if arg[1] ~= nil then
 	local file = assert(io.popen('./colonyjit-compiler ' .. arg[1], 'r'))

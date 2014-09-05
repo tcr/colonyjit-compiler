@@ -1897,14 +1897,17 @@ function parseVar(node:Node, noIn:boolean, kind:string) {
   node.declarations = [];
   node.kind = kind;
   for (;;) {
+    //C jsparse_callback_open("var-declarator");
     var decl = startNode();
     decl.id = options.ecmaVersion >= 6 ? toAssignable(parseExprAtom()) : parseIdent();
     checkLVal(decl.id, true);
     if (eat(_eq)) {
+      //C jsparse_callback_open("var-declarator-assign");
       decl.init = parseExpression(true, noIn);
     } else if (kind === _const.keyword) {
       unexpected();
     } else {
+      //C jsparse_callback_open("var-declarator-no-assign");
       decl.init = null;
     }
     enterNode(decl, "VariableDeclarator");

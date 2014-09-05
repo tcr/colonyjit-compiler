@@ -209,6 +209,25 @@ void my_onopennode (const char* type) {
     // (void) alternate;
   }
 
+  if (my_streq(type, "var-declarator")) {
+    JS_DEBUG("--var-declarator\n");
+    js_ismethod = 2;
+  }
+
+  if (my_streq(type, "var-declarator-assign")) {
+    js_ismethod = 0;
+    JS_DEBUG("--var-declarator-assign\n");
+    js_stack_push();
+  }
+
+  if (my_streq(type, "var-declarator-no-assign")) {
+    js_ismethod = 0;
+    JS_DEBUG("--var-declarator-no-assign\n");
+    ExpDesc* e = js_stack_push();
+    expr_init(e, VKNIL, 0);
+    expr_tonextreg(my_fs, e);
+  }
+
   if (my_streq(type, "if-no-alternate")) {
     JS_DEBUG("--if-no-alternate\n");
 
@@ -264,18 +283,29 @@ void my_onclosenode (struct Node_C C) {
   // JS_DEBUG("type %s\n", C.type);
   JS_DEBUG("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
 
+  if (my_streq(C.type, "VariableDeclarator")) {
+    ExpDesc* e = js_stack_top(0);
+    assign_adjust(my_fs->ls, 1, 1, e);
+    var_add(my_fs->ls, 1);
+  }
+
   if (my_nodematch("Identifier")) {
     ExpDesc* ident = js_stack_top(0);
     GCstr *s = lj_str_new(my_fs->L, C.name, strlen(C.name));
     
     JS_DEBUG("identifier js_ismethod %d\n", js_ismethod);
-    if (js_ismethod) {
+    if (js_ismethod == 1) {
       ExpDesc key;
       expr_init(&key, VKSTR, 0);
       key.u.sval = s;
       bcemit_method(my_fs, ident, &key);
-    } else {
+    } else if (js_ismethod == 0) {
       var_lookup_(my_fs, s, ident, 1);
+    } else if (js_ismethod == 2) { 
+      JS_DEBUG("SDAFSDFASF %s\n", s);
+      var_new(my_fs->ls, 0, s);
+    } else {
+      assert(0);
     }
   }
 
