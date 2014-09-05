@@ -1348,6 +1348,7 @@ Node* parseMaybeAssign(bool noIn) {
     Node* left = parseMaybeConditional(noIn); 
     if (tokType.isAssign) {
 {
+         jsparse_callback_open("assign"); 
         Node* node = startNodeFrom(left); 
         node->_operator = tokVal;
         node->left = tokType==_eq ? toAssignable(left) : left;

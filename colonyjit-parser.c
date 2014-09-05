@@ -653,7 +653,9 @@ static void bcemit_store(FuncState *fs, ExpDesc *var, ExpDesc *e)
     }
   }
   bcemit_INS(fs, ins);
-  expr_free(fs, e);
+
+  //NOTE: changed.
+  // expr_free(fs, e);
 }
 
 /* Emit method lookup expression. */

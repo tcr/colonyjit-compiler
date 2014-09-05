@@ -164,6 +164,19 @@ void my_onopennode (const char* type) {
   JS_OP_LEFT("&&", OPR_AND);
   JS_OP_LEFT("||", OPR_OR);
 
+  if (my_streq(type, "assign")) {
+    JS_DEBUG("--ASSIGNMENT!!!\n");
+
+    // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
+
+    // /* Assign RHS to LHS and recurse downwards. */
+    // expr_init(&e, VNONRELOC, ls->fs->freereg-1);
+    // bcemit_store(ls->fs, &lh->v, &e);
+
+    ExpDesc* rval = js_stack_push();
+    (void) rval;
+  }
+
   if (my_streq(type, "if-test")) {
     JS_DEBUG("--if-test\n");
 
@@ -264,6 +277,16 @@ void my_onclosenode (struct Node_C C) {
     } else {
       var_lookup_(my_fs, s, ident, 1);
     }
+  }
+
+  if (my_nodematch("AssignmentExpression")) {
+    ExpDesc* lval = js_stack_top(-1);
+    ExpDesc* rval = js_stack_top(0);
+
+    bcemit_store(my_fs, lval, rval);
+
+    *lval = *rval;
+    js_stack_pop();
   }
 
   if (my_nodematch("ConditionalExpression")) {

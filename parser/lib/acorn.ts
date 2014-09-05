@@ -1946,6 +1946,7 @@ function parseMaybeAssign(noIn:boolean) {
   //C jsparse_callback_open("parseMaybeAssign");
   var left = parseMaybeConditional(noIn);
   if (tokType.isAssign) {
+    //C jsparse_callback_open("assign");
     var node = startNodeFrom(left);
     node.operator = tokVal;
     node.left = tokType === _eq ? toAssignable(left) : left;
