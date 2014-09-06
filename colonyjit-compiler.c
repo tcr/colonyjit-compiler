@@ -278,6 +278,8 @@ void my_onopennode (const char* type) {
 }
 
 void my_onclosenode (struct Node_C C) {
+  FuncState* fs = my_fs;
+
   BCIns ins;
 
   // JS_DEBUG("type %s\n", C.type);
@@ -302,8 +304,43 @@ void my_onclosenode (struct Node_C C) {
     } else if (js_ismethod == 0) {
       var_lookup_(my_fs, s, ident, 1);
     } else if (js_ismethod == 2) { 
-      JS_DEBUG("SDAFSDFASF %s\n", s);
+      JS_DEBUG("NEW VARIABLE DECLARED: '%s'\n", C.name);
+
+      JS_DEBUG("actvar %d\n", fs->nactvar);
       var_new(my_fs->ls, 0, s);
+
+      BCReg reg;
+      BCPos pc = my_fs->pc;
+      // fs->freereg++;
+
+      #define JS_NACTVAR(A) (A > fs->nactvar ? A + 1 : A)
+      
+      int first = 1;
+      for (BCPos i = 0; i < pc; i++) {
+        switch (bc_op(my_fs->bcbase[i].ins)) {
+          case BC_MOV:
+            setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
+            setbc_d(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_d(my_fs->bcbase[i].ins)));
+            break;
+          case BC_TGETS:
+            setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
+            setbc_b(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_b(my_fs->bcbase[i].ins)));
+            break;
+          case BC_KSTR:
+          case BC_KPRI:
+          case BC_CALL:
+          case BC_RET0:
+          case BC_GGET:
+            setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
+            break;
+        }
+        if (bc_op(my_fs->bcbase[i].ins) == BC_GGET && bc_d(my_fs->bcbase[i].ins) == const_gc(my_fs, obj2gco(s), LJ_TSTR)) {
+          setbc_op(&my_fs->bcbase[i].ins, BC_MOV);
+          setbc_d(&my_fs->bcbase[i].ins, 0);
+        }
+      }
+      
+
     } else {
       assert(0);
     }

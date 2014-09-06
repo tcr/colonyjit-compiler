@@ -1,3 +1,8 @@
+// console.log('hi')
+// var console;
+// var a = 5;
+// console.log(a);
+
 console.log('1..2')
 
 a = 5;
