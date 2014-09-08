@@ -2337,7 +2337,7 @@ function initFunction(node:Node) {
 // `isStatement` parameter).
 
 function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:boolean) {
-  //C jsparse_callback_open("parseFunction");
+  //C jsparse_callback_open("function");
   initFunction(node);
   if (options.ecmaVersion >= 6) {
     node.generator = eat(_star);

@@ -1,1 +1,5 @@
-console.log('ok', empty('hi'), console.log('1..1'));
+var go = function () {
+	console.log('1..1');
+	console.log('ok');
+}
+go();
