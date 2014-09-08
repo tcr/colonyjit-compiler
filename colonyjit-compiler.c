@@ -313,30 +313,139 @@ void my_onclosenode (struct Node_C C) {
       BCPos pc = my_fs->pc;
       // fs->freereg++;
 
-      #define JS_NACTVAR(A) (A > fs->nactvar ? A + 1 : A)
+      #define JS_NACTVAR(A) (A >= fs->nactvar ? A + 1 : A)
       
+      // TODO move more operations in here
       int first = 1;
       for (BCPos i = 0; i < pc; i++) {
         switch (bc_op(my_fs->bcbase[i].ins)) {
-          case BC_MOV:
-            setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
-            setbc_d(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_d(my_fs->bcbase[i].ins)));
-            break;
+          // A and B
+          case BC_ADDVN:
+          case BC_SUBVN:
+          case BC_MULVN:
+          case BC_DIVVN:
+          case BC_MODVN:
+          case BC_ADDNV:
+          case BC_SUBNV:
+          case BC_MULNV:
+          case BC_DIVNV:
+          case BC_MODNV:
           case BC_TGETS:
+          case BC_TGETB:
+          case BC_TSETS:
+          case BC_TSETB:
             setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
             setbc_b(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_b(my_fs->bcbase[i].ins)));
             break;
+
+          // A and B and D
+          case BC_ADDVV:
+          case BC_SUBVV:
+          case BC_MULVV:
+          case BC_DIVVV:
+          case BC_MODVV:
+          case BC_POW:
+          case BC_CAT:
+          case BC_TGETV:
+          case BC_TSETV:
+            setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
+            setbc_b(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_b(my_fs->bcbase[i].ins)));
+            setbc_d(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_d(my_fs->bcbase[i].ins)));
+            break;
+
+          // A and D
+          case BC_ISLT:
+          case BC_ISGE:
+          case BC_ISLE:
+          case BC_ISGT:
+          case BC_ISEQV:
+          case BC_ISNEV:
+          case BC_ISTC:
+          case BC_ISFC:
+          case BC_MOV:
+          case BC_NOT:
+          case BC_UNM:
+          case BC_LEN:
+          case BC_KNIL:
+            setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
+            setbc_d(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_d(my_fs->bcbase[i].ins)));
+            break;
+
+          // D
+          case BC_IST:
+          case BC_ISF:
+          case BC_USETV:
+            setbc_d(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_d(my_fs->bcbase[i].ins)));
+            break;
+
+          // A
+          case BC_ISEQS:
+          case BC_ISNES:
+          case BC_ISEQN:
+          case BC_ISNEN:
+          case BC_ISEQP:
+          case BC_ISNEP:
           case BC_KSTR:
+          case BC_KCDATA:
+          case BC_KSHORT:
+          case BC_KNUM:
           case BC_KPRI:
-          case BC_CALL:
-          case BC_RET0:
+          case BC_UGET:
+          case BC_UCLO:
+          case BC_FNEW:
+          case BC_TNEW:
+          case BC_TDUP:
           case BC_GGET:
+          case BC_GSET:
+          case BC_TSETM:
+          case BC_CALLM:
+          case BC_CALL:
+          case BC_CALLMT:
+          case BC_CALLT:
+          case BC_ITERC:
+          case BC_ITERN:
+          case BC_VARG:
+          case BC_ISNEXT:
+          case BC_RETM:
+          case BC_RET:
+          case BC_RET0:
+          case BC_RET1:
+          case BC_FORI:
+          case BC_JFORI:
+          case BC_FORL:
+          case BC_IFORL:
+          case BC_JFORL:
+          case BC_ITERL:
+          case BC_IITERL:
+          case BC_JITERL:
+          case BC_LOOP:
+          case BC_ILOOP:
+          case BC_JLOOP:
+          case BC_JMP:
+          case BC_FUNCF:
+          case BC_IFUNCF:
+          case BC_JFUNCF:
+          case BC_FUNCV:
+          case BC_IFUNCV:
+          case BC_JFUNCV:
+          case BC_FUNCC:
+          case BC_FUNCCW:
+          // case BC_FUNC:
             setbc_a(&my_fs->bcbase[i].ins, JS_NACTVAR(bc_a(my_fs->bcbase[i].ins)));
             break;
+
+          default:
+          JS_DEBUG("WHAT %d\n", bc_op(my_fs->bcbase[i].ins));
+            assert(0);
         }
         if (bc_op(my_fs->bcbase[i].ins) == BC_GGET && bc_d(my_fs->bcbase[i].ins) == const_gc(my_fs, obj2gco(s), LJ_TSTR)) {
           setbc_op(&my_fs->bcbase[i].ins, BC_MOV);
-          setbc_d(&my_fs->bcbase[i].ins, 0);
+          setbc_d(&my_fs->bcbase[i].ins, fs->nactvar);
+        }
+        if (bc_op(my_fs->bcbase[i].ins) == BC_GSET && bc_d(my_fs->bcbase[i].ins) == const_gc(my_fs, obj2gco(s), LJ_TSTR)) {
+          setbc_op(&my_fs->bcbase[i].ins, BC_MOV);
+          setbc_a(&my_fs->bcbase[i].ins, fs->nactvar);
+          setbc_d(&my_fs->bcbase[i].ins, bc_a(my_fs->bcbase[i].ins) + 1);
         }
       }
       
