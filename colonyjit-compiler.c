@@ -103,14 +103,8 @@ void my_onopennode (const char* type) {
     js_ismethod = 1;
   }
 
-  if (my_streq(type, "parseExprList-next")) {
-    JS_DEBUG("--parseExprList-next\n");
-    ExpDesc* args = js_stack_top(0);
-    expr_tonextreg(my_fs, args);
-  }
-
-  if (my_streq(type, "parseExprList")) {
-    JS_DEBUG("--parseexprlist\n");
+  if (my_streq(type, "call-open")) {
+    JS_DEBUG("--call-open\n");
     ExpDesc* ident = js_stack_top(0);
 
     if (ident->k == VGLOBAL) {
@@ -127,6 +121,17 @@ void my_onopennode (const char* type) {
     ExpDesc* args = js_stack_push();
     JS_DEBUG("---------> ident %p has a base of %d\n", ident, ident->u.s.aux);
     (void) args;
+  }
+
+  if (my_streq(type, "parseExprList-next")) {
+    JS_DEBUG("--parseExprList-next\n");
+    ExpDesc* args = js_stack_top(0);
+    js_ismethod = 0;
+
+    // if (args->k == VCALL)  /* f(a, b, g()) or f(a, b, ...). */
+        // setbc_b(bcptr(my_fs, args), 0);  /* Pass on multiple results. */
+
+    expr_tonextreg(my_fs, args);
   }
 
   if (my_streq(type, "typeof")) {
@@ -512,8 +517,8 @@ void my_onclosenode (struct Node_C C) {
     if (C.arguments == 0) { // f().
       args->k = VVOID;
     } else {
-      if (args->k == VCALL)  /* f(a, b, g()) or f(a, b, ...). */
-        setbc_b(bcptr(my_fs, args), 0);  /* Pass on multiple results. */
+      // if (args->k == VCALL)   f(a, b, g()) or f(a, b, ...). 
+      //   setbc_b(bcptr(my_fs, args), 0);  /* Pass on multiple results. */
     }
 
     BCReg base;

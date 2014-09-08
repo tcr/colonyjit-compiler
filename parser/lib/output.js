@@ -1470,6 +1470,7 @@ Node* parseSubscripts(Node* base, bool noCalls) {
     }
 } else if (!noCalls && eat(_parenL)) {
 {
+         jsparse_callback_open("call-open"); 
         Node* node = startNodeFrom(base); 
         enterNode(node, "CallExpression");
         node->callee = base;

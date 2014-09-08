@@ -2071,6 +2071,7 @@ function parseSubscripts(base:Node, noCalls?:boolean):Node {
     enterNode(node, "MemberExpression");
     return parseSubscripts(finishNode(node), noCalls);
   } else if (!noCalls && eat(_parenL)) {
+    //C jsparse_callback_open("call-open");
     var node = startNodeFrom(base);
     enterNode(node, "CallExpression");
     node.callee = base;
