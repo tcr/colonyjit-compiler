@@ -24,8 +24,8 @@
 
 #define CJC_STACK_PUSH(T, N) T* N ## _push() \
 { \
-    T* ret = &N.entries[N.idx]; \
     N.idx++; \
+    T* ret = &N.entries[N.idx]; \
 \
     JS_DEBUG("[stack] push: "); \
     for (int i = 0; i < N.idx; i++) { \
@@ -183,6 +183,7 @@ static void increment_registers(BCIns* ins, int pos)
  * Parsing
  */
 
+LexState* ls;
 
 CJC_STACK(ExpDesc, js_stack);
 CJC_STACK_PUSH(ExpDesc, js_stack);
@@ -222,6 +223,23 @@ void my_onopennode(const char* type)
     if (my_streq(type, "function")) {
         JS_DEBUG("[>] function\n");
         JS_DEBUG("---------> LAWDY\n");
+
+int line = 0;
+int needself = 0;
+FuncState *pfs = fs;
+fs = js_fs_push();
+FuncScope bl;
+ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
+fs_init(ls, fs);
+JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
+fscope_begin(fs, &bl, 0);
+fs->linedefined = line;
+fs->numparams = 0;//(uint8_t)parse_params(ls, needself);
+fs->bcbase = pfs->bcbase + pfs->pc;
+fs->bclim = pfs->bclim - pfs->pc;
+bcemit_AD(fs, BC_FUNCF, 0, 0);  /* Placeholder. */
+// parse_chunk(ls);
+
 
         // FuncState *fs;
         // ExpDesc v, b;
@@ -436,8 +454,36 @@ void my_onclosenode(struct Node_C C)
         var_add(fs->ls, 1);
     }
 
+    if (my_streq(C.type, "FunctionExpression")) {
+// if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
+        JS_DEBUG("DONEOENOENOENENOE\n");
+ptrdiff_t oldbase = 0;
+
+int line = 0;
+FuncState *pfs = js_fs_top(-1);
+GCproto *pt = fs_finish(ls, (ls->lastline = ls->linenumber));
+pfs->bcbase = ls->bcstack + oldbase;  /* May have been reallocated. */
+pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
+/* Store new prototype in the constant array of the parent. */
+expr_init(js_stack_top(0), VRELOCABLE,
+    bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+#if LJ_HASFFI
+pfs->flags |= (fs->flags & PROTO_FFI);
+#endif
+if (!(pfs->flags & PROTO_CHILD)) {
+    if (pfs->flags & PROTO_HAS_RETURN) {
+        pfs->flags |= PROTO_FIXUP_RETURN;
+    }
+    pfs->flags |= PROTO_CHILD;
+}
+js_fs_pop();
+fs = js_fs_top(0);
+    }
+
     if (my_streq(C.type, "Identifier")) {
         ExpDesc* ident = js_stack_top(0);
+        JS_DEBUG("fs %p, %p\n", fs, fs->L);
+        assert(fs->L);
         GCstr* s = lj_str_new(fs->L, C.name, strlen(C.name));
 
         JS_DEBUG("[ident] js_ismethod %d\n", js_ismethod);
@@ -654,7 +700,7 @@ static size_t my_input_len = 0;
 /* Entry point of bytecode parser. */
 GCproto* js_parse(LexState* ls)
 {
-    FuncState* fs = js_fs_top(0);
+    FuncState* fs = js_fs_push();
     FuncScope bl;
     GCproto* pt;
 
@@ -707,7 +753,7 @@ static int js_bcdump(lua_State* L, const void* p, size_t sz, void* ud)
 
 static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 {
-    LexState* ls = (LexState*)ud;
+    ls = (LexState*)ud;
     GCproto* pt;
     GCfunc* fn;
     int bc;
