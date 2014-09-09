@@ -1709,7 +1709,7 @@ int initFunction(Node* node) {
 }
 }
 Node* parseFunction(Node* node, bool isStatement, bool allowExpressionBody) {
-     jsparse_callback_open("parseFunction"); 
+     jsparse_callback_open("function"); 
     initFunction(node);
     if (options.ecmaVersion >= 6) {
 {
@@ -1722,6 +1722,7 @@ Node* parseFunction(Node* node, bool isStatement, bool allowExpressionBody) {
     }
 }
     parseFunctionParams(node);
+     jsparse_callback_open("function-body"); 
     parseFunctionBody(node, allowExpressionBody);
     enterNode(node, isStatement ? "FunctionDeclaration" : "FunctionExpression");
     return finishNode(node);
@@ -1795,6 +1796,7 @@ int parseFunctionParams(Node* node) {
             break;
         }
 } else {
+             jsparse_callback_open("function-param"); 
             push(node->params, options.ecmaVersion >= 6 ? toAssignable(parseExprAtom(), false, true) : parseIdent());
             if (options.ecmaVersion >= 6 && tokType==_eq) {
 {

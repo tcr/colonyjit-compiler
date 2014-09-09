@@ -197,8 +197,9 @@ CJC_STACK_TOP(FuncState, js_fs);
 
 static int js_ismethod = 0;
 static int is_statement;
+static BCReg fnparams = 0;
 
-#define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0)
+#define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 
 void my_onopennode(const char* type)
 {
@@ -234,13 +235,13 @@ fs_init(ls, fs);
 JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
 fscope_begin(fs, &bl, 0);
 fs->linedefined = line;
-fs->numparams = 0;//(uint8_t)parse_params(ls, needself);
+//(uint8_t)parse_params(ls, needself);
 fs->bcbase = pfs->bcbase + pfs->pc;
 fs->bclim = pfs->bclim - pfs->pc;
 bcemit_AD(fs, BC_FUNCF, 0, 0);  /* Placeholder. */
 // parse_chunk(ls);
 
-
+fs->numparams = 0;
         // FuncState *fs;
         // ExpDesc v, b;
         // int needself = 0;
@@ -256,6 +257,18 @@ bcemit_AD(fs, BC_FUNCF, 0, 0);  /* Placeholder. */
         // fs = ls->fs;
         // bcemit_store(fs, &v, &b);
         // fs->bcbase[fs->pc - 1].line = line;  /* Set line for the store. */
+    }
+
+    if (my_streq(type, "function-param")) {
+        JS_DEBUG("[>] function-param\n");
+        js_ismethod = 3;
+    }
+
+    if (my_streq(type, "function-body")) {
+        JS_DEBUG("[>] function-body\n");
+        var_add(ls, fs->numparams);
+        lua_assert(fs->nactvar == fs->numparams);
+        bcreg_reserve(fs, fs->numparams);
     }
 
     if (my_streq(type, "parseSubscripts")) {
@@ -517,6 +530,9 @@ fs = js_fs_top(0);
                     setbc_d(&fs->bcbase[i].ins, bc_a(fs->bcbase[i].ins) + 1);
                 }
             }
+
+        } else if (js_ismethod == 3) {
+            var_new(ls, fs->numparams++, s);
 
         } else {
             assert(0);

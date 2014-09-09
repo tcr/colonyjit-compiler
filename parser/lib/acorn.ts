@@ -2346,6 +2346,7 @@ function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:bool
     node.id = parseIdent();
   }
   parseFunctionParams(node);
+  //C jsparse_callback_open("function-body");
   parseFunctionBody(node, allowExpressionBody);
   enterNode(node, isStatement ? "FunctionDeclaration" : "FunctionExpression");
   return finishNode(node);
@@ -2420,6 +2421,7 @@ function parseFunctionParams(node:Node) {
       expect(_parenR);
       break;
     } else {
+      //C jsparse_callback_open("function-param");
       node.params.push(options.ecmaVersion >= 6 ? toAssignable(parseExprAtom(), false, true) : parseIdent());
       if (options.ecmaVersion >= 6 && tokType === _eq) {
         next();
