@@ -1,7 +1,7 @@
 var go = function (a, b) {
 	var go2 = function () {
-		console.log('1..1');
-		console.log('ok');
+		console.log(a);
+		console.log(b);
 	}
 	go2();
 }
