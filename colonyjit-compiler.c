@@ -343,6 +343,8 @@ fs->numparams = 0;
     JS_OP_LEFT("||", OPR_OR);
 
     if (my_streq(type, "assign")) {
+        js_ismethod = 0;
+        
         JS_DEBUG("[>] assign\n");
 
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
