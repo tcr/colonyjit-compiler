@@ -1,4 +1,6 @@
-all: luajit/src/libluajit.a ./parser/out/jsparser.a
+all: colonyjit-compiler
+
+colonyjit-compiler: colonyjit-compiler.c luajit/src/libluajit.a ./parser/out/jsparser.a
 	gcc-4.9 -o colonyjit-compiler -ggdb -pagezero_size 10000 -image_base 100000000 \
 		./luajit/src/libluajit.a ./parser/out/jsparser.a colonyjit-compiler.c -Iluajit/src -lstdc++ -std=c99
 
@@ -22,7 +24,7 @@ dump-test:
 clean:
 	rm -rf *.dSYM lj colonyjit-compiler bytecode.lua || true
 
-test:
+test: colonyjit-compiler
 	tinytap -e "luajit loader.lua {}" tests/*.js
 
 update:
