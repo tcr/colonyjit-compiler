@@ -7,7 +7,8 @@
     "test": "tests"
   },
   "dependencies": {
-    "falafel": "^0.3.1"
+    "falafel": "^0.3.1",
+    "typedast": "^2.0.1"
   },
   "devDependencies": {},
   "scripts": {

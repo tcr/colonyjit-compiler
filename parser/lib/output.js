@@ -1709,7 +1709,6 @@ int initFunction(Node* node) {
 }
 }
 Node* parseFunction(Node* node, bool isStatement, bool allowExpressionBody) {
-     jsparse_callback_open("function"); 
     initFunction(node);
     if (options.ecmaVersion >= 6) {
 {

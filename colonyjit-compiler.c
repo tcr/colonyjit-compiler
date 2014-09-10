@@ -27,7 +27,7 @@
     N.idx++; \
     T* ret = &N.entries[N.idx]; \
 \
-    JS_DEBUG("[stack] push: "); \
+    JS_DEBUG("[stack " #N "] push: "); \
     for (int i = 0; i < N.idx; i++) { \
         JS_DEBUG("[] "); \
     } \
@@ -40,7 +40,7 @@
     assert(N.idx >= 1); \
     N.idx--; \
 \
-    JS_DEBUG("[stack] pop: "); \
+    JS_DEBUG("[stack " #N "] pop: "); \
     for (int i = 0; i < N.idx; i++) { \
         JS_DEBUG("[] "); \
     } \
@@ -222,7 +222,7 @@ void my_onopennode(const char* type)
     }
 
     if (my_streq(type, "function")) {
-        JS_DEBUG("[>] function\n");
+        JS_DEBUG("[>] function %s\n", type);
         JS_DEBUG("---------> LAWDY\n");
 
 int line = 0;
@@ -265,6 +265,7 @@ fs->numparams = 0;
     }
 
     if (my_streq(type, "function-body")) {
+        js_ismethod = 0;
         JS_DEBUG("[>] function-body\n");
         var_add(ls, fs->numparams);
         lua_assert(fs->nactvar == fs->numparams);
@@ -465,6 +466,7 @@ void my_onclosenode(struct Node_C C)
         ExpDesc* e = js_stack_top(0);
         assign_adjust(fs->ls, 1, 1, e);
         var_add(fs->ls, 1);
+        js_stack_pop();
     }
 
     if (my_streq(C.type, "FunctionExpression")) {
@@ -491,6 +493,8 @@ if (!(pfs->flags & PROTO_CHILD)) {
 }
 js_fs_pop();
 fs = js_fs_top(0);
+
+// js_stack_pop();
     }
 
     if (my_streq(C.type, "Identifier")) {
@@ -781,7 +785,14 @@ static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
     //   lj_err_throw(L, LUA_ERRSYNTAX);
     // }
     // pt = bc ? lj_bcread(ls) : js_parse(ls);
+
     pt = js_parse(ls);
+    js_fs_pop();
+
+    JS_DEBUG("%d %d\n", js_fs.idx, js_stack.idx);
+    assert(js_fs.idx == 0);
+    assert(js_stack.idx == 0);
+
     lj_bcwrite(L, pt, js_bcdump, NULL, 0);
     return NULL;
 }
