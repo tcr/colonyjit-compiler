@@ -288,6 +288,16 @@ void my_onopennode(const char* type)
         JS_DEBUG("[>] call-open\n");
         ExpDesc* ident = js_stack_top(0);
 
+        if (ident->k == VINDEXED) {
+            // rewrite
+            JS_DEBUG("REWRITING------->\n");
+            bcreg_reserve(fs, 1);
+            expr_tonextreg(fs, ident);
+            bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 2);
+            bcreg_reserve(fs, 1);
+            // bcemit_method(fs, ident, &key);
+        }
+
         if (ident->k == VGLOBAL) {
             expr_tonextreg(fs, ident);
         }
@@ -562,13 +572,15 @@ void my_onclosenode(struct Node_C C)
         GCstr* s = lj_str_new(fs->L, C.name, strlen(C.name));
 
         JS_DEBUG("[ident] js_ismethod %d\n", js_ismethod);
-        if (js_ismethod == 1) {
+        if (js_ismethod == 0) {
+            var_lookup_(fs, s, ident, 1);
+        } else if (js_ismethod == 1) {
             ExpDesc key;
             expr_init(&key, VKSTR, 0);
             key.u.sval = s;
-            bcemit_method(fs, ident, &key);
-        } else if (js_ismethod == 0) {
-            var_lookup_(fs, s, ident, 1);
+
+            expr_toanyreg(fs, ident);
+            expr_index(fs, ident, &key);
         } else if (js_ismethod == 2) {
             // JS_DEBUG("NEW VARIABLE DECLARED: '%s'\n", C.name);
 
@@ -767,7 +779,7 @@ void my_onclosenode(struct Node_C C)
     else if (
         my_streq(C.type, "MemberExpression") ||
         my_streq(C.type, "VariableDeclaration") ||
-        my_streq(C.type, "UpdateExpression") || 
+        // my_streq(C.type, "UpdateExpression") || 
         my_streq(C.type, "BlockStatement") ||
         my_streq(C.type, "IfStatement") ||
         my_streq(C.type, "WhileStatement") ||
@@ -779,7 +791,7 @@ void my_onclosenode(struct Node_C C)
         assert(0);
     }
 
-    js_ismethod = 0;
+    // js_ismethod = 0;
 }
 
 /*
