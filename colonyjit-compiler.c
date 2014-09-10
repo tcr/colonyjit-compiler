@@ -199,6 +199,8 @@ static int js_ismethod = 0;
 static int is_statement;
 static BCReg fnparams = 0;
 
+BCPos start, loop;
+
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 
 void my_onopennode(const char* type)
@@ -355,6 +357,50 @@ fs->numparams = 0;
 
         ExpDesc* rval = js_stack_push();
         (void)rval;
+    }
+
+    if (my_streq(type, "while-test")) {
+        JS_DEBUG("[>] while-test\n");
+
+        ExpDesc* test = js_stack_push();
+        (void)test;
+
+  // lj_lex_next(ls);  /* Skip 'while'. */
+  start = fs->lasttarget = fs->pc;
+  // condexit = expr_cond(ls);
+  // // fscope_begin(fs, &bl, FSCOPE_LOOP);
+  // // lex_check(ls, TK_do);
+  // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+  // parse_block(ls);
+    }
+
+    if (my_streq(type, "while-body")) {
+        JS_DEBUG("[>] while-body\n");
+
+        ExpDesc* test = js_stack_top(0);
+        // if (v.k == VKNIL) v.k = VKFALSE;
+        bcemit_branch_t(fs, test);
+
+
+        loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+
+        // ExpDesc* consequent = js_stack_push();
+        // (void) consequent;
+    }
+
+    if (my_streq(type, "while-end")) {
+        JS_DEBUG("[>] while-end\n");
+
+        ExpDesc* test = js_stack_top(0);
+        // jmp_tohere(fs, test->f);
+
+        jmp_patch(fs, bcemit_jmp(fs), start);
+        // lex_match(ls, TK_end, TK_while, line);
+        // fscope_end(fs);
+        jmp_tohere(fs, test->f);
+        jmp_patchins(fs, loop, fs->pc);
+
+        js_stack_pop();
     }
 
     if (my_streq(type, "if-test")) {
@@ -574,14 +620,14 @@ fs = js_fs_top(0);
         ExpDesc* expr = js_stack_top(0);
 
         if (expr->k == VCALL) { /* Function call statement. */
-            // setbc_b(bcptr(fs, expr), 1);  /* No results. */
+            setbc_b(bcptr(fs, expr), 1);  /* No results. */
         } else { /* Start of an assignment. */
             // vl.prev = NULL;
             // parse_assignment(ls, &vl, 1);
             JS_DEBUG("TODO: assignment\n");
         }
 
-        expr_tonextreg(fs, expr);
+        // expr_tonextreg(fs, expr);
 
         js_stack_pop();
 

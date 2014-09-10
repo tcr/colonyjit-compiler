@@ -1776,11 +1776,14 @@ function parseVarStatement(node:Node, kind:string) {
 function parseWhileStatement(node:Node) {
   //C jsparse_callback_open("parseWhileStatement");
   next();
+  //C jsparse_callback_open("while-test");
   node.test = parseParenExpression();
   labels.push(loopLabel);
+  //C jsparse_callback_open("while-body");
   node.body = parseStatement();
   labels.pop();
   enterNode(node, "WhileStatement");
+  //C jsparse_callback_open("while-end");
   return finishNode(node);
 }
 

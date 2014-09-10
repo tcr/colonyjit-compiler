@@ -1200,11 +1200,14 @@ Node* parseVarStatement(Node* node, std::string kind) {
 Node* parseWhileStatement(Node* node) {
      jsparse_callback_open("parseWhileStatement"); 
     next();
+     jsparse_callback_open("while-test"); 
     node->test = parseParenExpression();
     push(labels, loopLabel);
+     jsparse_callback_open("while-body"); 
     node->body = parseStatement();
     pop(labels);
     enterNode(node, "WhileStatement");
+     jsparse_callback_open("while-end"); 
     return finishNode(node);
 }
 Node* parseWithStatement(Node* node) {
