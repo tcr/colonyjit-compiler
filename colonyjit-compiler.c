@@ -776,10 +776,102 @@ void my_onclosenode(struct Node_C C)
         js_fs_pop();
     }
 
+    else if (my_streq(C.type, "UpdateExpression")) {
+        ExpDesc* expr = js_stack_top(0);
+        // expr_tonextreg(fs, expr);
+
+        if (expr->k == VINDEXED) {
+            // if (expr->u.s.aux >= -256 && expr->u.s.aux <= -1) {
+            //     // TODO unhardcode this?
+            //     BCPos ins = BCINS_AD(BC_KSTR, fs->freereg, (int) ~expr->u.s.aux);
+            //     bcemit_INS(fs, ins);
+            //     bcreg_reserve(fs, 1);
+            //     // key.u.sval = (int) ~expr->u.s.aux;
+            //     // expr_tonextreg(fs, &key);
+
+            //     JS_DEBUG("value str %d\n", ~expr->u.s.aux);
+            // } else if (expr->u.s.aux >= 256) {
+            //     expr_init(&key, VKNUM, 0);
+            //     setintV(&key.u.nval, expr->u.s.aux - 256);
+            //     expr_tonextreg(fs, &key);
+
+            //     JS_DEBUG("value byte %d\n", expr->u.s.aux - 256);
+            // } else {
+            //     expr_tonextreg(fs, &key);
+
+            //     JS_DEBUG("value reg %d\n", expr->u.s.aux);
+            // }
+
+            // bcemit_store(ls->fs, &lh->v, &e);
+            // and
+            // right hand side (value + 1)
+
+            // increment_registers(&expr->u.s.info, 0);
+
+            bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 1);
+
+            // left hand is base[idx]
+            ExpDesc key = *expr;
+            // fs->freereg += 1;
+            // key.u.s.info += 1;
+            // expr_tonextreg(fs, key);
+            // fs->freereg += 1;
+            // fs->freereg -= 1;
+            // expr_tonextreg(fs, &key);
+
+            ExpDesc incr;
+            expr_init(&incr, VKNUM, 0);
+            setnumV(&incr.u.nval, 1);
+            // expr_tonextreg(fs, &key);
+
+            expr_discharge(fs, &key);
+
+            if (!C.prefix) {
+                fs->freereg += 2;
+                key.u.s.info += 2;
+                bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 2);
+            }
+            bcemit_binop(fs, OPR_ADD, &key, &incr);
+
+            // if (!C.prefix) {
+                expr->u.s.info += 1;
+            // }
+            // fs->freereg -= 1;
+            bcemit_store(fs, expr, &key);
+            // expr_tonextreg(fs, &key);
+
+            // if (!C.prefix) {
+            //     fs->freereg -= 2;
+            // }
+            
+            // fs->freereg -= 1;
+            // expr->u.s.info = fs->freereg;
+            expr->k = VRELOCABLE;
+            // expr->u.s.info += 1;
+            if (!C.prefix) {
+                fs->freereg -= 3;
+            } else {
+                fs->freereg -= 1;
+            }
+            // expr_discharge(fs, expr);
+
+            // *expr = key;
+            // expr->u.s.aux += 1;
+            // expr_free(fs, &key);
+
+            // expr->k = VRELOCABLE;
+            // expr->u.s.info -= 1;
+            // fs->freereg -= 1;
+            // increment_registers(&(expr->u.s.info), 0);
+        } else {
+            assert(0);
+        }
+    }
+
     else if (
         my_streq(C.type, "MemberExpression") ||
         my_streq(C.type, "VariableDeclaration") ||
-        // my_streq(C.type, "UpdateExpression") || 
+        my_streq(C.type, "UpdateExpression") || 
         my_streq(C.type, "BlockStatement") ||
         my_streq(C.type, "IfStatement") ||
         my_streq(C.type, "WhileStatement") ||

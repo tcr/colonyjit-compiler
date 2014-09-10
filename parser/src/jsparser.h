@@ -52,7 +52,7 @@ int end;
 // int declarations;
 // const char* kind;
 // int expressions;
-// bool prefix;
+int prefix;
 // Node* property;
 // bool computed;
 // Node* callee;

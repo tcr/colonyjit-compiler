@@ -478,6 +478,7 @@ struct Node_C convert_to_Node_C (Node* node) {
 	C.value_boolean = node->value.value_boolean;
 	C.arguments = node->arguments.size();
 	C._operator = node->_operator.c_str();
+	C.prefix = node->prefix;
 	return C;
 }
 

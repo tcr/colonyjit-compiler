@@ -17,6 +17,8 @@ end
 
 _G.undefined = nil
 
+_G.i = {i = 42}
+
 local output
 if arg[1] ~= nil then
 	local file = assert(io.popen('./colonyjit-compiler ' .. arg[1], 'r'))
