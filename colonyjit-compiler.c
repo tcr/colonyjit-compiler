@@ -808,6 +808,7 @@ void my_onclosenode(struct Node_C C)
 
             // increment_registers(&expr->u.s.info, 0);
 
+            // TODO: overwrite previous expr to write to this register.
             bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 1);
 
             // left hand is base[idx]
@@ -824,12 +825,14 @@ void my_onclosenode(struct Node_C C)
             setnumV(&incr.u.nval, 1);
             // expr_tonextreg(fs, &key);
 
-            expr_discharge(fs, &key);
+            // fs->freereg += 2;
+            expr_tonextreg(fs, &key);
+            // expr_discharge(fs, &key);
 
             if (!C.prefix) {
                 fs->freereg += 2;
                 key.u.s.info += 2;
-                bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 2);
+                bcemit_AD(fs, BC_MOV, fs->freereg - 1, fs->freereg - 3);
             }
             bcemit_binop(fs, OPR_ADD, &key, &incr);
 
