@@ -17,41 +17,45 @@
  * Expression stack.
  */
 
-#define CJC_STACK(T, N) struct { \
-    T entries[100]; \
-    size_t idx; \
-} N = { 0 };
+#define CJC_STACK(T, N) \
+    struct {            \
+        T entries[100]; \
+        size_t idx;     \
+    } N = { 0 };
 
-#define CJC_STACK_PUSH(T, N) T* N ## _push() \
-{ \
-    N.idx++; \
-    T* ret = &N.entries[N.idx]; \
-\
-    JS_DEBUG("[stack " #N "] push: "); \
-    for (int i = 0; i < N.idx; i++) { \
-        JS_DEBUG("[] "); \
-    } \
-    JS_DEBUG("\n"); \
-    return ret; \
-}
+#define CJC_STACK_PUSH(T, N)               \
+    T* N##_push()                          \
+    {                                      \
+        N.idx++;                           \
+        T* ret = &N.entries[N.idx];        \
+                                           \
+        JS_DEBUG("[stack " #N "] push: "); \
+        for (int i = 0; i < N.idx; i++) {  \
+            JS_DEBUG("[] ");               \
+        }                                  \
+        JS_DEBUG("\n");                    \
+        return ret;                        \
+    }
 
-#define CJC_STACK_POP(T, N) void N ## _pop() \
-{ \
-    assert(N.idx >= 1); \
-    N.idx--; \
-\
-    JS_DEBUG("[stack " #N "] pop: "); \
-    for (int i = 0; i < N.idx; i++) { \
-        JS_DEBUG("[] "); \
-    } \
-    JS_DEBUG("\n"); \
-}
+#define CJC_STACK_POP(T, N)               \
+    void N##_pop()                        \
+    {                                     \
+        assert(N.idx >= 1);               \
+        N.idx--;                          \
+                                          \
+        JS_DEBUG("[stack " #N "] pop: "); \
+        for (int i = 0; i < N.idx; i++) { \
+            JS_DEBUG("[] ");              \
+        }                                 \
+        JS_DEBUG("\n");                   \
+    }
 
-#define CJC_STACK_TOP(T, N) T* N ## _top(size_t mod) \
-{ \
-    T* ret = &N.entries[N.idx + mod]; \
-    return ret; \
-}
+#define CJC_STACK_TOP(T, N)               \
+    T* N##_top(size_t mod)                \
+    {                                     \
+        T* ret = &N.entries[N.idx + mod]; \
+        return ret;                       \
+    }
 
 /* 
  * Increment registers in written instructions.
@@ -227,23 +231,23 @@ void my_onopennode(const char* type)
         JS_DEBUG("[>] function %s\n", type);
         JS_DEBUG("---------> LAWDY\n");
 
-int line = 0;
-int needself = 0;
-FuncState *pfs = fs;
-fs = js_fs_push();
-FuncScope bl;
-ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
-fs_init(ls, fs);
-JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
-fscope_begin(fs, &bl, 0);
-fs->linedefined = line;
-//(uint8_t)parse_params(ls, needself);
-fs->bcbase = pfs->bcbase + pfs->pc;
-fs->bclim = pfs->bclim - pfs->pc;
-bcemit_AD(fs, BC_FUNCF, 0, 0);  /* Placeholder. */
-// parse_chunk(ls);
+        int line = 0;
+        int needself = 0;
+        FuncState* pfs = fs;
+        fs = js_fs_push();
+        FuncScope bl;
+        ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
+        fs_init(ls, fs);
+        JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
+        fscope_begin(fs, &bl, 0);
+        fs->linedefined = line;
+        //(uint8_t)parse_params(ls, needself);
+        fs->bcbase = pfs->bcbase + pfs->pc;
+        fs->bclim = pfs->bclim - pfs->pc;
+        bcemit_AD(fs, BC_FUNCF, 0, 0); /* Placeholder. */
+        // parse_chunk(ls);
 
-fs->numparams = 0;
+        fs->numparams = 0;
         // FuncState *fs;
         // ExpDesc v, b;
         // int needself = 0;
@@ -320,14 +324,14 @@ fs->numparams = 0;
         (void)args;
     }
 
-#define JS_OP_LEFT(OP, ID)                \
-    if (my_streq(type, OP)) {             \
-        js_ismethod = 0;                  \
+#define JS_OP_LEFT(OP, ID)                 \
+    if (my_streq(type, OP)) {              \
+        js_ismethod = 0;                   \
         JS_DEBUG("[>] operator " OP "\n"); \
-        ExpDesc* e = js_stack_top(0);     \
-        bcemit_binop_left(fs, ID, e);     \
-        ExpDesc* e2 = js_stack_push();    \
-        (void) e2;                        \
+        ExpDesc* e = js_stack_top(0);      \
+        bcemit_binop_left(fs, ID, e);      \
+        ExpDesc* e2 = js_stack_push();     \
+        (void) e2;                         \
     }
 
     JS_OP_LEFT("==", OPR_EQ);
@@ -346,7 +350,7 @@ fs->numparams = 0;
 
     if (my_streq(type, "assign")) {
         js_ismethod = 0;
-        
+
         JS_DEBUG("[>] assign\n");
 
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED, LJ_ERR_XSYNTAX);
@@ -365,13 +369,13 @@ fs->numparams = 0;
         ExpDesc* test = js_stack_push();
         (void)test;
 
-  // lj_lex_next(ls);  /* Skip 'while'. */
-  start = fs->lasttarget = fs->pc;
-  // condexit = expr_cond(ls);
-  // // fscope_begin(fs, &bl, FSCOPE_LOOP);
-  // // lex_check(ls, TK_do);
-  // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-  // parse_block(ls);
+        // lj_lex_next(ls);  /* Skip 'while'. */
+        start = fs->lasttarget = fs->pc;
+        // condexit = expr_cond(ls);
+        // // fscope_begin(fs, &bl, FSCOPE_LOOP);
+        // // lex_check(ls, TK_do);
+        // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+        // parse_block(ls);
     }
 
     if (my_streq(type, "while-body")) {
@@ -380,7 +384,6 @@ fs->numparams = 0;
         ExpDesc* test = js_stack_top(0);
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
-
 
         loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
@@ -518,31 +521,31 @@ void my_onclosenode(struct Node_C C)
     }
 
     if (my_streq(C.type, "FunctionExpression")) {
-// if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
+        // if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
         JS_DEBUG("DONEOENOENOENENOE\n");
-ptrdiff_t oldbase = 0;
+        ptrdiff_t oldbase = 0;
 
-int line = 0;
-FuncState *pfs = js_fs_top(-1);
-GCproto *pt = fs_finish(ls, (ls->lastline = ls->linenumber));
-pfs->bcbase = ls->bcstack + oldbase;  /* May have been reallocated. */
-pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
-/* Store new prototype in the constant array of the parent. */
-expr_init(js_stack_top(0), VRELOCABLE,
-    bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+        int line = 0;
+        FuncState* pfs = js_fs_top(-1);
+        GCproto* pt = fs_finish(ls, (ls->lastline = ls->linenumber));
+        pfs->bcbase = ls->bcstack + oldbase; /* May have been reallocated. */
+        pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
+        /* Store new prototype in the constant array of the parent. */
+        expr_init(js_stack_top(0), VRELOCABLE,
+                  bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
 #if LJ_HASFFI
-pfs->flags |= (fs->flags & PROTO_FFI);
+        pfs->flags |= (fs->flags & PROTO_FFI);
 #endif
-if (!(pfs->flags & PROTO_CHILD)) {
-    if (pfs->flags & PROTO_HAS_RETURN) {
-        pfs->flags |= PROTO_FIXUP_RETURN;
-    }
-    pfs->flags |= PROTO_CHILD;
-}
-js_fs_pop();
-fs = js_fs_top(0);
+        if (!(pfs->flags & PROTO_CHILD)) {
+            if (pfs->flags & PROTO_HAS_RETURN) {
+                pfs->flags |= PROTO_FIXUP_RETURN;
+            }
+            pfs->flags |= PROTO_CHILD;
+        }
+        js_fs_pop();
+        fs = js_fs_top(0);
 
-// js_stack_pop();
+        // js_stack_pop();
     }
 
     if (my_streq(C.type, "Identifier")) {
@@ -620,7 +623,7 @@ fs = js_fs_top(0);
         ExpDesc* expr = js_stack_top(0);
 
         if (expr->k == VCALL) { /* Function call statement. */
-            setbc_b(bcptr(fs, expr), 1);  /* No results. */
+            setbc_b(bcptr(fs, expr), 1); /* No results. */
         } else { /* Start of an assignment. */
             // vl.prev = NULL;
             // parse_assignment(ls, &vl, 1);
