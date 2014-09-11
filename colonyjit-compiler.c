@@ -473,8 +473,9 @@ void my_onopennode(const char* type)
         js_ismethod = 0;
         JS_DEBUG("[>] var-declarator-no-assign\n");
         ExpDesc* e = js_stack_push();
-        expr_init(e, VKNIL, 0);
-        expr_tonextreg(fs, e);
+        *e = *js_stack_top(-1);
+        // expr_init(e, VKNIL, 0);
+        // expr_tonextreg(fs, e);
     }
 
     if (my_streq(type, "if-no-alternate")) {
@@ -546,16 +547,13 @@ void my_onclosenode(struct Node_C C)
         expr_discharge(fs, e);
         expr_free(fs, e);
         bcreg_reserve(fs, 1);
-        JS_DEBUG("$#$$$$ A %d\n", bc_a(fs->bcbase[0].ins));
         expr_toreg_nobranch(fs, e, fs->freereg - 1);
-        JS_DEBUG("$#$$$$ B %d\n", bc_a(fs->bcbase[0].ins));
 
         assign_adjust(fs->ls, 1, 1, e);
         var_add(fs->ls, 1);
         js_stack_pop();
     } else if (my_streq(C.type, "FunctionExpression")) {
         // if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
-        JS_DEBUG("DONEOENOENOENENOE\n");
         ptrdiff_t oldbase = 0;
 
         int line = 0;
@@ -599,24 +597,28 @@ void my_onclosenode(struct Node_C C)
             // JS_DEBUG("NEW VARIABLE DECLARED: '%s'\n", C.name);
 
             // JS_DEBUG("actvar %d\n", fs->nactvar);
-            var_new(fs->ls, 0, s);
+            if (var_lookup_local(fs, s) == -1) {
+                var_new(fs->ls, 0, s);
 
-            BCReg reg;
-            BCPos pc = fs->pc;
-            // fs->freereg++;
+                BCReg reg;
+                BCPos pc = fs->pc;
+                // fs->freereg++;
 
-            int first = 1;
-            for (BCPos i = 0; i < pc; i++) {
-                increment_registers(&fs->bcbase[i].ins, fs->nactvar);
-                if (bc_op(fs->bcbase[i].ins) == BC_GGET && bc_d(fs->bcbase[i].ins) == const_gc(fs, obj2gco(s), LJ_TSTR)) {
-                    setbc_op(&fs->bcbase[i].ins, BC_MOV);
-                    setbc_d(&fs->bcbase[i].ins, fs->nactvar);
+                int first = 1;
+                for (BCPos i = 0; i < pc; i++) {
+                    increment_registers(&fs->bcbase[i].ins, fs->nactvar);
+                    if (bc_op(fs->bcbase[i].ins) == BC_GGET && bc_d(fs->bcbase[i].ins) == const_gc(fs, obj2gco(s), LJ_TSTR)) {
+                        setbc_op(&fs->bcbase[i].ins, BC_MOV);
+                        setbc_d(&fs->bcbase[i].ins, fs->nactvar);
+                    }
+                    if (bc_op(fs->bcbase[i].ins) == BC_GSET && bc_d(fs->bcbase[i].ins) == const_gc(fs, obj2gco(s), LJ_TSTR)) {
+                        setbc_op(&fs->bcbase[i].ins, BC_MOV);
+                        setbc_a(&fs->bcbase[i].ins, fs->nactvar);
+                        setbc_d(&fs->bcbase[i].ins, bc_a(fs->bcbase[i].ins) + 1);
+                    }
                 }
-                if (bc_op(fs->bcbase[i].ins) == BC_GSET && bc_d(fs->bcbase[i].ins) == const_gc(fs, obj2gco(s), LJ_TSTR)) {
-                    setbc_op(&fs->bcbase[i].ins, BC_MOV);
-                    setbc_a(&fs->bcbase[i].ins, fs->nactvar);
-                    setbc_d(&fs->bcbase[i].ins, bc_a(fs->bcbase[i].ins) + 1);
-                }
+            } else {
+                var_lookup_(fs, s, ident, 1);
             }
 
         } else if (js_ismethod == 3) {
