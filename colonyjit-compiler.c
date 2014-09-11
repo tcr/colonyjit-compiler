@@ -543,19 +543,17 @@ void my_onclosenode(struct Node_C C)
     if (my_streq(C.type, "VariableDeclarator")) {
         ExpDesc* e = js_stack_top(0);
 
-  expr_discharge(fs, e);
-  expr_free(fs, e);
-  bcreg_reserve(fs, 1);
-    JS_DEBUG("$#$$$$ A %d\n", bc_a(fs->bcbase[0].ins));
-  expr_toreg_nobranch(fs, e, fs->freereg - 1);
-    JS_DEBUG("$#$$$$ B %d\n", bc_a(fs->bcbase[0].ins));
+        expr_discharge(fs, e);
+        expr_free(fs, e);
+        bcreg_reserve(fs, 1);
+        JS_DEBUG("$#$$$$ A %d\n", bc_a(fs->bcbase[0].ins));
+        expr_toreg_nobranch(fs, e, fs->freereg - 1);
+        JS_DEBUG("$#$$$$ B %d\n", bc_a(fs->bcbase[0].ins));
 
         assign_adjust(fs->ls, 1, 1, e);
         var_add(fs->ls, 1);
         js_stack_pop();
-    }
-
-    else if (my_streq(C.type, "FunctionExpression")) {
+    } else if (my_streq(C.type, "FunctionExpression")) {
         // if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
         JS_DEBUG("DONEOENOENOENENOE\n");
         ptrdiff_t oldbase = 0;
@@ -581,9 +579,7 @@ void my_onclosenode(struct Node_C C)
         fs = js_fs_top(0);
 
         // js_stack_pop();
-    }
-
-    else if (my_streq(C.type, "Identifier")) {
+    } else if (my_streq(C.type, "Identifier")) {
         ExpDesc* ident = js_stack_top(0);
         JS_DEBUG("fs %p, %p\n", fs, fs->L);
         assert(fs->L);
@@ -629,9 +625,7 @@ void my_onclosenode(struct Node_C C)
         } else {
             assert(0);
         }
-    }
-
-    else if (my_streq(C.type, "AssignmentExpression")) {
+    } else if (my_streq(C.type, "AssignmentExpression")) {
         ExpDesc* lval = js_stack_top(-1);
         ExpDesc* rval = js_stack_top(0);
 
@@ -639,9 +633,7 @@ void my_onclosenode(struct Node_C C)
 
         *lval = *rval;
         js_stack_pop();
-    }
-
-    else if (my_streq(C.type, "ConditionalExpression")) {
+    } else if (my_streq(C.type, "ConditionalExpression")) {
 
         ExpDesc* test = js_stack_top(-1);
         ExpDesc* result = js_stack_top(0);
@@ -652,9 +644,7 @@ void my_onclosenode(struct Node_C C)
         *test = *result;
 
         js_stack_pop();
-    }
-
-    else if (my_streq(C.type, "ExpressionStatement")) {
+    } else if (my_streq(C.type, "ExpressionStatement")) {
         js_ismethod = 0;
 
         ExpDesc* expr = js_stack_top(0);
@@ -673,9 +663,7 @@ void my_onclosenode(struct Node_C C)
 
         lua_assert(fs->framesize >= fs->freereg && fs->freereg >= fs->nactvar);
         fs->freereg = fs->nactvar;
-    }
-
-    else if (my_streq(C.type, "CallExpression") || (my_streq(C.type, "UnaryExpression") && my_streq(C._operator, "typeof"))) {
+    } else if (my_streq(C.type, "CallExpression") || (my_streq(C.type, "UnaryExpression") && my_streq(C._operator, "typeof"))) {
         ExpDesc* ident = js_stack_top(-1);
         ExpDesc* args = js_stack_top(0);
 
@@ -700,9 +688,7 @@ void my_onclosenode(struct Node_C C)
         fs->freereg = base + 1; /* Leave one result by default. */
 
         js_stack_pop();
-    }
-
-    else if (my_streq(C.type, "Literal")) {
+    } else if (my_streq(C.type, "Literal")) {
         GCstr* s = NULL;
         ExpDesc* args = js_stack_top(0);
         switch (C.value_type) {
@@ -733,9 +719,7 @@ void my_onclosenode(struct Node_C C)
                 assert(0);
             }
         }
-    }
-
-    else if (my_streq(C.type, "BinaryExpression")) {
+    } else if (my_streq(C.type, "BinaryExpression")) {
         JS_DEBUG("[binaryexpr] %s\n", C._operator);
 
         ExpDesc* e1 = js_stack_top(-1);
@@ -768,9 +752,7 @@ void my_onclosenode(struct Node_C C)
         }
 
         js_stack_pop(); // pop e2
-    }
-
-    else if (my_streq(C.type, "LogicalExpression")) {
+    } else if (my_streq(C.type, "LogicalExpression")) {
         JS_DEBUG("[logicalexpr] %s\n", C._operator);
 
         ExpDesc* e1 = js_stack_top(-1);
@@ -788,13 +770,9 @@ void my_onclosenode(struct Node_C C)
         // JS_DEBUG("EXPR2 %p t: %d f: %d\n", e2, e2->t, e2->f);
 
         js_stack_pop(); // pop e2
-    }
-
-    else if (my_streq(C.type, "Program")) {
+    } else if (my_streq(C.type, "Program")) {
         js_fs_pop();
-    }
-
-    else if (my_streq(C.type, "UpdateExpression")) {
+    } else if (my_streq(C.type, "UpdateExpression")) {
         ExpDesc* expr = js_stack_top(0);
         // expr_tonextreg(fs, expr);
 
@@ -871,20 +849,10 @@ void my_onclosenode(struct Node_C C)
                 fs->freereg -= 1;
             }
         }
-    }
-
-    else if (
-        my_streq(C.type, "MemberExpression") ||
-        my_streq(C.type, "VariableDeclaration") ||
-        my_streq(C.type, "UpdateExpression") || 
-        my_streq(C.type, "BlockStatement") ||
-        my_streq(C.type, "IfStatement") ||
-        my_streq(C.type, "WhileStatement") ||
-        0) {
+    } else if (
+                   my_streq(C.type, "MemberExpression") || my_streq(C.type, "VariableDeclaration") || my_streq(C.type, "UpdateExpression") || my_streq(C.type, "BlockStatement") || my_streq(C.type, "IfStatement") || my_streq(C.type, "WhileStatement") || 0) {
         // noop
-    }
-
-    else {
+    } else {
         assert(0);
     }
 
