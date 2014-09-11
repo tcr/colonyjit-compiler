@@ -504,6 +504,7 @@ void my_onopennode(const char* type)
     if (my_streq(type, "var-declarator")) {
         JS_DEBUG("[>] var-declarator\n");
         js_ismethod = 2;
+        js_stack_push();
     }
 
     if (my_streq(type, "var-declarator-assign")) {
@@ -708,15 +709,22 @@ void my_onclosenode(struct Node_C C)
 
     // Switch statement.
     if (my_streq(C.type, "VariableDeclarator")) {
-        ExpDesc* e = js_stack_top(0);
+        ExpDesc* ident = js_stack_top(-1);
+        ExpDesc* val = js_stack_top(0);
 
-        expr_discharge(fs, e);
-        expr_free(fs, e);
-        bcreg_reserve(fs, 1);
-        expr_toreg_nobranch(fs, e, fs->freereg - 1);
+        if (ident->u.s.aux == -1) {
+            expr_discharge(fs, val);
+            expr_free(fs, val);
+            bcreg_reserve(fs, 1);
+            expr_toreg_nobranch(fs, val, fs->freereg - 1);
 
-        assign_adjust(fs->ls, 1, 1, e);
-        var_add(fs->ls, 1);
+            assign_adjust(fs->ls, 1, 1, val);
+            var_add(fs->ls, 1);
+        } else {
+            bcemit_store(fs, ident, val);
+        }
+
+        js_stack_pop();
         js_stack_pop();
     } else if (my_streq(C.type, "FunctionExpression")) {
         // if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
@@ -760,10 +768,13 @@ void my_onclosenode(struct Node_C C)
             expr_toanyreg(fs, ident);
             expr_index(fs, ident, &key);
         } else if (js_ismethod == 2) {
-            // JS_DEBUG("NEW VARIABLE DECLARED: '%s'\n", C.name);
+            JS_DEBUG("NEW VARIABLE DECLARED: '%s' %d\n", C.name, var_lookup_local(fs, s));
 
             // JS_DEBUG("actvar %d\n", fs->nactvar);
             if (var_lookup_local(fs, s) == -1) {
+                ident->k = VLOCAL;
+                ident->u.s.aux = -1;
+
                 var_new(fs->ls, 0, s);
 
                 BCReg reg;
@@ -785,6 +796,8 @@ void my_onclosenode(struct Node_C C)
                 }
             } else {
                 var_lookup_(fs, s, ident, 1);
+
+                JS_DEBUG("FOUND %d\n", ident->u.s.aux);
             }
 
         } else if (js_ismethod == 3) {
