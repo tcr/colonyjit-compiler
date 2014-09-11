@@ -27,4 +27,4 @@ if arg[1] ~= nil then
 else
 	output = io.read("*a")
 end
-load(output)()
+load(output)('hi')

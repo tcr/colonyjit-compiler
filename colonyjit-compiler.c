@@ -794,6 +794,53 @@ void my_onclosenode(struct Node_C C)
         js_stack_pop(); // pop e2
     } else if (my_streq(C.type, "Program")) {
         js_fs_pop();
+    } else if (my_streq(C.type, "ObjectExpression")) {
+        
+
+  // FuncState *fs = ls->fs;
+  // BCLine line = ls->linenumber;
+  // GCtab *t = NULL;
+  // int vcall = 0, needarr = 0, fixt = 0;
+  // uint32_t narr = 1;  /* First array index. */
+  // uint32_t nhash = 0;  /* Number of hash entries. */
+  // BCReg freg = fs->freereg;
+  // BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
+  // expr_init(e, VNONRELOC, freg);
+  // bcreg_reserve(fs, 1);
+  // freg++;
+  // lex_check(ls, '{');
+  // lex_match(ls, '}', '{', line);
+  // if (pc == fs->pc-1) {  /* Make expr relocable if possible. */
+  //   e->u.s.info = pc;
+  //   fs->freereg--;
+  //   e->k = VRELOCABLE;
+  // } else {
+  //   e->k = VNONRELOC;  /* May have been changed by expr_index. */
+  // }
+  // if (!t) {   Construct TNEW RD: hhhhhaaaaaaaaaaa. 
+  //   BCIns *ip = &fs->bcbase[pc].ins;
+  //   if (!needarr) narr = 0;
+  //   else if (narr < 3) narr = 3;
+  //   else if (narr > 0x7ff) narr = 0x7ff;
+  //   setbc_d(ip, narr|(hsize2hbits(nhash)<<11));
+  // } else {
+  //   if (needarr && t->asize < narr)
+  //     lj_tab_reasize(fs->L, t, narr-1);
+  //   if (fixt) {  /* Fix value for dummy keys in template table. */
+  //     Node *node = noderef(t->node);
+  //     uint32_t i, hmask = t->hmask;
+  //     for (i = 0; i <= hmask; i++) {
+  //   Node *n = &node[i];
+  //   if (tvistab(&n->val)) {
+  //     lua_assert(tabV(&n->val) == t);
+  //     setnilV(&n->val);  /* Turn value into nil. */
+  //   }
+  //     }
+  //   }
+  //   lj_gc_check(fs->L);
+  // }
+
+
     } else if (my_streq(C.type, "UpdateExpression")) {
         ExpDesc* expr = js_stack_top(0);
         // expr_tonextreg(fs, expr);
@@ -856,6 +903,10 @@ void my_onclosenode(struct Node_C C)
 
             // Add increment to key.
             bcemit_binop(fs, OPR_ADD, &key, &incr);
+            if (expr->k == VLOCAL) {
+                // Save in original location.
+                expr_toreg(fs, &key, key.u.s.aux);
+            }
 
             // Store and save return value.
             if (!C.prefix || expr->k == VGLOBAL) {
@@ -923,6 +974,12 @@ if (ls->token != TK_eof)
   err_token(ls, TK_eof);
 */
     synlevel_begin(ls);
+
+    // Reserve first register as argument.
+    // fs->numparams = 1;
+    // var_new(ls, 0, lj_str_new(fs->L, "", 0));
+    // fs->nactvar = 1;
+
     jsparse(my_input, strlen(my_input), my_onopennode, my_onclosenode);
     synlevel_end(ls);
 
