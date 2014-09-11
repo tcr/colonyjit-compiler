@@ -560,6 +560,61 @@ void my_onopennode(const char* type)
         ExpDesc* expr = js_stack_top(0);
         bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, expr), 2));
     }
+
+    if (my_streq(type, "object-literal")) {
+        JS_DEBUG("[>] object-literal\n");
+
+        ExpDesc* e = js_stack_top(0);
+
+        FuncState *fs = ls->fs;
+        BCLine line = ls->linenumber;
+        GCtab *t = NULL;
+        int vcall = 0, needarr = 0, fixt = 0;
+        uint32_t narr = 0;  /* First array index. */
+        uint32_t nhash = 0;  /* Number of hash entries. */
+        BCReg freg = fs->freereg;
+        BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
+        expr_init(e, VNONRELOC, freg);
+        bcreg_reserve(fs, 1);
+        freg++;
+
+        e->u.s.aux = pc;
+        JS_DEBUG("EUSAUX PC %p %d\n", e, pc);
+    }
+
+    if (my_streq(type, "object-literal-key")) {
+        JS_DEBUG("[>] object-literal-key\n");
+
+        js_ismethod = 4;
+        js_stack_push();
+    }
+
+    if (my_streq(type, "object-literal-value")) {
+        JS_DEBUG("[>] object-literal-value\n");
+        js_stack_push();
+    }
+
+    if (my_streq(type, "object-literal-push")) {
+        JS_DEBUG("[>] object-literal-push\n");
+        ExpDesc* obj = js_stack_top(-2);
+        ExpDesc* key = js_stack_top(-1);
+        ExpDesc* val = js_stack_top(0);
+
+        expr_toanyreg(fs, val);
+        if (expr_isk(key)) expr_index(fs, obj, key);
+        bcemit_store(fs, obj, val);
+
+        // JS_DEBUG("EUSAUX PC %p %d\n", obj, obj->u.s.aux);
+        // BCIns *ip = &fs->bcbase[obj->u.s.aux].ins;
+        // if (!needarr) narr = 0;
+        // else if (narr < 3) narr = 3;
+        // else if (narr > 0x7ff) narr = 0x7ff;
+        // int nhash = 2;
+        // setbc_d(ip, 0|(hsize2hbits(nhash)<<11));
+
+        js_stack_pop();
+        js_stack_pop();
+    }
 }
 
 void my_onclosenode(struct Node_C C)
@@ -659,6 +714,9 @@ void my_onclosenode(struct Node_C C)
         } else if (js_ismethod == 3) {
             var_new(ls, fs->numparams++, s);
 
+        } else if (js_ismethod == 4) {
+            expr_init(ident, VKSTR, 0);
+            ident->u.sval = s;
         } else {
             assert(0);
         }
@@ -809,41 +867,30 @@ void my_onclosenode(struct Node_C C)
         js_stack_pop(); // pop e2
     } else if (my_streq(C.type, "Program")) {
         js_fs_pop();
+    } else if (my_streq(C.type, "Property")) {
     } else if (my_streq(C.type, "ThisExpression")) {
         ExpDesc* expr = js_stack_top(0);
         GCstr* s = lj_str_new(fs->L, "this", strlen("this"));
         var_lookup_(fs, s, expr, 1);
     } else if (my_streq(C.type, "ObjectExpression")) {
-        
-ExpDesc* e = js_stack_top(0);
+        ExpDesc* e = js_stack_top(0);
 
-  FuncState *fs = ls->fs;
-  BCLine line = ls->linenumber;
-  GCtab *t = NULL;
-  int vcall = 0, needarr = 0, fixt = 0;
-  uint32_t narr = 0;  /* First array index. */
-  uint32_t nhash = 0;  /* Number of hash entries. */
-  BCReg freg = fs->freereg;
-  BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
-  expr_init(e, VNONRELOC, freg);
-  bcreg_reserve(fs, 1);
-  freg++;
   // lex_check(ls, '{');
   // snip...!
   // lex_match(ls, '}', '{', line);
-  if (pc == fs->pc-1) {  /* Make expr relocable if possible. */
-    e->u.s.info = pc;
+  // if (pc == fs->pc-1) {  /* Make expr relocable if possible. */
+    e->u.s.info = fs->pc-1;
     fs->freereg--;
     e->k = VRELOCABLE;
-  } else {
-    e->k = VNONRELOC;  /* May have been changed by expr_index. */
-  }
+  // } else {
+    // e->k = VNONRELOC;  /* May have been changed by expr_index. */
+  // }
   // if (!t) {   Construct TNEW RD: hhhhhaaaaaaaaaaa. 
-    BCIns *ip = &fs->bcbase[pc].ins;
-    if (!needarr) narr = 0;
-    else if (narr < 3) narr = 3;
-    else if (narr > 0x7ff) narr = 0x7ff;
-    setbc_d(ip, narr|(hsize2hbits(nhash)<<11));
+    // BCIns *ip = &fs->bcbase[pc].ins;
+    // if (!needarr) narr = 0;
+    // else if (narr < 3) narr = 3;
+    // else if (narr > 0x7ff) narr = 0x7ff;
+    // setbc_d(ip, narr|(hsize2hbits(nhash)<<11));
   // } else {
   //   if (needarr && t->asize < narr)
   //     lj_tab_reasize(fs->L, t, narr-1);

@@ -2270,7 +2270,7 @@ function parseTemplate() {
 // Parse an object literal.
 
 function parseObj() {
-  //C jsparse_callback_open("parseObj");
+  //C jsparse_callback_open("object-literal");
   var node = startNode(), first = true, propHash = {};
   node.properties = [];
   next();
@@ -2286,8 +2286,10 @@ function parseObj() {
       prop.shorthand = false;
       isGenerator = eat(_star);
     }
+    //C jsparse_callback_open("object-literal-key");
     parsePropertyName(prop);
     if (eat(_colon)) {
+      //C jsparse_callback_open("object-literal-value");
       prop.value = parseExpression(true);
       kind = prop.kind = "init";
     } else if (options.ecmaVersion >= 6 && tokType === _parenL) {
@@ -2308,6 +2310,7 @@ function parseObj() {
 
     checkPropClash(prop, propHash);
     enterNode(prop, "Property");
+    //C jsparse_callback_open("object-literal-push");
     node.properties.push(finishNode(prop));
   }
   enterNode(node, "ObjectExpression");

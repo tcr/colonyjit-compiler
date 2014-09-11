@@ -1632,7 +1632,7 @@ Node* parseSpread() {
 }
 
 Node* parseObj() {
-     jsparse_callback_open("parseObj"); 
+     jsparse_callback_open("object-literal"); 
     Node* node = startNode();  bool first = true;  std::string propHash = {}; 
     node->properties = std::vector<Node*>({});
     next();
@@ -1653,9 +1653,11 @@ break;
             isGenerator = eat(_star);
         }
 }
+         jsparse_callback_open("object-literal-key"); 
         parsePropertyName(prop);
         if (eat(_colon)) {
 {
+             jsparse_callback_open("object-literal-value"); 
             prop->value = parseExpression(true);
             kind = prop->kind = "init";
         }
@@ -1684,6 +1686,7 @@ unexpected();
         {
         }
         enterNode(prop, "Property");
+         jsparse_callback_open("object-literal-push"); 
         push(node->properties, finishNode(prop));
     }
     enterNode(node, "ObjectExpression");
