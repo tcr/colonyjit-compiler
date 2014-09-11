@@ -345,9 +345,16 @@ void my_onopennode(const char* type)
         JS_DEBUG("[>] typeof\n");
 
         ExpDesc* ident = js_stack_top(0);
-        GCstr* s = lj_str_new(fs->L, type, strlen(type));
-        var_lookup_(fs, s, ident, 1);
+
+        ExpDesc str;
+        expr_init(&str, VKSTR, 0);
+        str.u.sval = lj_str_new(fs->L, type, strlen(type));
+
+        ident->k = VINDEXED;
+        ident->u.s.info = 0;
+        ident->u.s.aux = ~(const_str(fs, &str));
         expr_tonextreg(fs, ident);
+
         ExpDesc* args = js_stack_push();
         (void)args;
     }
@@ -976,9 +983,10 @@ if (ls->token != TK_eof)
     synlevel_begin(ls);
 
     // Reserve first register as argument.
-    // fs->numparams = 1;
-    // var_new(ls, 0, lj_str_new(fs->L, "", 0));
-    // fs->nactvar = 1;
+    fs->numparams = 1;
+    bcreg_reserve(fs, 1);
+    var_new(ls, 0, lj_str_new(fs->L, "", 0));
+    fs->nactvar = 1;
 
     jsparse(my_input, strlen(my_input), my_onopennode, my_onclosenode);
     synlevel_end(ls);

@@ -4,11 +4,6 @@ _G.console = {
 	end
 }
 
-_G.typeof = function (arg)
-	if arg == nil then return 'object'; end
-	return type(arg)
-end
-
 _G.empty = function () end
 
 _G.String = function (this, arg)
@@ -27,4 +22,9 @@ if arg[1] ~= nil then
 else
 	output = io.read("*a")
 end
-load(output)('hi')
+load(output)({
+	typeof = function (arg)
+		if arg == nil then return 'object'; end
+		return type(arg)
+	end
+})
