@@ -1686,6 +1686,11 @@ function parseReturnStatement(node:Node) {
 
   if (eat(_semi) || canInsertSemicolon()) node.argument = null;
   else { node.argument = parseExpression(); semicolon(); }
+  if (node.argument == null) {
+    //C jsparse_callback_open("return-no-argument");
+  } else {
+    //C jsparse_callback_open("return-argument");
+  }
   enterNode(node, "ReturnStatement");
   return finishNode(node);
 }

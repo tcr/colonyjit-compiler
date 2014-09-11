@@ -1096,6 +1096,13 @@ node->argument = null;
         node->argument = parseExpression();
         semicolon();
     }
+    if (ISNULL(node->argument)) {
+{
+         jsparse_callback_open("return-no-argument"); 
+    }
+} else {
+         jsparse_callback_open("return-argument"); 
+    }
     enterNode(node, "ReturnStatement");
     return finishNode(node);
 }

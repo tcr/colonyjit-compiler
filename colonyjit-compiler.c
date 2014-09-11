@@ -525,6 +525,18 @@ void my_onopennode(const char* type)
         // ExpDesc* alternate = js_stack_push();
         // (void) alternate;
     }
+
+    if (my_streq(type, "return-no-argument")) {
+        JS_DEBUG("[>] return-no-argument\n");
+        bcemit_INS(fs, BCINS_AD(BC_RET0, 0, 1));
+    }
+
+    if (my_streq(type, "return-argument")) {
+        JS_DEBUG("[>] return-no-argument\n");
+
+        ExpDesc* expr = js_stack_top(0);
+        bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, expr), 2));
+    }
 }
 
 void my_onclosenode(struct Node_C C)
@@ -851,8 +863,7 @@ void my_onclosenode(struct Node_C C)
                 fs->freereg -= 1;
             }
         }
-    } else if (
-                   my_streq(C.type, "MemberExpression") || my_streq(C.type, "VariableDeclaration") || my_streq(C.type, "UpdateExpression") || my_streq(C.type, "BlockStatement") || my_streq(C.type, "IfStatement") || my_streq(C.type, "WhileStatement") || 0) {
+    } else if (my_streq(C.type, "ReturnStatement") || my_streq(C.type, "MemberExpression") || my_streq(C.type, "VariableDeclaration") || my_streq(C.type, "UpdateExpression") || my_streq(C.type, "BlockStatement") || my_streq(C.type, "IfStatement") || my_streq(C.type, "WhileStatement") || 0) {
         // noop
     } else {
         assert(0);
