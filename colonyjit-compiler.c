@@ -815,33 +815,35 @@ void my_onclosenode(struct Node_C C)
         var_lookup_(fs, s, expr, 1);
     } else if (my_streq(C.type, "ObjectExpression")) {
         
+ExpDesc* e = js_stack_top(0);
 
-  // FuncState *fs = ls->fs;
-  // BCLine line = ls->linenumber;
-  // GCtab *t = NULL;
-  // int vcall = 0, needarr = 0, fixt = 0;
-  // uint32_t narr = 1;  /* First array index. */
-  // uint32_t nhash = 0;  /* Number of hash entries. */
-  // BCReg freg = fs->freereg;
-  // BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
-  // expr_init(e, VNONRELOC, freg);
-  // bcreg_reserve(fs, 1);
-  // freg++;
+  FuncState *fs = ls->fs;
+  BCLine line = ls->linenumber;
+  GCtab *t = NULL;
+  int vcall = 0, needarr = 0, fixt = 0;
+  uint32_t narr = 0;  /* First array index. */
+  uint32_t nhash = 0;  /* Number of hash entries. */
+  BCReg freg = fs->freereg;
+  BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
+  expr_init(e, VNONRELOC, freg);
+  bcreg_reserve(fs, 1);
+  freg++;
   // lex_check(ls, '{');
+  // snip...!
   // lex_match(ls, '}', '{', line);
-  // if (pc == fs->pc-1) {  /* Make expr relocable if possible. */
-  //   e->u.s.info = pc;
-  //   fs->freereg--;
-  //   e->k = VRELOCABLE;
-  // } else {
-  //   e->k = VNONRELOC;  /* May have been changed by expr_index. */
-  // }
+  if (pc == fs->pc-1) {  /* Make expr relocable if possible. */
+    e->u.s.info = pc;
+    fs->freereg--;
+    e->k = VRELOCABLE;
+  } else {
+    e->k = VNONRELOC;  /* May have been changed by expr_index. */
+  }
   // if (!t) {   Construct TNEW RD: hhhhhaaaaaaaaaaa. 
-  //   BCIns *ip = &fs->bcbase[pc].ins;
-  //   if (!needarr) narr = 0;
-  //   else if (narr < 3) narr = 3;
-  //   else if (narr > 0x7ff) narr = 0x7ff;
-  //   setbc_d(ip, narr|(hsize2hbits(nhash)<<11));
+    BCIns *ip = &fs->bcbase[pc].ins;
+    if (!needarr) narr = 0;
+    else if (narr < 3) narr = 3;
+    else if (narr > 0x7ff) narr = 0x7ff;
+    setbc_d(ip, narr|(hsize2hbits(nhash)<<11));
   // } else {
   //   if (needarr && t->asize < narr)
   //     lj_tab_reasize(fs->L, t, narr-1);
