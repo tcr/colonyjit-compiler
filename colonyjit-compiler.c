@@ -258,6 +258,10 @@ void my_onopennode(const char* type)
         // parse_chunk(ls);
 
         fs->numparams = 0;
+
+        // Implicit "this".
+        var_new(ls, fs->numparams++, lj_str_new(fs->L, "this", strlen("this")));
+
         // FuncState *fs;
         // ExpDesc v, b;
         // int needself = 0;
@@ -309,6 +313,11 @@ void my_onopennode(const char* type)
 
         if (ident->k == VGLOBAL || ident->k == VLOCAL) {
             expr_tonextreg(fs, ident);
+
+            ExpDesc global;
+            expr_init(&global, VGLOBAL, 0);
+            global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
+            expr_tonextreg(fs, &global);
         }
         js_ismethod = 0;
 

@@ -11,7 +11,7 @@ end
 
 _G.empty = function () end
 
-_G.String = function (arg)
+_G.String = function (this, arg)
 	return tostring(arg)
 end
 
