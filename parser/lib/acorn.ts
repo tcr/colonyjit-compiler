@@ -2071,11 +2071,13 @@ function parseSubscripts(base:Node, noCalls?:boolean):Node {
     node.computed = false;
     return parseSubscripts(finishNode(node), noCalls);
   } else if (eat(_bracketL)) {
+    //C jsparse_callback_open("member-var-open");
     var node = startNodeFrom(base);
     node.object = base;
     node.property = parseExpression();
     node.computed = true;
     expect(_bracketR);
+    //C jsparse_callback_open("member-var-close");
     enterNode(node, "MemberExpression");
     return parseSubscripts(finishNode(node), noCalls);
   } else if (!noCalls && eat(_parenL)) {

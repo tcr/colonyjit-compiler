@@ -298,6 +298,25 @@ void my_onopennode(const char* type)
         js_ismethod = 1;
     }
 
+    if (my_streq(type, "member-var-open")) {
+        JS_DEBUG("[>] member-var-open\n");
+        js_ismethod = 0;
+
+        js_stack_push();
+    }
+
+
+    if (my_streq(type, "member-var-close")) {
+        JS_DEBUG("[>] member-var-close\n");
+
+        ExpDesc* base = js_stack_top(-1);
+        ExpDesc* key = js_stack_top(0);
+        
+        expr_toanyreg(fs, base);
+        expr_index(fs, base, key);
+        js_stack_pop();
+    }
+
     if (my_streq(type, "call-open")) {
         JS_DEBUG("[>] call-open\n");
         ExpDesc* ident = js_stack_top(0);

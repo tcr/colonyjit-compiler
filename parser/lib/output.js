@@ -1470,11 +1470,13 @@ Node* parseSubscripts(Node* base, bool noCalls) {
     }
 } else if (eat(_bracketL)) {
 {
+         jsparse_callback_open("member-var-open"); 
         Node* node = startNodeFrom(base); 
         node->object = base;
         node->property = parseExpression();
         node->computed = true;
         expect(_bracketR);
+         jsparse_callback_open("member-var-close"); 
         enterNode(node, "MemberExpression");
         return parseSubscripts(finishNode(node), noCalls);
     }
