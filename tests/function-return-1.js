@@ -1,6 +1,6 @@
 console.log('1..1')
 
-double = function (arg) {
+var double = function (arg) {
 	return arg * arg;
 }
 

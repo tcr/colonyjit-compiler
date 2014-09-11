@@ -300,7 +300,6 @@ void my_onopennode(const char* type)
 
         if (ident->k == VINDEXED) {
             // rewrite
-            JS_DEBUG("REWRITING------->\n");
             bcreg_reserve(fs, 1);
             expr_tonextreg(fs, ident);
             bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 2);
@@ -308,7 +307,7 @@ void my_onopennode(const char* type)
             // bcemit_method(fs, ident, &key);
         }
 
-        if (ident->k == VGLOBAL) {
+        if (ident->k == VGLOBAL || ident->k == VLOCAL) {
             expr_tonextreg(fs, ident);
         }
         js_ismethod = 0;
