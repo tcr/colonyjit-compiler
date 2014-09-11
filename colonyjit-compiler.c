@@ -542,6 +542,14 @@ void my_onclosenode(struct Node_C C)
     // Switch statement.
     if (my_streq(C.type, "VariableDeclarator")) {
         ExpDesc* e = js_stack_top(0);
+
+  expr_discharge(fs, e);
+  expr_free(fs, e);
+  bcreg_reserve(fs, 1);
+    JS_DEBUG("$#$$$$ A %d\n", bc_a(fs->bcbase[0].ins));
+  expr_toreg_nobranch(fs, e, fs->freereg - 1);
+    JS_DEBUG("$#$$$$ B %d\n", bc_a(fs->bcbase[0].ins));
+
         assign_adjust(fs->ls, 1, 1, e);
         var_add(fs->ls, 1);
         js_stack_pop();
@@ -861,12 +869,14 @@ void my_onclosenode(struct Node_C C)
             // expr->u.s.info = fs->freereg;
             expr->k = VRELOCABLE;
             // JS_DEBUG("---!!!!!->oh %d\n", expr->u.s.info);
-            expr->u.s.info -= 1;
+            expr->u.s.info = fs->pc;
             if (!C.prefix) {
                 fs->freereg -= 3;
             } else {
                 fs->freereg -= 1;
             }
+            JS_DEBUG("---------->expr reg %d\n", expr->u.s.info);
+            // expr_toval(fs, expr);
             // expr_free(fs, expr);
             // expr_discharge(fs, expr);
 
