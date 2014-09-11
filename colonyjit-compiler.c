@@ -799,54 +799,22 @@ void my_onclosenode(struct Node_C C)
         // expr_tonextreg(fs, expr);
 
         if (expr->k == VINDEXED) {
-            // if (expr->u.s.aux >= -256 && expr->u.s.aux <= -1) {
-            //     // TODO unhardcode this?
-            //     BCPos ins = BCINS_AD(BC_KSTR, fs->freereg, (int) ~expr->u.s.aux);
-            //     bcemit_INS(fs, ins);
-            //     bcreg_reserve(fs, 1);
-            //     // key.u.sval = (int) ~expr->u.s.aux;
-            //     // expr_tonextreg(fs, &key);
-
-            //     JS_DEBUG("value str %d\n", ~expr->u.s.aux);
-            // } else if (expr->u.s.aux >= 256) {
-            //     expr_init(&key, VKNUM, 0);
-            //     setintV(&key.u.nval, expr->u.s.aux - 256);
-            //     expr_tonextreg(fs, &key);
-
-            //     JS_DEBUG("value byte %d\n", expr->u.s.aux - 256);
-            // } else {
-            //     expr_tonextreg(fs, &key);
-
-            //     JS_DEBUG("value reg %d\n", expr->u.s.aux);
-            // }
-
-            // bcemit_store(ls->fs, &lh->v, &e);
-            // and
-            // right hand side (value + 1)
-
-            // increment_registers(&expr->u.s.info, 0);
-
-            // TODO: overwrite previous expr to write to this register.
-            bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 1);
-
-            // left hand is base[idx]
+            // Create key register to take register of base.
             ExpDesc key = *expr;
-            // fs->freereg += 1;
-            // key.u.s.info += 1;
-            // expr_tonextreg(fs, key);
-            // fs->freereg += 1;
-            // fs->freereg -= 1;
-            // expr_tonextreg(fs, &key);
 
+            // TODO: overwrite previous expr to save a MOV.
+            bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 1);
+            expr->u.s.info += 1;
+
+            // Create increment value.
             ExpDesc incr;
             expr_init(&incr, VKNUM, 0);
-            setnumV(&incr.u.nval, 1);
-            // expr_tonextreg(fs, &key);
+            setnumV(&incr.u.nval, my_streq(C._operator, "--") ? -1 : 1);
 
-            // fs->freereg += 2;
+            // Dispatch key to register.
             expr_tonextreg(fs, &key);
-            // expr_discharge(fs, &key);
 
+            // Add increment to key. If not prefixed, do this in separate register.
             if (!C.prefix) {
                 fs->freereg += 2;
                 key.u.s.info += 2;
@@ -854,40 +822,16 @@ void my_onclosenode(struct Node_C C)
             }
             bcemit_binop(fs, OPR_ADD, &key, &incr);
 
-            // if (!C.prefix) {
-                expr->u.s.info += 1;
-            // }
-            // fs->freereg -= 1;
+            // Store and save return value.
             bcemit_store(fs, expr, &key);
-            // expr_tonextreg(fs, &key);
-
-            // if (!C.prefix) {
-            //     fs->freereg -= 2;
-            // }
-            
-            // fs->freereg -= 1;
-            // expr->u.s.info = fs->freereg;
             expr->k = VRELOCABLE;
-            // JS_DEBUG("---!!!!!->oh %d\n", expr->u.s.info);
             expr->u.s.info = fs->pc;
+
+            // Free registers.
+            expr_free(fs, &key);
             if (!C.prefix) {
-                fs->freereg -= 3;
-            } else {
-                fs->freereg -= 1;
+                fs->freereg -= 2;
             }
-            JS_DEBUG("---------->expr reg %d\n", expr->u.s.info);
-            // expr_toval(fs, expr);
-            // expr_free(fs, expr);
-            // expr_discharge(fs, expr);
-
-            // *expr = key;
-            // expr->u.s.aux += 1;
-            // expr_free(fs, expr);
-
-            // expr->k = VRELOCABLE;
-            // expr->u.s.info -= 1;
-            // fs->freereg -= 1;
-            // increment_registers(&(expr->u.s.info), 0);
         } else {
             assert(0);
         }
