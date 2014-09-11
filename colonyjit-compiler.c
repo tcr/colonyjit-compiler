@@ -211,6 +211,7 @@ CJC_STACK_TOP(FuncState, js_fs);
 
 static int js_ismethod = 0;
 static int is_statement;
+static int is_arrayliteral = 0;
 static BCReg fnparams = 0;
 
 BCPos start, loop;
@@ -357,7 +358,7 @@ void my_onopennode(const char* type)
         (void)args;
     }
 
-    if (my_streq(type, "parseExprList-next")) {
+    if (my_streq(type, "parseExprList-next") && is_arrayliteral == 0) {
         JS_DEBUG("[>] call-nextarg\n");
         ExpDesc* args = js_stack_top(0);
         js_ismethod = 0;
@@ -578,6 +579,62 @@ void my_onopennode(const char* type)
 
         ExpDesc* expr = js_stack_top(0);
         bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, expr), 2));
+    }
+
+    if (my_streq(type, "array-literal-open")) {
+        JS_DEBUG("[>] array-literal-open\n");
+
+        ExpDesc* e = js_stack_top(0);
+
+        FuncState *fs = ls->fs;
+        BCLine line = ls->linenumber;
+        GCtab *t = NULL;
+        int vcall = 0, needarr = 0, fixt = 0;
+        uint32_t narr = 0;  /* First array index. */
+        uint32_t nhash = 0;  /* Number of hash entries. */
+        BCReg freg = fs->freereg;
+        BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
+        expr_init(e, VNONRELOC, freg);
+        bcreg_reserve(fs, 1);
+        freg++;
+
+        // e->u.s.aux = pc;
+
+        ExpDesc* key = js_stack_push();
+        expr_init(key, VKNUM, 0);
+        setintV(&key->u.nval, (int)0);
+
+        is_arrayliteral = 1;
+
+        js_stack_push(); // value
+    }
+    if (my_streq(type, "parseExprList-next") && is_arrayliteral > 0) {
+        JS_DEBUG("[>] array-literal-next\n");
+        ExpDesc* obj = js_stack_top(-2);
+        ExpDesc* key = js_stack_top(-1);
+        ExpDesc* val = js_stack_top(0);
+
+        expr_toanyreg(fs, val);
+        if (expr_isk(key)) expr_index(fs, obj, key);
+        bcemit_store(fs, obj, val);  
+
+        expr_init(key, VKNUM, 0);
+        setintV(&key->u.nval, is_arrayliteral++);
+    }
+    if (my_streq(type, "array-literal-close")) {
+        JS_DEBUG("[>] array-literal-close\n");
+        ExpDesc* obj = js_stack_top(-2);
+        ExpDesc* key = js_stack_top(-1);
+        ExpDesc* val = js_stack_top(0);
+
+        expr_toanyreg(fs, val);
+        if (expr_isk(key)) expr_index(fs, obj, key);
+        bcemit_store(fs, obj, val);
+
+        // js_ismethod = 4;
+        js_stack_pop();
+        js_stack_pop();
+        is_arrayliteral = 0;
     }
 
     if (my_streq(type, "object-literal")) {
@@ -891,6 +948,7 @@ void my_onclosenode(struct Node_C C)
         ExpDesc* expr = js_stack_top(0);
         GCstr* s = lj_str_new(fs->L, "this", strlen("this"));
         var_lookup_(fs, s, expr, 1);
+    } else if (my_streq(C.type, "ArrayExpression")) {
     } else if (my_streq(C.type, "ObjectExpression")) {
         ExpDesc* e = js_stack_top(0);
 

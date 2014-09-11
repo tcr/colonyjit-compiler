@@ -2179,11 +2179,13 @@ function parseExprAtom() {
   case _bracketL:
     var node = startNode();
     next();
+    //C jsparse_callback_open("array-literal-open");
     // check whether this is array comprehension or regular array
     if (options.ecmaVersion >= 6 && tokType === _for) {
       return parseComprehension(node, false);
     }
     node.elements = parseExprList(_bracketR, true, true);
+    //C jsparse_callback_open("array-literal-close");
     enterNode(node, "ArrayExpression");
     return finishNode(node);
 

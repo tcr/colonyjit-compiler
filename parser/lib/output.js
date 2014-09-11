@@ -1587,12 +1587,14 @@ unexpected();
         case 43:{
             Node* node = startNode(); 
             next();
+             jsparse_callback_open("array-literal-open"); 
             if (options.ecmaVersion >= 6 && tokType==_for) {
 {
                 return parseComprehension(node, false);
             }
 }
             node->elements = parseExprList(_bracketR, true, true);
+             jsparse_callback_open("array-literal-close"); 
             enterNode(node, "ArrayExpression");
             return finishNode(node);}
         case 45:{
