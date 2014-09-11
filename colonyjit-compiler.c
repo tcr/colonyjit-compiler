@@ -75,12 +75,17 @@ static void increment_registers(BCIns* ins, int pos)
     case BC_MULNV:
     case BC_DIVNV:
     case BC_MODNV:
-    case BC_TGETS:
     case BC_TGETB:
     case BC_TSETS:
     case BC_TSETB:
         setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
         setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
+        break;
+
+    case BC_TGETS:
+        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
+        setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
+        JS_DEBUG("TGETS--------> %d %d\n", bc_a(*ins), bc_b(*ins));
         break;
 
     // A and B and D
@@ -140,7 +145,7 @@ static void increment_registers(BCIns* ins, int pos)
     case BC_FNEW:
     case BC_TNEW:
     case BC_TDUP:
-    case BC_GGET:
+    // case BC_GGET:
     case BC_GSET:
     case BC_TSETM:
     case BC_CALLM:
@@ -176,6 +181,11 @@ static void increment_registers(BCIns* ins, int pos)
     case BC_FUNCC:
     case BC_FUNCCW:
         setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
+        break;
+
+    case BC_GGET:
+        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
+        JS_DEBUG("GGET--------> %d %d\n", bc_a(*ins));
         break;
 
     default:
@@ -850,17 +860,19 @@ void my_onclosenode(struct Node_C C)
             // fs->freereg -= 1;
             // expr->u.s.info = fs->freereg;
             expr->k = VRELOCABLE;
-            // expr->u.s.info += 1;
+            // JS_DEBUG("---!!!!!->oh %d\n", expr->u.s.info);
+            expr->u.s.info -= 1;
             if (!C.prefix) {
                 fs->freereg -= 3;
             } else {
                 fs->freereg -= 1;
             }
+            // expr_free(fs, expr);
             // expr_discharge(fs, expr);
 
             // *expr = key;
             // expr->u.s.aux += 1;
-            // expr_free(fs, &key);
+            // expr_free(fs, expr);
 
             // expr->k = VRELOCABLE;
             // expr->u.s.info -= 1;
