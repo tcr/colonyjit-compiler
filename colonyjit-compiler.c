@@ -833,7 +833,39 @@ void my_onclosenode(struct Node_C C)
                 fs->freereg -= 2;
             }
         } else {
-            assert(0);
+            // If prefixed, do these in a separate register.
+            if (!C.prefix) {
+                fs->freereg += 1;
+            }
+
+            // Create key register to take register of base.
+            ExpDesc key = *expr;
+            expr_tonextreg(fs, &key);
+
+            // TODO: overwrite previous expr to save a MOV.
+            if (!C.prefix) {
+                bcemit_AD(fs, BC_MOV, fs->freereg - 2, fs->freereg - 1);
+            }
+
+            // Create increment value.
+            ExpDesc incr;
+            expr_init(&incr, VKNUM, 0);
+            setnumV(&incr.u.nval, my_streq(C._operator, "--") ? -1 : 1);
+
+            // Add increment to key.
+            bcemit_binop(fs, OPR_ADD, &key, &incr);
+
+            // Store and save return value.
+            bcemit_store(fs, expr, &key);
+            expr->k = VRELOCABLE;
+            expr->u.s.info = fs->pc;
+
+            // Free registers.
+            expr_free(fs, &key);
+
+            if (!C.prefix) {
+                fs->freereg -= 1;
+            }
         }
     }
 
