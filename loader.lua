@@ -22,9 +22,12 @@ if arg[1] ~= nil then
 else
 	output = io.read("*a")
 end
+
+_G.global = _G
 load(output)({
 	typeof = function (arg)
 		if arg == nil then return 'object'; end
 		return type(arg)
-	end
+	end,
+	global = _G
 })

@@ -314,9 +314,17 @@ void my_onopennode(const char* type)
         if (ident->k == VGLOBAL || ident->k == VLOCAL) {
             expr_tonextreg(fs, ident);
 
+            // expr_init(&global, VGLOBAL, 0);
+            // global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
+            // expr_tonextreg(fs, &global);
+
+            ExpDesc str;
+            expr_init(&str, VKSTR, 0);
+            str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
+
             ExpDesc global;
-            expr_init(&global, VGLOBAL, 0);
-            global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
+            expr_init(&global, VINDEXED, 0);
+            global.u.s.aux = ~(const_str(fs, &str));
             expr_tonextreg(fs, &global);
         }
         js_ismethod = 0;
@@ -801,6 +809,10 @@ void my_onclosenode(struct Node_C C)
         js_stack_pop(); // pop e2
     } else if (my_streq(C.type, "Program")) {
         js_fs_pop();
+    } else if (my_streq(C.type, "ThisExpression")) {
+        ExpDesc* expr = js_stack_top(0);
+        GCstr* s = lj_str_new(fs->L, "this", strlen("this"));
+        var_lookup_(fs, s, expr, 1);
     } else if (my_streq(C.type, "ObjectExpression")) {
         
 
@@ -983,10 +995,23 @@ if (ls->token != TK_eof)
     synlevel_begin(ls);
 
     // Reserve first register as argument.
-    fs->numparams = 1;
+    fs->numparams += 1;
     bcreg_reserve(fs, 1);
     var_new(ls, 0, lj_str_new(fs->L, "", 0));
-    fs->nactvar = 1;
+    fs->nactvar += 1;
+
+    // // Register "this" variable
+    // ExpDesc str;
+    // expr_init(&str, VKSTR, 0);
+    // str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
+    // ExpDesc global;
+    // expr_init(&global, VINDEXED, 0);
+    // global.u.s.aux = ~(const_str(fs, &str));
+    // expr_tonextreg(fs, &global);
+    // bcreg_reserve(fs, 1);
+    // var_new_lit(ls, 0, "this");
+    // var_add(ls, 1);
+    // fs->nactvar += 1;
 
     jsparse(my_input, strlen(my_input), my_onopennode, my_onclosenode);
     synlevel_end(ls);
