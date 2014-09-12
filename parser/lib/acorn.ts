@@ -1872,12 +1872,16 @@ function parseFor(node:Node, init:Node) {
   //C jsparse_callback_open("parseFor");
   node.init = init;
   expect(_semi);
+  //C jsparse_callback_open("for-test");
   node.test = tokType === _semi ? null : parseExpression();
   expect(_semi);
+  //C jsparse_callback_open("for-update");
   node.update = tokType === _parenR ? null : parseExpression();
   expect(_parenR);
+  //C jsparse_callback_open("for-body");
   node.body = parseStatement();
   labels.pop();
+  //C jsparse_callback_open("for-end");
   enterNode(node, "ForStatement");
   return finishNode(node);
 }

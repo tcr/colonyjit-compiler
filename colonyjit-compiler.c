@@ -427,8 +427,9 @@ void my_onopennode(const char* type)
         (void)rval;
     }
 
-    if (my_streq(type, "while-test")) {
+    if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
         JS_DEBUG("[>] while-test\n");
+        js_ismethod = 0;
 
         ExpDesc* test = js_stack_push();
         (void)test;
@@ -440,6 +441,46 @@ void my_onopennode(const char* type)
         // // lex_check(ls, TK_do);
         // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
         // parse_block(ls);
+    }
+
+    if (my_streq(type, "for-update")) {
+        JS_DEBUG("[>] for-update\n");
+        js_ismethod = 0;
+
+        ExpDesc* test = js_stack_top(0);
+        // if (v.k == VKNIL) v.k = VKFALSE;
+        bcemit_branch_t(fs, test);
+
+        loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+
+        // ExpDesc* consequent = js_stack_push();
+        // (void) consequent;
+
+        ExpDesc* dummy = js_stack_push();
+        dummy->t = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
+        dummy->f = fs->pc;
+
+        js_ismethod = 0;
+        js_stack_push();
+    }
+
+    if (my_streq(type, "for-body")) {
+        JS_DEBUG("[>] for-body\n");
+
+        BCPos reloop = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
+        jmp_patchins(fs, reloop, start);
+
+        ExpDesc* test = js_stack_top(-2);
+
+        ExpDesc* update = js_stack_top(0);
+        expr_tonextreg(fs, update);
+
+        ExpDesc* dummy = js_stack_top(-1);
+        jmp_patchins(fs, dummy->t, fs->pc);
+        start = dummy->f;
+
+        js_stack_pop();
+        js_stack_pop();
     }
 
     if (my_streq(type, "while-body")) {
@@ -455,7 +496,7 @@ void my_onopennode(const char* type)
         // (void) consequent;
     }
 
-    if (my_streq(type, "while-end")) {
+    if (my_streq(type, "while-end") || my_streq(type, "for-end")) {
         JS_DEBUG("[>] while-end\n");
 
         ExpDesc* test = js_stack_top(0);

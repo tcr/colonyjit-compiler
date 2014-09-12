@@ -1288,12 +1288,16 @@ Node* parseFor(Node* node, Node* init) {
      jsparse_callback_open("parseFor"); 
     node->init = init;
     expect(_semi);
+     jsparse_callback_open("for-test"); 
     node->test = tokType==_semi ? null : parseExpression();
     expect(_semi);
+     jsparse_callback_open("for-update"); 
     node->update = tokType==_parenR ? null : parseExpression();
     expect(_parenR);
+     jsparse_callback_open("for-body"); 
     node->body = parseStatement();
     pop(labels);
+     jsparse_callback_open("for-end"); 
     enterNode(node, "ForStatement");
     return finishNode(node);
 }
