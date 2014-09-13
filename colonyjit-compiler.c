@@ -427,7 +427,8 @@ void my_onopennode(const char* type)
         (void)rval;
     }
 
-    if (my_streq(type, "+=")) {
+    if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=") ||
+        my_streq(type, "/=") || my_streq(type, "%=")) {
         js_ismethod = 0;
 
         JS_DEBUG("[>] assign +=\n");
@@ -906,15 +907,30 @@ void my_onclosenode(struct Node_C C)
 
             *lval = *rval;
             js_stack_pop();
-        } else if (my_streq(C._operator, "+=")) {
+        } else {
             ExpDesc* expr = js_stack_top(-2);
             ExpDesc* key = js_stack_top(-1);
             ExpDesc* incr = js_stack_top(0);
 
+            BinOpr op;
+            if (my_streq(C._operator, "+=")) {
+                op = OPR_ADD;
+            } else if (my_streq(C._operator, "-=")) {
+                op = OPR_SUB;
+            } else if (my_streq(C._operator, "*=")) {
+                op = OPR_MUL;
+            } else if (my_streq(C._operator, "/=")) {
+                op = OPR_DIV;
+            } else if (my_streq(C._operator, "%=")) {
+                op = OPR_MOD;
+            } else {
+                assert(0);
+            }
+
             if (expr->k == VINDEXED) {
                 // Add increment to key. If not prefixed, do this in separate
                 // register.
-                bcemit_binop(fs, OPR_ADD, key, incr);
+                bcemit_binop(fs, op, key, incr);
                 expr_free(fs, incr);
 
                 // Store and save return value.
@@ -926,7 +942,7 @@ void my_onclosenode(struct Node_C C)
                 expr_free(fs, key);
             } else {
                 // Add increment to key.
-                bcemit_binop(fs, OPR_ADD, key, incr);
+                bcemit_binop(fs, op, key, incr);
                 if (expr->k == VLOCAL) {
                     // Save in original location.
                     expr_toreg(fs, key, key->u.s.aux);
@@ -945,8 +961,6 @@ void my_onclosenode(struct Node_C C)
 
             js_stack_pop();
             js_stack_pop();
-        } else {
-            assert(0);
         }
     } else if (my_streq(C.type, "ConditionalExpression")) {
 
