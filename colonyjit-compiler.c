@@ -1073,6 +1073,33 @@ void my_onclosenode(struct Node_C C)
                 assert(0);
             }
         }
+    } else if (my_streq(C.type, "UnaryExpression")) {
+        ExpDesc* e1 = js_stack_top(-1);
+        ExpDesc* e2 = js_stack_top(0);
+
+        *e1 = *e2;
+
+        if (my_streq(C._operator, "-")) {
+            if (expr_isnumk(e1) && !expr_numiszero(e1)) {  /* Avoid folding to -0. */
+                TValue *o = expr_numtv(e1);
+                if (tvisint(o)) {
+                    int32_t k = intV(o);
+                    if (k == -k)
+                        setnumV(o, -(lua_Number)k);
+                    else
+                        setintV(o, -k);
+                } else {
+                    o->u64 ^= U64x(80000000,00000000);
+                }
+            } else {
+                expr_toanyreg(fs, e1);
+                expr_free(fs, e1);
+                e1->u.s.info = bcemit_AD(fs, BC_UNM, 0, e1->u.s.info);
+                e1->k = VRELOCABLE;
+            }
+        }
+
+        js_stack_pop();
     } else if (my_streq(C.type, "BinaryExpression")) {
         JS_DEBUG("[binaryexpr] %s\n", C._operator);
 
