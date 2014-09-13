@@ -411,7 +411,7 @@ void my_onopennode(const char* type)
     JS_OP_LEFT("&&", OPR_AND);
     JS_OP_LEFT("||", OPR_OR);
 
-    if (my_streq(type, "assign")) {
+    if (my_streq(type, "=")) {
         js_ismethod = 0;
 
         JS_DEBUG("[>] assign\n");
@@ -425,6 +425,36 @@ void my_onopennode(const char* type)
 
         ExpDesc* rval = js_stack_push();
         (void)rval;
+    }
+
+    if (my_streq(type, "+=")) {
+        js_ismethod = 0;
+
+        JS_DEBUG("[>] assign +=\n");
+
+        // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
+        // LJ_ERR_XSYNTAX);
+
+        // /* Assign RHS to LHS and recurse downwards. */
+        // expr_init(&e, VNONRELOC, ls->fs->freereg-1);
+        // bcemit_store(ls->fs, &lh->v, &e);
+
+        ExpDesc* expr = js_stack_top(0);
+        // expr_tonextreg(fs, expr);
+
+        ExpDesc* key = js_stack_push();
+        ExpDesc* rval = js_stack_push();
+
+        *key = *expr;
+
+        if (expr->k == VINDEXED) {
+            // TODO: overwrite previous expr to save a MOV.
+            bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 1);
+            // expr->u.s.info += 1;
+
+            // Dispatch key to register.
+            expr_tonextreg(fs, key);
+        }
     }
 
     if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
@@ -726,6 +756,11 @@ void my_onopennode(const char* type)
             expr_index(fs, obj, key);
         bcemit_store(fs, obj, val);
 
+        expr_free(fs, val);
+        // expr_free(fs, key);
+
+        // expr_toanyreg(fs, obj);
+
         // JS_DEBUG("EUSAUX PC %p %d\n", obj, obj->u.s.aux);
         // BCIns *ip = &fs->bcbase[obj->u.s.aux].ins;
         // if (!needarr) narr = 0;
@@ -863,13 +898,56 @@ void my_onclosenode(struct Node_C C)
             assert(0);
         }
     } else if (my_streq(C.type, "AssignmentExpression")) {
-        ExpDesc* lval = js_stack_top(-1);
-        ExpDesc* rval = js_stack_top(0);
+        if (my_streq(C._operator, "=")) {
+            ExpDesc* lval = js_stack_top(-1);
+            ExpDesc* rval = js_stack_top(0);
 
-        bcemit_store(fs, lval, rval);
+            bcemit_store(fs, lval, rval);
 
-        *lval = *rval;
-        js_stack_pop();
+            *lval = *rval;
+            js_stack_pop();
+        } else if (my_streq(C._operator, "+=")) {
+            ExpDesc* expr = js_stack_top(-2);
+            ExpDesc* key = js_stack_top(-1);
+            ExpDesc* incr = js_stack_top(0);
+
+            if (expr->k == VINDEXED) {
+                // Add increment to key. If not prefixed, do this in separate
+                // register.
+                bcemit_binop(fs, OPR_ADD, key, incr);
+                expr_free(fs, incr);
+
+                // Store and save return value.
+                bcemit_store(fs, expr, key);
+                expr->k = VRELOCABLE;
+                expr->u.s.info = fs->pc;
+
+                // Free registers.
+                expr_free(fs, key);
+            } else {
+                // Add increment to key.
+                bcemit_binop(fs, OPR_ADD, key, incr);
+                if (expr->k == VLOCAL) {
+                    // Save in original location.
+                    expr_toreg(fs, key, key->u.s.aux);
+                }
+
+                // Store and save return value.
+                if (expr->k == VGLOBAL) {
+                    bcemit_store(fs, expr, key);
+                    expr->k = VRELOCABLE;
+                    expr->u.s.info = fs->pc;
+
+                    // Free registers.
+                    expr_free(fs, key);
+                }
+            }
+
+            js_stack_pop();
+            js_stack_pop();
+        } else {
+            assert(0);
+        }
     } else if (my_streq(C.type, "ConditionalExpression")) {
 
         ExpDesc* test = js_stack_top(-1);
@@ -1024,9 +1102,10 @@ void my_onclosenode(struct Node_C C)
         // snip...!
         // lex_match(ls, '}', '{', line);
         // if (pc == fs->pc-1) {  /* Make expr relocable if possible. */
-        e->u.s.info = fs->pc - 1;
-        fs->freereg--;
-        e->k = VRELOCABLE;
+        // fs->freereg--;
+        e->k = VNONRELOC;
+        e->u.s.info = fs->freereg - 1;
+
         // } else {
         // e->k = VNONRELOC;  /* May have been changed by expr_index. */
         // }
