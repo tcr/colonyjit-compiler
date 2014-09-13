@@ -317,7 +317,25 @@ void my_onopennode(const char* type)
         js_stack_pop();
     }
 
-    if (my_streq(type, "call-open")) {
+    if (my_streq(type, "new-open")) {
+        JS_DEBUG("[>] new-open\n");
+
+        ExpDesc* ident = js_stack_top(0);
+
+        ExpDesc str;
+        expr_init(&str, VKSTR, 0);
+        str.u.sval = lj_str_new(fs->L, "new", strlen("new"));
+
+        ident->k = VINDEXED;
+        ident->u.s.info = 0;
+        ident->u.s.aux = ~(const_str(fs, &str));
+        expr_tonextreg(fs, ident);
+
+        ExpDesc* args = js_stack_push();
+        (void)args;
+    }
+
+    if (my_streq(type, "call-open") || my_streq(type, "new-args")) {
         JS_DEBUG("[>] call-open\n");
         ExpDesc* ident = js_stack_top(0);
 
@@ -337,14 +355,16 @@ void my_onopennode(const char* type)
             // global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
             // expr_tonextreg(fs, &global);
 
-            ExpDesc str;
-            expr_init(&str, VKSTR, 0);
-            str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
+            if (!my_streq(type, "new-args")) {
+                ExpDesc str;
+                expr_init(&str, VKSTR, 0);
+                str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
 
-            ExpDesc global;
-            expr_init(&global, VINDEXED, 0);
-            global.u.s.aux = ~(const_str(fs, &str));
-            expr_tonextreg(fs, &global);
+                ExpDesc global;
+                expr_init(&global, VINDEXED, 0);
+                global.u.s.aux = ~(const_str(fs, &str));
+                expr_tonextreg(fs, &global);
+            }
         }
         js_ismethod = 0;
 
@@ -352,10 +372,12 @@ void my_onopennode(const char* type)
         //   expr_tonextreg(fs, ident);
         // }
         // js_ismethod = 0;
-        ExpDesc* args = js_stack_push();
-        // JS_DEBUG("---------> ident %p has a base of %d\n", ident,
-        // ident->u.s.aux);
-        (void)args;
+        if (!my_streq(type, "new-args")) {
+            ExpDesc* args = js_stack_push();
+            // JS_DEBUG("---------> ident %p has a base of %d\n", ident,
+            // ident->u.s.aux);
+            (void)args;
+        }
     }
 
     if (my_streq(type, "parseExprList-next") && is_arrayliteral == 0) {
@@ -993,6 +1015,7 @@ void my_onclosenode(struct Node_C C)
         lua_assert(fs->framesize >= fs->freereg && fs->freereg >= fs->nactvar);
         fs->freereg = fs->nactvar;
     } else if (my_streq(C.type, "CallExpression")
+               || my_streq(C.type, "NewExpression")
                || (my_streq(C.type, "UnaryExpression")
                    && my_streq(C._operator, "typeof"))) {
         ExpDesc* ident = js_stack_top(-1);
@@ -1234,6 +1257,7 @@ void my_onclosenode(struct Node_C C)
                || my_streq(C.type, "UpdateExpression")
                || my_streq(C.type, "BlockStatement")
                || my_streq(C.type, "IfStatement")
+               || my_streq(C.type, "NewExpression")
                || my_streq(C.type, "WhileStatement")
                || my_streq(C.type, "ForStatement") || 0) {
         // noop

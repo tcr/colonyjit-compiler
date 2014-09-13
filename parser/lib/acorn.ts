@@ -2223,12 +2223,14 @@ function parseExprAtom() {
 // least, not without wrapping it in parentheses. Thus, it uses the
 
 function parseNew() {
-  //C jsparse_callback_open("parseNew");
+  //C jsparse_callback_open("new-open");
   var node = startNode();
   next();
   node.callee = parseSubscripts(parseExprAtom(), true);
+  //C jsparse_callback_open("new-args");
   if (eat(_parenL)) node.arguments = parseExprList(_parenR, false);
   else node.arguments = empty;
+  //C jsparse_callback_open("new-close");
   enterNode(node, "NewExpression");
   return finishNode(node);
 }

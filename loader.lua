@@ -29,5 +29,9 @@ load(output)({
 		if arg == nil then return 'object'; end
 		return type(arg)
 	end,
-	global = _G
+	global = _G,
+	["new"] = function (constructor, ...)
+		local obj = {}
+		return constructor(obj, ...) or obj
+	end
 })

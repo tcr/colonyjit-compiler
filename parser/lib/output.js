@@ -1620,13 +1620,15 @@ unexpected();
     }
 }
 Node* parseNew() {
-     jsparse_callback_open("parseNew"); 
+     jsparse_callback_open("new-open"); 
     Node* node = startNode(); 
     next();
     node->callee = parseSubscripts(parseExprAtom(), true);
+     jsparse_callback_open("new-args"); 
     if (eat(_parenL)) {
 node->arguments = parseExprList(_parenR, false);
 } else node->arguments = empty;
+     jsparse_callback_open("new-close"); 
     enterNode(node, "NewExpression");
     return finishNode(node);
 }
