@@ -14,6 +14,29 @@ _G.undefined = nil
 
 _G.i = {i = 42}
 
+local tbl = {}
+debug.setmetatable(function () end, {
+	__index = function (self, key)
+		if not tbl[self] then
+			tbl[self] = { prototype = {} }
+		end
+		return tbl[self][key]
+	end,
+	__newindex = function (self, key, val)
+		if not tbl[self] then
+			tbl[self] = { prototype = {} }
+		end
+		tbl[self][key] = val
+	end,
+})
+
+_G.Array = function (this, ...)
+	local args = {...}
+	args[0] = table.remove(args, 1)
+	args.length = select('#', ...)
+	return args
+end
+
 local output
 if arg[1] ~= nil then
 	local file = assert(io.popen('./colonyjit-compiler ' .. arg[1], 'r'))
@@ -31,6 +54,7 @@ load(output)({
 	end,
 	global = _G,
 	["new"] = function (constructor, ...)
+		print('newbie', constructor)
 		local obj = {}
 		return constructor(obj, ...) or obj
 	end

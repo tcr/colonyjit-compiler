@@ -190,7 +190,6 @@ static void increment_registers(BCIns* ins, int pos)
 
     case BC_GGET:
         setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        JS_DEBUG("GGET--------> %d %d\n", bc_a(*ins));
         break;
 
     default:
@@ -254,7 +253,7 @@ void my_onopennode(const char* type)
         FuncScope bl;
         ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
         fs_init(ls, fs);
-        JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
+        // JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
         fscope_begin(fs, &bl, 0);
         fs->linedefined = line;
         //(uint8_t)parse_params(ls, needself);
@@ -331,9 +330,9 @@ void my_onopennode(const char* type)
         expr_init(&str, VKSTR, 0);
         str.u.sval = lj_str_new(fs->L, "new", strlen("new"));
 
-        ident->k = VINDEXED;
-        ident->u.s.info = 0;
-        ident->u.s.aux = ~(const_str(fs, &str));
+        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
+        expr_tonextreg(fs, ident);
+        expr_index(fs, ident, &str);
         expr_tonextreg(fs, ident);
 
         ExpDesc* args = js_stack_push();
@@ -353,7 +352,7 @@ void my_onopennode(const char* type)
             // bcemit_method(fs, ident, &key);
         }
 
-        if (ident->k == VGLOBAL || ident->k == VLOCAL) {
+        else {
             expr_tonextreg(fs, ident);
 
             // expr_init(&global, VGLOBAL, 0);
@@ -604,18 +603,26 @@ void my_onopennode(const char* type)
     if (my_streq(type, "var-declarator")) {
         JS_DEBUG("[>] var-declarator\n");
         js_ismethod = 2;
+
         js_stack_push();
     }
 
     if (my_streq(type, "var-declarator-assign")) {
         js_ismethod = 0;
         JS_DEBUG("[>] var-declarator-assign\n");
+        // fs->freereg += 1;
+        
+        bcreg_reserve(fs, 1);
+        
         js_stack_push();
     }
 
     if (my_streq(type, "var-declarator-no-assign")) {
         js_ismethod = 0;
         JS_DEBUG("[>] var-declarator-no-assign\n");
+
+        bcreg_reserve(fs, 1);
+
         ExpDesc* e = js_stack_push();
         *e = *js_stack_top(-1);
         // expr_init(e, VKNIL, 0);
@@ -720,6 +727,9 @@ void my_onopennode(const char* type)
             expr_index(fs, obj, key);
         bcemit_store(fs, obj, val);
 
+        expr_free(fs, val);
+        expr_free(fs, key);
+
         expr_init(key, VKNUM, 0);
         setintV(&key->u.nval, is_arrayliteral++);
     }
@@ -733,6 +743,9 @@ void my_onopennode(const char* type)
         if (expr_isk(key))
             expr_index(fs, obj, key);
         bcemit_store(fs, obj, val);
+
+        obj->k = VNONRELOC;
+        obj->u.s.info = 2;
 
         // js_ismethod = 4;
         js_stack_pop();
@@ -829,6 +842,12 @@ void my_onclosenode(struct Node_C C)
 
             assign_adjust(fs->ls, 1, 1, val);
             var_add(fs->ls, 1);
+
+            // JS_DEBUG("HIHIHIHIHIHIHI %d\n", fs->nactvar-1);
+            if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
+                bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
+                // exit(1);
+            }
         } else {
             bcemit_store(fs, ident, val);
         }
