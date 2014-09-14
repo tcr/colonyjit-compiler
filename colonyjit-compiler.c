@@ -782,6 +782,7 @@ void my_onopennode(const char* type)
     }
 
     if (my_streq(type, "object-literal-value")) {
+        js_ismethod = 0;
         JS_DEBUG("[>] object-literal-value\n");
         js_stack_push();
     }
@@ -882,8 +883,6 @@ void my_onclosenode(struct Node_C C)
         // js_stack_pop();
     } else if (my_streq(C.type, "Identifier")) {
         ExpDesc* ident = js_stack_top(0);
-        JS_DEBUG("fs %p, %p\n", fs, fs->L);
-        assert(fs->L);
         GCstr* s = lj_str_new(fs->L, C.name, strlen(C.name));
 
         JS_DEBUG("[ident] js_ismethod %d\n", js_ismethod);
