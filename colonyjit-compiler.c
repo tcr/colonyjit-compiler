@@ -85,7 +85,6 @@ static void increment_registers(BCIns* ins, int pos)
     case BC_TGETS:
         setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
         setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
-        JS_DEBUG("TGETS--------> %d %d\n", bc_a(*ins), bc_b(*ins));
         break;
 
     // A and B and D
@@ -96,8 +95,14 @@ static void increment_registers(BCIns* ins, int pos)
     case BC_MODVV:
     case BC_POW:
     case BC_CAT:
+        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
+        setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
+        setbc_c(ins, bc_c(*ins) >= pos ? bc_c(*ins) + 1 : bc_c(*ins));
+        break;
+
     case BC_TGETV:
     case BC_TSETV:
+        // TODO C or D?
         setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
         setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
         setbc_d(ins, bc_d(*ins) >= pos ? bc_d(*ins) + 1 : bc_d(*ins));
