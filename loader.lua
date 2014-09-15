@@ -37,6 +37,12 @@ _G.Array = function (this, ...)
 	return args
 end
 
+_G.Math = {
+	sqrt = function (this, arg)
+		return math.sqrt(arg)
+	end
+}
+
 local output
 if arg[1] ~= nil then
 	local file = assert(io.popen('./colonyjit-compiler ' .. arg[1], 'r'))
