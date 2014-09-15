@@ -404,9 +404,9 @@ void my_onopennode(const char* type)
         expr_init(&str, VKSTR, 0);
         str.u.sval = lj_str_new(fs->L, type, strlen(type));
 
-        ident->k = VINDEXED;
-        ident->u.s.info = 0;
-        ident->u.s.aux = ~(const_str(fs, &str));
+        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
+        expr_tonextreg(fs, ident);
+        expr_index(fs, ident, &str);
         expr_tonextreg(fs, ident);
 
         ExpDesc* args = js_stack_push();

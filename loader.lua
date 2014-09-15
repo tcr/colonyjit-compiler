@@ -58,7 +58,6 @@ load(output)({
 		setmetatable(obj, {
 			__index = constructor.prototype
 		})
-		print(constructor.prototype)
 		return constructor(obj, ...) or obj
 	end
 })
