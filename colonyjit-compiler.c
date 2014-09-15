@@ -625,6 +625,8 @@ void my_onopennode(const char* type)
 
         ExpDesc* e = js_stack_push();
         *e = *js_stack_top(-1);
+        e->t = NO_JMP;
+        e->f = NO_JMP;
         // expr_init(e, VKNIL, 0);
         // expr_tonextreg(fs, e);
     }

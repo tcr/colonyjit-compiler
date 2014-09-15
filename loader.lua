@@ -54,8 +54,11 @@ load(output)({
 	end,
 	global = _G,
 	["new"] = function (constructor, ...)
-		print('newbie', constructor)
 		local obj = {}
+		setmetatable(obj, {
+			__index = constructor.prototype
+		})
+		print(constructor.prototype)
 		return constructor(obj, ...) or obj
 	end
 })
