@@ -345,7 +345,7 @@ void my_onopennode(const char* type)
 
         if (ident->k == VINDEXED) {
             // rewrite
-            bcreg_reserve(fs, 1);
+            // bcreg_reserve(fs, 1);
             expr_tonextreg(fs, ident);
             bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 2);
             bcreg_reserve(fs, 1);
@@ -403,6 +403,7 @@ void my_onopennode(const char* type)
         ExpDesc str;
         expr_init(&str, VKSTR, 0);
         str.u.sval = lj_str_new(fs->L, type, strlen(type));
+
 
         var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
         expr_tonextreg(fs, ident);
@@ -887,6 +888,7 @@ void my_onclosenode(struct Node_C C)
         ExpDesc* ident = js_stack_top(0);
         GCstr* s = lj_str_new(fs->L, C.name, strlen(C.name));
 
+        JS_DEBUG("[ident] value: '%s'\n", C.name);
         JS_DEBUG("[ident] js_ismethod %d\n", js_ismethod);
         if (js_ismethod == 0) {
             var_lookup_(fs, s, ident, 1);

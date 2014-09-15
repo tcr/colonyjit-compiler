@@ -50,6 +50,7 @@ _G.global = _G
 load(output)({
 	typeof = function (arg)
 		if arg == nil then return 'object'; end
+		if type(arg) == 'table' then return 'object'; end
 		return type(arg)
 	end,
 	global = _G,
