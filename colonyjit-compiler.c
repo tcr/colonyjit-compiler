@@ -346,8 +346,9 @@ void my_onopennode(const char* type)
         if (ident->k == VINDEXED) {
             // rewrite
             // bcreg_reserve(fs, 1);
+            uint32_t source = ident->u.s.info;
             expr_tonextreg(fs, ident);
-            bcemit_AD(fs, BC_MOV, fs->freereg, fs->freereg - 2);
+            bcemit_AD(fs, BC_MOV, fs->freereg, source);
             bcreg_reserve(fs, 1);
             // bcemit_method(fs, ident, &key);
         }
