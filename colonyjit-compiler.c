@@ -57,6 +57,11 @@
         return ret;                                                            \
     }
 
+#define CJC(T, N) CJC_STACK(T, N); \
+    CJC_STACK_PUSH(T, N); \
+    CJC_STACK_POP(T, N); \
+    CJC_STACK_TOP(T, N);
+
 /*
  * Increment registers in written instructions.
  */
@@ -203,22 +208,15 @@ static void increment_registers(BCIns* ins, int pos)
 
 LexState* ls;
 
-CJC_STACK(ExpDesc, js_stack);
-CJC_STACK_PUSH(ExpDesc, js_stack);
-CJC_STACK_POP(ExpDesc, js_stack);
-CJC_STACK_TOP(ExpDesc, js_stack);
-
-CJC_STACK(FuncState, js_fs);
-CJC_STACK_PUSH(FuncState, js_fs);
-CJC_STACK_POP(FuncState, js_fs);
-CJC_STACK_TOP(FuncState, js_fs);
+CJC(ExpDesc, js_stack);
+CJC(FuncState, js_fs);
+CJC(BCPos, js_start);
+CJC(BCPos, js_loop);
 
 static int js_ismethod = 0;
 static int is_statement;
 static int is_arrayliteral = 0;
 static BCReg fnparams = 0;
-
-BCPos start, loop;
 
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 
@@ -490,11 +488,14 @@ void my_onopennode(const char* type)
         JS_DEBUG("[>] while-test\n");
         js_ismethod = 0;
 
+        js_start_push();
+        js_loop_push();
+
         ExpDesc* test = js_stack_push();
         (void)test;
 
         // lj_lex_next(ls);  /* Skip 'while'. */
-        start = fs->lasttarget = fs->pc;
+        *js_start_top(0) = fs->lasttarget = fs->pc;
         // condexit = expr_cond(ls);
         // // fscope_begin(fs, &bl, FSCOPE_LOOP);
         // // lex_check(ls, TK_do);
@@ -510,7 +511,7 @@ void my_onopennode(const char* type)
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+        *js_loop_top(0) = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
         // ExpDesc* consequent = js_stack_push();
         // (void) consequent;
@@ -527,7 +528,7 @@ void my_onopennode(const char* type)
         JS_DEBUG("[>] for-body\n");
 
         BCPos reloop = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-        jmp_patchins(fs, reloop, start);
+        jmp_patchins(fs, reloop, *js_start_top(0));
 
         ExpDesc* test = js_stack_top(-2);
 
@@ -536,7 +537,7 @@ void my_onopennode(const char* type)
 
         ExpDesc* dummy = js_stack_top(-1);
         jmp_patchins(fs, dummy->t, fs->pc);
-        start = dummy->f;
+        *js_start_top(0) = dummy->f;
 
         js_stack_pop();
         js_stack_pop();
@@ -549,7 +550,7 @@ void my_onopennode(const char* type)
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+        *js_loop_top(0) = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
         // ExpDesc* consequent = js_stack_push();
         // (void) consequent;
@@ -561,13 +562,16 @@ void my_onopennode(const char* type)
         ExpDesc* test = js_stack_top(0);
         // jmp_tohere(fs, test->f);
 
-        jmp_patch(fs, bcemit_jmp(fs), start);
+        jmp_patch(fs, bcemit_jmp(fs), *js_start_top(0));
         // lex_match(ls, TK_end, TK_while, line);
         // fscope_end(fs);
         jmp_tohere(fs, test->f);
-        jmp_patchins(fs, loop, fs->pc);
+        jmp_patchins(fs, *js_loop_top(0), fs->pc);
 
         js_stack_pop();
+        js_loop_pop();
+        
+        js_start_pop();
     }
 
     if (my_streq(type, "if-test")) {
