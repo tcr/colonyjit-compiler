@@ -57,9 +57,10 @@
         return ret;                                                            \
     }
 
-#define CJC(T, N) CJC_STACK(T, N); \
-    CJC_STACK_PUSH(T, N); \
-    CJC_STACK_POP(T, N); \
+#define CJC(T, N)                                                              \
+    CJC_STACK(T, N);                                                           \
+    CJC_STACK_PUSH(T, N);                                                      \
+    CJC_STACK_POP(T, N);                                                       \
     CJC_STACK_TOP(T, N);
 
 /*
@@ -220,6 +221,18 @@ static BCReg fnparams = 0;
 
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 
+void internal_ref(FuncState* fs, ExpDesc* arg, const char* ref)
+{
+    ExpDesc str;
+    expr_init(&str, VKSTR, 0);
+    str.u.sval = lj_str_new(fs->L, ref, strlen(ref));
+
+    var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), arg, 1);
+    expr_tonextreg(fs, arg);
+    expr_index(fs, arg, &str);
+    expr_tonextreg(fs, arg);
+}
+
 void my_onopennode(const char* type)
 {
     FuncState* fs = js_fs_top(0);
@@ -228,8 +241,8 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "parseExpression") && is_statement) {
         JS_DEBUG("[>] statement-expression\n");
-        ExpDesc* stat = js_stack_push();
-        (void)stat;
+
+        js_stack_push(); // expr
     }
 
     if (my_streq(type, "parseStatement")) {
@@ -324,14 +337,7 @@ void my_onopennode(const char* type)
 
         ExpDesc* ident = js_stack_top(0);
 
-        ExpDesc str;
-        expr_init(&str, VKSTR, 0);
-        str.u.sval = lj_str_new(fs->L, "new", strlen("new"));
-
-        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-        expr_tonextreg(fs, ident);
-        expr_index(fs, ident, &str);
-        expr_tonextreg(fs, ident);
+        internal_ref(fs, ident, "new");
 
         ExpDesc* args = js_stack_push();
         (void)args;
@@ -340,6 +346,7 @@ void my_onopennode(const char* type)
     if (my_streq(type, "call-open") || my_streq(type, "new-args")) {
         JS_DEBUG("[>] call-open\n");
         ExpDesc* ident = js_stack_top(0);
+        js_ismethod = 0;
 
         if (ident->k == VINDEXED) {
             // rewrite
@@ -349,36 +356,19 @@ void my_onopennode(const char* type)
             bcemit_AD(fs, BC_MOV, fs->freereg, source);
             bcreg_reserve(fs, 1);
             // bcemit_method(fs, ident, &key);
-        }
-
-        else {
+        } else {
             expr_tonextreg(fs, ident);
 
-            // expr_init(&global, VGLOBAL, 0);
-            // global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
-            // expr_tonextreg(fs, &global);
-
             if (!my_streq(type, "new-args")) {
-                ExpDesc str;
-                expr_init(&str, VKSTR, 0);
-                str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
-
                 ExpDesc global;
-                expr_init(&global, VINDEXED, 0);
-                global.u.s.aux = ~(const_str(fs, &str));
+
+                internal_ref(fs, &global, "global");
                 expr_tonextreg(fs, &global);
             }
         }
-        js_ismethod = 0;
 
-        // if (!js_ismethod) {
-        //   expr_tonextreg(fs, ident);
-        // }
-        // js_ismethod = 0;
         if (!my_streq(type, "new-args")) {
             ExpDesc* args = js_stack_push();
-            // JS_DEBUG("---------> ident %p has a base of %d\n", ident,
-            // ident->u.s.aux);
             (void)args;
         }
     }
@@ -396,21 +386,11 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "typeof")) {
         JS_DEBUG("[>] typeof\n");
-
         ExpDesc* ident = js_stack_top(0);
 
-        ExpDesc str;
-        expr_init(&str, VKSTR, 0);
-        str.u.sval = lj_str_new(fs->L, type, strlen(type));
+        internal_ref(fs, ident, "typeof");
 
-
-        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-        expr_tonextreg(fs, ident);
-        expr_index(fs, ident, &str);
-        expr_tonextreg(fs, ident);
-
-        ExpDesc* args = js_stack_push();
-        (void)args;
+        js_stack_push(); // args
     }
 
 #define JS_OP_LEFT(OP, ID)                                                     \
@@ -445,19 +425,13 @@ void my_onopennode(const char* type)
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
         // LJ_ERR_XSYNTAX);
 
-        // /* Assign RHS to LHS and recurse downwards. */
-        // expr_init(&e, VNONRELOC, ls->fs->freereg-1);
-        // bcemit_store(ls->fs, &lh->v, &e);
-
-        ExpDesc* rval = js_stack_push();
-        (void)rval;
+        js_stack_push(); // rval
     }
 
-    if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=") ||
-        my_streq(type, "/=") || my_streq(type, "%=")) {
-        js_ismethod = 0;
-
+    if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=")
+        || my_streq(type, "/=") || my_streq(type, "%=")) {
         JS_DEBUG("[>] assign +=\n");
+        js_ismethod = 0;
 
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
         // LJ_ERR_XSYNTAX);
@@ -486,13 +460,9 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
         JS_DEBUG("[>] while-test\n");
-        js_ismethod = 0;
-
         js_start_push();
         js_loop_push();
-
-        ExpDesc* test = js_stack_push();
-        (void)test;
+        js_ismethod = 0;
 
         // lj_lex_next(ls);  /* Skip 'while'. */
         *js_start_top(0) = fs->lasttarget = fs->pc;
@@ -501,13 +471,15 @@ void my_onopennode(const char* type)
         // // lex_check(ls, TK_do);
         // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
         // parse_block(ls);
+
+        js_stack_push(); // test
     }
 
     if (my_streq(type, "for-update")) {
         JS_DEBUG("[>] for-update\n");
+        ExpDesc* test = js_stack_top(0);
         js_ismethod = 0;
 
-        ExpDesc* test = js_stack_top(0);
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
@@ -520,37 +492,37 @@ void my_onopennode(const char* type)
         dummy->t = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
         dummy->f = fs->pc;
 
-        js_ismethod = 0;
         js_stack_push();
     }
 
     if (my_streq(type, "for-body")) {
         JS_DEBUG("[>] for-body\n");
+        ExpDesc* test = js_stack_top(-2);
+        ExpDesc* dummy = js_stack_top(-1);
+        ExpDesc* update = js_stack_top(0);
+        BCIns* start = js_start_top(0);
 
         BCPos reloop = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-        jmp_patchins(fs, reloop, *js_start_top(0));
+        jmp_patchins(fs, reloop, *start);
 
-        ExpDesc* test = js_stack_top(-2);
-
-        ExpDesc* update = js_stack_top(0);
         expr_tonextreg(fs, update);
 
-        ExpDesc* dummy = js_stack_top(-1);
         jmp_patchins(fs, dummy->t, fs->pc);
-        *js_start_top(0) = dummy->f;
+        *start = dummy->f;
 
-        js_stack_pop();
-        js_stack_pop();
+        js_stack_pop(); // update
+        js_stack_pop(); // dummy
     }
 
     if (my_streq(type, "while-body")) {
         JS_DEBUG("[>] while-body\n");
-
         ExpDesc* test = js_stack_top(0);
+        BCIns* loop = js_loop_top(0);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        *js_loop_top(0) = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+        *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
         // ExpDesc* consequent = js_stack_push();
         // (void) consequent;
@@ -558,33 +530,33 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "while-end") || my_streq(type, "for-end")) {
         JS_DEBUG("[>] while-end\n");
-
         ExpDesc* test = js_stack_top(0);
+        BCIns* start = js_start_top(0);
+        BCIns* loop = js_loop_top(0);
+
         // jmp_tohere(fs, test->f);
 
-        jmp_patch(fs, bcemit_jmp(fs), *js_start_top(0));
+        jmp_patch(fs, bcemit_jmp(fs), *start);
         // lex_match(ls, TK_end, TK_while, line);
         // fscope_end(fs);
         jmp_tohere(fs, test->f);
-        jmp_patchins(fs, *js_loop_top(0), fs->pc);
+        jmp_patchins(fs, *loop, fs->pc);
 
-        js_stack_pop();
+        js_stack_pop(); // test
         js_loop_pop();
-        
         js_start_pop();
     }
 
     if (my_streq(type, "if-test")) {
         JS_DEBUG("[>] if-test\n");
 
-        ExpDesc* test = js_stack_push();
-        (void)test;
+        js_stack_push(); // test
     }
 
     if (my_streq(type, "if-consequent")) {
         JS_DEBUG("[>] if-consequent\n");
-
         ExpDesc* test = js_stack_top(0);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
@@ -594,8 +566,8 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "if-alternate")) {
         JS_DEBUG("[>] if-alternate\n");
-
         ExpDesc* test = js_stack_top(0);
+
         BCPos escapelist = NO_JMP;
         BCPos flist = test->f;
         jmp_append(fs, &escapelist, bcemit_jmp(fs));
@@ -617,9 +589,9 @@ void my_onopennode(const char* type)
         js_ismethod = 0;
         JS_DEBUG("[>] var-declarator-assign\n");
         // fs->freereg += 1;
-        
+
         bcreg_reserve(fs, 1);
-        
+
         js_stack_push();
     }
 
@@ -648,8 +620,8 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "if-end")) {
         JS_DEBUG("[>] if-end\n");
-
         ExpDesc* test = js_stack_top(0);
+
         jmp_tohere(fs, test->f);
 
         js_stack_pop();
@@ -658,23 +630,22 @@ void my_onopennode(const char* type)
     if (my_streq(type, "ternary-consequent")) {
         js_ismethod = 0;
         JS_DEBUG("[>] ternary-consequent\n");
-
         ExpDesc* test = js_stack_top(0);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        ExpDesc* consequent = js_stack_push();
-        (void)consequent;
+        js_stack_push(); // consequent
     }
 
     if (my_streq(type, "ternary-alternate")) {
-        js_ismethod = 0;
         JS_DEBUG("[>] ternary-alternate\n");
-
+        ExpDesc* test = js_stack_top(-1);
         ExpDesc* expr = js_stack_top(0);
+        js_ismethod = 0;
+
         expr_tonextreg(fs, expr);
 
-        ExpDesc* test = js_stack_top(-1);
         BCPos escapelist = NO_JMP;
         BCPos flist = test->f;
         jmp_append(fs, &escapelist, bcemit_jmp(fs));
@@ -692,14 +663,13 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "return-argument")) {
         JS_DEBUG("[>] return-no-argument\n");
-
         ExpDesc* expr = js_stack_top(0);
+
         bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, expr), 2));
     }
 
     if (my_streq(type, "array-literal-open")) {
         JS_DEBUG("[>] array-literal-open\n");
-
         ExpDesc* e = js_stack_top(0);
 
         FuncState* fs = ls->fs;
@@ -853,8 +823,8 @@ void my_onclosenode(struct Node_C C)
             var_add(fs->ls, 1);
 
             // JS_DEBUG("HIHIHIHIHIHIHI %d\n", fs->nactvar-1);
-            if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
-                bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
+            if (val->k == VNONRELOC && val->u.s.info != fs->nactvar - 1) {
+                bcemit_AD(fs, BC_MOV, fs->nactvar - 1, val->u.s.info);
                 // exit(1);
             }
         } else {
@@ -1112,8 +1082,9 @@ void my_onclosenode(struct Node_C C)
         *e1 = *e2;
 
         if (my_streq(C._operator, "-")) {
-            if (expr_isnumk(e1) && !expr_numiszero(e1)) {  /* Avoid folding to -0. */
-                TValue *o = expr_numtv(e1);
+            if (expr_isnumk(e1)
+                && !expr_numiszero(e1)) { /* Avoid folding to -0. */
+                TValue* o = expr_numtv(e1);
                 if (tvisint(o)) {
                     int32_t k = intV(o);
                     if (k == -k)
@@ -1121,7 +1092,7 @@ void my_onclosenode(struct Node_C C)
                     else
                         setintV(o, -k);
                 } else {
-                    o->u64 ^= U64x(80000000,00000000);
+                    o->u64 ^= U64x(80000000, 00000000);
                 }
             } else {
                 expr_toanyreg(fs, e1);
