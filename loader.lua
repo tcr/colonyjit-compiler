@@ -30,6 +30,15 @@ debug.setmetatable(function () end, {
 	end,
 })
 
+local num_proto = {
+	toFixed = function (_, this)
+		return tostring(this)
+	end
+}
+debug.setmetatable(0, {
+	__index = num_proto
+})
+
 _G.Array = function (this, ...)
 	local args = {...}
 	args[0] = table.remove(args, 1)
