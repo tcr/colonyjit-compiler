@@ -1462,7 +1462,7 @@ Node* parseExprSubscripts() {
     return parseSubscripts(parseExprAtom());
 }
 Node* parseSubscripts(Node* base, bool noCalls) {
-     jsparse_callback_open("parseSubscripts"); 
+     jsparse_callback_open("subscripts"); 
     if (eat(_dot)) {
 {
         Node* node = startNodeFrom(base); 

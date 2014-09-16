@@ -2066,7 +2066,7 @@ function parseExprSubscripts() {
 }
 
 function parseSubscripts(base:Node, noCalls?:boolean):Node {
-  //C jsparse_callback_open("parseSubscripts");
+  //C jsparse_callback_open("subscripts");
   if (eat(_dot)) {
     var node = startNodeFrom(base);
     enterNode(node, "MemberExpression");

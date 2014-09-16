@@ -220,6 +220,7 @@ static int is_arrayliteral = 0;
 static BCReg fnparams = 0;
 
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
+#define OPENNODE(T) if (my_streq(type, #T))
 
 void my_onopennode(const char* type)
 {
@@ -228,8 +229,9 @@ void my_onopennode(const char* type)
     JS_DEBUG("[>] %s\n", type);
     // JS_DEBUG("well %s\n", type);
 
+    // Conditions.
     if (my_streq(type, "parseExpression") && is_statement) {
-        PUSH(ExpDesc); // expr
+        type = "expression-statement";
     }
 
     if (my_streq(type, "parseStatement")) {
@@ -239,7 +241,20 @@ void my_onopennode(const char* type)
         is_statement = 0;
     }
 
-    if (my_streq(type, "function")) {
+    if (my_streq(type, "parseExprList-next") && is_arrayliteral == 0) {
+        type = "args-next";
+    }
+    if (my_streq(type, "parseExprList-next") && is_arrayliteral > 0) {
+        type = "array-literal-next";
+    }
+
+    // Begin.
+
+    OPENNODE(expression-statement) {
+        PUSH(ExpDesc); // expr
+    }
+
+    OPENNODE(function) {
         int line = 0;
         int needself = 0;
         FuncState* pfs = fs;
@@ -278,11 +293,11 @@ void my_onopennode(const char* type)
         // fs->bcbase[fs->pc - 1].line = line;  /* Set line for the store. */
     }
 
-    if (my_streq(type, "function-param")) {
+    OPENNODE(function-param) {
         js_ismethod = 3;
     }
 
-    if (my_streq(type, "function-body")) {
+    OPENNODE(function-body) {
         js_ismethod = 0;
 
         var_add(ls, fs->numparams);
@@ -290,17 +305,17 @@ void my_onopennode(const char* type)
         bcreg_reserve(fs, fs->numparams);
     }
 
-    if (my_streq(type, "parseSubscripts")) {
+    OPENNODE(subscripts) {
         js_ismethod = 1;
     }
 
-    if (my_streq(type, "member-var-open")) {
+    OPENNODE(member-var-open) {
         js_ismethod = 0;
 
         PUSH(ExpDesc); // ident
     }
 
-    if (my_streq(type, "member-var-close")) {
+    OPENNODE(member-var-close) {
         READ(ExpDesc* base, ExpDesc* key);
 
         expr_toanyreg(fs, base);
@@ -309,7 +324,7 @@ void my_onopennode(const char* type)
         POP(key);
     }
 
-    if (my_streq(type, "new-open")) {
+    OPENNODE(new-open) {
         READ(ExpDesc* ident);
 
         ExpDesc str;
@@ -362,7 +377,7 @@ void my_onopennode(const char* type)
         }
     }
 
-    if (my_streq(type, "parseExprList-next") && is_arrayliteral == 0) {
+    OPENNODE(args-next) {
         READ(ExpDesc* args);
         js_ismethod = 0;
 
@@ -372,7 +387,7 @@ void my_onopennode(const char* type)
         expr_tonextreg(fs, args);
     }
 
-    if (my_streq(type, "typeof")) {
+    OPENNODE(typeof) {
         READ(ExpDesc* ident);
 
         ExpDesc str;
@@ -410,7 +425,7 @@ void my_onopennode(const char* type)
     JS_OP_LEFT("&&", OPR_AND);
     JS_OP_LEFT("||", OPR_OR);
 
-    if (my_streq(type, "=")) {
+    OPENNODE(=) {
         js_ismethod = 0;
 
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
@@ -472,7 +487,7 @@ void my_onopennode(const char* type)
         // parse_block(ls);
     }
 
-    if (my_streq(type, "for-update")) {
+    OPENNODE(for-update) {
         READ(int* start, int* loop, ExpDesc* test);
         js_ismethod = 0;
 
@@ -490,7 +505,7 @@ void my_onopennode(const char* type)
         PUSH(ExpDesc); // update
     }
 
-    if (my_streq(type, "for-body")) {
+    OPENNODE(for-body) {
         READ(int* start, int* loop, ExpDesc* test, ExpDesc* dummy, ExpDesc* update);
 
         BCPos reloop = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
@@ -504,7 +519,7 @@ void my_onopennode(const char* type)
         POP(dummy, update);
     }
 
-    if (my_streq(type, "while-body")) {
+    OPENNODE(while-body) {
         READ(int* start, int* loop, ExpDesc* test);
 
         // if (v.k == VKNIL) v.k = VKFALSE;
@@ -528,11 +543,11 @@ void my_onopennode(const char* type)
         POP(start, loop, test);
     }
 
-    if (my_streq(type, "if-test")) {
+    OPENNODE(if-test) {
         PUSH(ExpDesc); // test
     }
 
-    if (my_streq(type, "if-consequent")) {
+    OPENNODE(if-consequent) {
         READ(ExpDesc* test);
 
         // if (v.k == VKNIL) v.k = VKFALSE;
@@ -540,7 +555,7 @@ void my_onopennode(const char* type)
 
     }
 
-    if (my_streq(type, "if-alternate")) {
+    OPENNODE(if-alternate) {
         READ(ExpDesc* test);
 
         BCPos escapelist = NO_JMP;
@@ -551,13 +566,13 @@ void my_onopennode(const char* type)
 
     }
 
-    if (my_streq(type, "var-declarator")) {
+    OPENNODE(var-declarator) {
         js_ismethod = 2;
 
         PUSH(ExpDesc); // ident
     }
 
-    if (my_streq(type, "var-declarator-assign")) {
+    OPENNODE(var-declarator-assign) {
         js_ismethod = 0;
         // fs->freereg += 1;
         
@@ -566,7 +581,7 @@ void my_onopennode(const char* type)
         PUSH(ExpDesc); // value
     }
 
-    if (my_streq(type, "var-declarator-no-assign")) {
+    OPENNODE(var-declarator-no-assign) {
         READ(ExpDesc* e1);
         js_ismethod = 0;
 
@@ -581,7 +596,7 @@ void my_onopennode(const char* type)
         // expr_tonextreg(fs, e);
     }
 
-    if (my_streq(type, "if-no-alternate")) {
+    OPENNODE(if-no-alternate) {
         READ(ExpDesc* test);
 
         BCPos escapelist = NO_JMP;
@@ -589,7 +604,7 @@ void my_onopennode(const char* type)
         test->f = escapelist;
     }
 
-    if (my_streq(type, "if-end")) {
+    OPENNODE(if-end) {
         READ(ExpDesc* test);
 
         jmp_tohere(fs, test->f);
@@ -597,7 +612,7 @@ void my_onopennode(const char* type)
         POP(test);
     }
 
-    if (my_streq(type, "ternary-consequent")) {
+    OPENNODE(ternary-consequent) {
         READ(ExpDesc* test);
         js_ismethod = 0;
 
@@ -607,7 +622,7 @@ void my_onopennode(const char* type)
         PUSH(ExpDesc); // consequent
     }
 
-    if (my_streq(type, "ternary-alternate")) {
+    OPENNODE(ternary-alternate) {
         READ(ExpDesc* test, ExpDesc* expr);
         js_ismethod = 0;
 
@@ -621,17 +636,17 @@ void my_onopennode(const char* type)
 
     }
 
-    if (my_streq(type, "return-no-argument")) {
+    OPENNODE(return-no-argument) {
         bcemit_INS(fs, BCINS_AD(BC_RET0, 0, 1));
     }
 
-    if (my_streq(type, "return-argument")) {
+    OPENNODE(return-argument) {
         READ(ExpDesc* expr);
 
         bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, expr), 2));
     }
 
-    if (my_streq(type, "array-literal-open")) {
+    OPENNODE(array-literal-open) {
         READ(ExpDesc* e);
         is_arrayliteral = 1;
 
@@ -656,7 +671,8 @@ void my_onopennode(const char* type)
 
         PUSH(ExpDesc); // value
     }
-    if (my_streq(type, "parseExprList-next") && is_arrayliteral > 0) {
+
+    OPENNODE(array-literal-next) {
         READ(ExpDesc* obj, ExpDesc* key, ExpDesc* val);
 
         expr_toanyreg(fs, val);
@@ -670,7 +686,8 @@ void my_onopennode(const char* type)
         expr_init(key, VKNUM, 0);
         setintV(&key->u.nval, is_arrayliteral++);
     }
-    if (my_streq(type, "array-literal-close")) {
+    
+    OPENNODE(array-literal-close) {
         READ(ExpDesc* obj, ExpDesc* key, ExpDesc* val);
         is_arrayliteral = 0;
 
@@ -686,7 +703,7 @@ void my_onopennode(const char* type)
         POP(key, val);
     }
 
-    if (my_streq(type, "object-literal")) {
+    OPENNODE(object-literal) {
         READ(ExpDesc* e);
 
         FuncState* fs = ls->fs;
@@ -705,19 +722,19 @@ void my_onopennode(const char* type)
         JS_DEBUG("EUSAUX PC %p %d\n", e, pc);
     }
 
-    if (my_streq(type, "object-literal-key")) {
+    OPENNODE(object-literal-key) {
         js_ismethod = 4;
 
         PUSH(ExpDesc); // key
     }
 
-    if (my_streq(type, "object-literal-value")) {
+    OPENNODE(object-literal-value) {
         js_ismethod = 0;
 
         PUSH(ExpDesc); // value
     }
 
-    if (my_streq(type, "object-literal-push")) {
+    OPENNODE(object-literal-push) {
         READ(ExpDesc* obj, ExpDesc* key, ExpDesc* val);
 
         expr_toanyreg(fs, val);
@@ -1216,7 +1233,7 @@ void my_onclosenode(struct Node_C C)
                || my_streq(C.type, "IfStatement")
                || my_streq(C.type, "NewExpression")
                || my_streq(C.type, "WhileStatement")
-               || my_streq(C.type, "ForStatement") || 0) {
+               || my_streq(C.type, "ForStatement")) {
         // noop
     } else {
         assert(0);
