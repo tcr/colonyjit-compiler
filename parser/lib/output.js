@@ -925,7 +925,7 @@ setStrict(true);
 }
 label_t loopLabel = {kind: "loop"};  label_t switchLabel = {kind: "switch"}; 
 Node* parseStatement() {
-     jsparse_callback_open("parseStatement"); 
+     jsparse_callback_open("statement"); 
     if (LOGICALOR(tokType==_slash,tokType==_assign && tokVal == "/=")) {
 readToken(true);
 }
@@ -1462,7 +1462,7 @@ Node* parseExprSubscripts() {
     return parseSubscripts(parseExprAtom());
 }
 Node* parseSubscripts(Node* base, bool noCalls) {
-     jsparse_callback_open("parseSubscripts"); 
+     jsparse_callback_open("subscripts"); 
     if (eat(_dot)) {
 {
         Node* node = startNodeFrom(base); 

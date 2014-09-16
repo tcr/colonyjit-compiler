@@ -17,20 +17,21 @@
  * Expression stack.
  */
 
+
 #define CJC_STACK(T, N)                                                        \
     struct {                                                                   \
-        T entries[100];                                                        \
+        char entries[4096];                                                    \
         size_t idx;                                                            \
     } N = { 0 };
 
 #define CJC_STACK_PUSH(T, N)                                                   \
     T* N##_push()                                                              \
     {                                                                          \
-        N.idx++;                                                               \
-        T* ret = &N.entries[N.idx];                                            \
+        N.idx += sizeof(T) / 8;                                                               \
+        T* ret = (void *) &N.entries[N.idx * 8 - sizeof(T)];                                            \
                                                                                \
         JS_DEBUG("[stack " #N "] push: ");                                     \
-        for (int i = 0; i < N.idx; i++) {                                      \
+        for (int i = 0; i < (N.idx / sizeof(T)); i++) {                                      \
             JS_DEBUG("[] ");                                                   \
         }                                                                      \
         JS_DEBUG("\n");                                                        \
@@ -40,11 +41,11 @@
 #define CJC_STACK_POP(T, N)                                                    \
     void N##_pop()                                                             \
     {                                                                          \
-        assert(N.idx >= 1);                                                    \
-        N.idx--;                                                               \
+        assert(N.idx >= sizeof(T) / 8);                                                    \
+        N.idx -= sizeof(T) / 8;                                                               \
                                                                                \
         JS_DEBUG("[stack " #N "] pop: ");                                      \
-        for (int i = 0; i < N.idx; i++) {                                      \
+        for (int i = 0; i < (N.idx / sizeof(T)); i++) {                                      \
             JS_DEBUG("[] ");                                                   \
         }                                                                      \
         JS_DEBUG("\n");                                                        \
@@ -53,14 +54,28 @@
 #define CJC_STACK_TOP(T, N)                                                    \
     T* N##_top(size_t mod)                                                     \
     {                                                                          \
-        T* ret = &N.entries[N.idx + mod];                                      \
+        T* ret = (void *) &N.entries[(N.idx * 8) + (mod * sizeof(T)) - sizeof(T)];                                      \
         return ret;                                                            \
     }
 
-#define CJC(T, N) CJC_STACK(T, N); \
-    CJC_STACK_PUSH(T, N); \
-    CJC_STACK_POP(T, N); \
+#define CJC(T, N)                                                              \
+    CJC_STACK(T, N);                                                           \
+    CJC_STACK_PUSH(T, N);                                                      \
+    CJC_STACK_POP(T, N);                                                       \
     CJC_STACK_TOP(T, N);
+
+#define INPUT(A) \
+    typedef struct { A; } __attribute__((aligned(8))) struct_input; \
+    struct_input s; \
+    memcpy(&s, &js_stack.entries[(js_stack.idx * 8) - sizeof(struct_input)], sizeof(struct_input)); \
+    js_stack.idx -= sizeof(struct_input) / 8;
+
+#define OUTPUT(A) \
+    typedef struct { A; } __attribute__((aligned(8))) struct_output; \
+    size_t idx = js_stack.idx; \
+    JS_DEBUG("ugh %d\n", sizeof(struct_output)); \
+    js_stack.idx += sizeof(struct_output) / 8; \
+    *((struct_output *) &js_stack.entries[idx * 8]) = (struct_output)
 
 /*
  * Increment registers in written instructions.
@@ -220,30 +235,41 @@ static BCReg fnparams = 0;
 
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 
+#define OPENNODE(T) if (my_streq(type, #T) && (JS_DEBUG("[>] " #T "\n"), 1))
+#define OPENNODE_IF(T, COND) if (my_streq(type, #T) && (COND))
+
+void internal_ref(FuncState* fs, ExpDesc* arg, const char* ref)
+{
+    ExpDesc str;
+    expr_init(&str, VKSTR, 0);
+    str.u.sval = lj_str_new(fs->L, ref, strlen(ref));
+
+    var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), arg, 1);
+    expr_tonextreg(fs, arg);
+    expr_index(fs, arg, &str);
+    expr_tonextreg(fs, arg);
+}
+
 void my_onopennode(const char* type)
 {
     FuncState* fs = js_fs_top(0);
 
     // JS_DEBUG("well %s\n", type);
 
-    if (my_streq(type, "parseExpression") && is_statement) {
+    OPENNODE_IF(parseExpression, is_statement) {
         JS_DEBUG("[>] statement-expression\n");
-        ExpDesc* stat = js_stack_push();
-        (void)stat;
+
+        OUTPUT(ExpDesc expr) { 0 };
     }
 
-    if (my_streq(type, "parseStatement")) {
-        JS_DEBUG("[>] statement\n");
+    OPENNODE(statement) {
         is_statement = 1;
         js_ismethod = 0;
     } else {
         is_statement = 0;
     }
 
-    if (my_streq(type, "function")) {
-        JS_DEBUG("[>] function %s\n", type);
-        JS_DEBUG("---------> LAWDY\n");
-
+    OPENNODE(function) {
         int line = 0;
         int needself = 0;
         FuncState* pfs = fs;
@@ -282,64 +308,49 @@ void my_onopennode(const char* type)
         // fs->bcbase[fs->pc - 1].line = line;  /* Set line for the store. */
     }
 
-    if (my_streq(type, "function-param")) {
-        JS_DEBUG("[>] function-param\n");
+    OPENNODE(function-param) {
         js_ismethod = 3;
     }
 
-    if (my_streq(type, "function-body")) {
+    OPENNODE(function-body) {
         js_ismethod = 0;
-        JS_DEBUG("[>] function-body\n");
+
         var_add(ls, fs->numparams);
         lua_assert(fs->nactvar == fs->numparams);
         bcreg_reserve(fs, fs->numparams);
     }
 
-    if (my_streq(type, "parseSubscripts")) {
-        JS_DEBUG("[>] subscripts\n");
-        // ExpDesc* ident = js_stack_push();
+    OPENNODE(subscripts) {
         js_ismethod = 1;
     }
 
-    if (my_streq(type, "member-var-open")) {
-        JS_DEBUG("[>] member-var-open\n");
+    OPENNODE(member-var-open) {
         js_ismethod = 0;
 
-        js_stack_push();
+        OUTPUT(ExpDesc index) { 0 };
     }
 
-    if (my_streq(type, "member-var-close")) {
-        JS_DEBUG("[>] member-var-close\n");
+    OPENNODE(member-var-close) {
+        INPUT(ExpDesc base; ExpDesc key);
 
-        ExpDesc* base = js_stack_top(-1);
-        ExpDesc* key = js_stack_top(0);
+        expr_toanyreg(fs, &s.base);
+        expr_index(fs, &s.base, &s.key);
 
-        expr_toanyreg(fs, base);
-        expr_index(fs, base, key);
-        js_stack_pop();
+        OUTPUT(ExpDesc base) { s.base };
     }
 
-    if (my_streq(type, "new-open")) {
-        JS_DEBUG("[>] new-open\n");
+    OPENNODE(new-open) {
+        INPUT(ExpDesc ident);
 
-        ExpDesc* ident = js_stack_top(0);
+        internal_ref(fs, &s.ident, "new");
 
-        ExpDesc str;
-        expr_init(&str, VKSTR, 0);
-        str.u.sval = lj_str_new(fs->L, "new", strlen("new"));
-
-        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-        expr_tonextreg(fs, ident);
-        expr_index(fs, ident, &str);
-        expr_tonextreg(fs, ident);
-
-        ExpDesc* args = js_stack_push();
-        (void)args;
+        OUTPUT(ExpDesc ident; ExpDesc args) { s.ident, 0 };
     }
 
     if (my_streq(type, "call-open") || my_streq(type, "new-args")) {
         JS_DEBUG("[>] call-open\n");
         ExpDesc* ident = js_stack_top(0);
+        js_ismethod = 0;
 
         if (ident->k == VINDEXED) {
             // rewrite
@@ -349,36 +360,19 @@ void my_onopennode(const char* type)
             bcemit_AD(fs, BC_MOV, fs->freereg, source);
             bcreg_reserve(fs, 1);
             // bcemit_method(fs, ident, &key);
-        }
-
-        else {
+        } else {
             expr_tonextreg(fs, ident);
 
-            // expr_init(&global, VGLOBAL, 0);
-            // global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
-            // expr_tonextreg(fs, &global);
-
             if (!my_streq(type, "new-args")) {
-                ExpDesc str;
-                expr_init(&str, VKSTR, 0);
-                str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
-
                 ExpDesc global;
-                expr_init(&global, VINDEXED, 0);
-                global.u.s.aux = ~(const_str(fs, &str));
+
+                internal_ref(fs, &global, "global");
                 expr_tonextreg(fs, &global);
             }
         }
-        js_ismethod = 0;
 
-        // if (!js_ismethod) {
-        //   expr_tonextreg(fs, ident);
-        // }
-        // js_ismethod = 0;
         if (!my_streq(type, "new-args")) {
             ExpDesc* args = js_stack_push();
-            // JS_DEBUG("---------> ident %p has a base of %d\n", ident,
-            // ident->u.s.aux);
             (void)args;
         }
     }
@@ -394,23 +388,12 @@ void my_onopennode(const char* type)
         expr_tonextreg(fs, args);
     }
 
-    if (my_streq(type, "typeof")) {
-        JS_DEBUG("[>] typeof\n");
+    OPENNODE(typeof) {
+        INPUT(ExpDesc ident);
 
-        ExpDesc* ident = js_stack_top(0);
+        internal_ref(fs, &s.ident, "typeof");
 
-        ExpDesc str;
-        expr_init(&str, VKSTR, 0);
-        str.u.sval = lj_str_new(fs->L, type, strlen(type));
-
-
-        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-        expr_tonextreg(fs, ident);
-        expr_index(fs, ident, &str);
-        expr_tonextreg(fs, ident);
-
-        ExpDesc* args = js_stack_push();
-        (void)args;
+        OUTPUT(ExpDesc ident; ExpDesc args) { s.ident, 0 };
     }
 
 #define JS_OP_LEFT(OP, ID)                                                     \
@@ -437,27 +420,19 @@ void my_onopennode(const char* type)
     JS_OP_LEFT("&&", OPR_AND);
     JS_OP_LEFT("||", OPR_OR);
 
-    if (my_streq(type, "=")) {
+    OPENNODE(=) {
         js_ismethod = 0;
-
-        JS_DEBUG("[>] assign\n");
 
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
         // LJ_ERR_XSYNTAX);
 
-        // /* Assign RHS to LHS and recurse downwards. */
-        // expr_init(&e, VNONRELOC, ls->fs->freereg-1);
-        // bcemit_store(ls->fs, &lh->v, &e);
-
-        ExpDesc* rval = js_stack_push();
-        (void)rval;
+        OUTPUT(ExpDesc rval) { 0 };
     }
 
-    if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=") ||
-        my_streq(type, "/=") || my_streq(type, "%=")) {
-        js_ismethod = 0;
-
+    if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=")
+        || my_streq(type, "/=") || my_streq(type, "%=")) {
         JS_DEBUG("[>] assign +=\n");
+        js_ismethod = 0;
 
         // checkcond(ls, VLOCAL <= lh->v.k && lh->v.k <= VINDEXED,
         // LJ_ERR_XSYNTAX);
@@ -484,30 +459,20 @@ void my_onopennode(const char* type)
         }
     }
 
-    if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
-        JS_DEBUG("[>] while-test\n");
-        js_ismethod = 0;
-
+    OPENNODE(for-test) {
         js_start_push();
         js_loop_push();
-
-        ExpDesc* test = js_stack_push();
-        (void)test;
-
-        // lj_lex_next(ls);  /* Skip 'while'. */
-        *js_start_top(0) = fs->lasttarget = fs->pc;
-        // condexit = expr_cond(ls);
-        // // fscope_begin(fs, &bl, FSCOPE_LOOP);
-        // // lex_check(ls, TK_do);
-        // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-        // parse_block(ls);
-    }
-
-    if (my_streq(type, "for-update")) {
-        JS_DEBUG("[>] for-update\n");
         js_ismethod = 0;
 
+        *js_start_top(0) = fs->lasttarget = fs->pc;
+
+        js_stack_push(); // test
+    }
+
+    OPENNODE(for-update) {
         ExpDesc* test = js_stack_top(0);
+        js_ismethod = 0;
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
@@ -520,37 +485,42 @@ void my_onopennode(const char* type)
         dummy->t = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
         dummy->f = fs->pc;
 
-        js_ismethod = 0;
         js_stack_push();
     }
 
-    if (my_streq(type, "for-body")) {
-        JS_DEBUG("[>] for-body\n");
+    OPENNODE(for-body) {
+        INPUT(ExpDesc test; ExpDesc dummy; ExpDesc update);
+        BCIns* start = js_start_top(0);
 
         BCPos reloop = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-        jmp_patchins(fs, reloop, *js_start_top(0));
+        jmp_patchins(fs, reloop, *start);
 
-        ExpDesc* test = js_stack_top(-2);
+        expr_tonextreg(fs, &s.update);
 
-        ExpDesc* update = js_stack_top(0);
-        expr_tonextreg(fs, update);
+        jmp_patchins(fs, s.dummy.t, fs->pc);
+        *start = s.dummy.f;
 
-        ExpDesc* dummy = js_stack_top(-1);
-        jmp_patchins(fs, dummy->t, fs->pc);
-        *js_start_top(0) = dummy->f;
-
-        js_stack_pop();
-        js_stack_pop();
+        OUTPUT(ExpDesc test) { s.test };
     }
 
-    if (my_streq(type, "while-body")) {
-        JS_DEBUG("[>] while-body\n");
+    OPENNODE(while-test) {
+        js_start_push();
+        js_loop_push();
+        js_ismethod = 0;
 
+        *js_start_top(0) = fs->lasttarget = fs->pc;
+
+        js_stack_push(); // test
+    }
+
+    OPENNODE(while-body) {
         ExpDesc* test = js_stack_top(0);
+        BCIns* loop = js_loop_top(0);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        *js_loop_top(0) = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
+        *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
         // ExpDesc* consequent = js_stack_push();
         // (void) consequent;
@@ -558,33 +528,30 @@ void my_onopennode(const char* type)
 
     if (my_streq(type, "while-end") || my_streq(type, "for-end")) {
         JS_DEBUG("[>] while-end\n");
-
         ExpDesc* test = js_stack_top(0);
+        BCIns* start = js_start_top(0);
+        BCIns* loop = js_loop_top(0);
+
         // jmp_tohere(fs, test->f);
 
-        jmp_patch(fs, bcemit_jmp(fs), *js_start_top(0));
+        jmp_patch(fs, bcemit_jmp(fs), *start);
         // lex_match(ls, TK_end, TK_while, line);
         // fscope_end(fs);
         jmp_tohere(fs, test->f);
-        jmp_patchins(fs, *js_loop_top(0), fs->pc);
+        jmp_patchins(fs, *loop, fs->pc);
 
-        js_stack_pop();
+        js_stack_pop(); // test
         js_loop_pop();
-        
         js_start_pop();
     }
 
-    if (my_streq(type, "if-test")) {
-        JS_DEBUG("[>] if-test\n");
-
-        ExpDesc* test = js_stack_push();
-        (void)test;
+    OPENNODE(if-test) {
+        js_stack_push(); // test
     }
 
-    if (my_streq(type, "if-consequent")) {
-        JS_DEBUG("[>] if-consequent\n");
-
+    OPENNODE(if-consequent) {
         ExpDesc* test = js_stack_top(0);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
@@ -592,10 +559,9 @@ void my_onopennode(const char* type)
         // (void) consequent;
     }
 
-    if (my_streq(type, "if-alternate")) {
-        JS_DEBUG("[>] if-alternate\n");
-
+    OPENNODE(if-alternate) {
         ExpDesc* test = js_stack_top(0);
+
         BCPos escapelist = NO_JMP;
         BCPos flist = test->f;
         jmp_append(fs, &escapelist, bcemit_jmp(fs));
@@ -606,26 +572,22 @@ void my_onopennode(const char* type)
         // (void) alternate;
     }
 
-    if (my_streq(type, "var-declarator")) {
-        JS_DEBUG("[>] var-declarator\n");
+    OPENNODE(var-declarator) {
         js_ismethod = 2;
 
         js_stack_push();
     }
 
-    if (my_streq(type, "var-declarator-assign")) {
+    OPENNODE(var-declarator-assign) {
         js_ismethod = 0;
-        JS_DEBUG("[>] var-declarator-assign\n");
-        // fs->freereg += 1;
-        
+
         bcreg_reserve(fs, 1);
-        
+
         js_stack_push();
     }
 
-    if (my_streq(type, "var-declarator-no-assign")) {
+    OPENNODE(var-declarator-no-assign) {
         js_ismethod = 0;
-        JS_DEBUG("[>] var-declarator-no-assign\n");
 
         bcreg_reserve(fs, 1);
 
@@ -637,44 +599,38 @@ void my_onopennode(const char* type)
         // expr_tonextreg(fs, e);
     }
 
-    if (my_streq(type, "if-no-alternate")) {
-        JS_DEBUG("[>] if-no-alternate\n");
-
+    OPENNODE(if-no-alternate) {
         ExpDesc* test = js_stack_top(0);
         BCPos escapelist = NO_JMP;
         jmp_append(fs, &escapelist, test->f);
         test->f = escapelist;
     }
 
-    if (my_streq(type, "if-end")) {
-        JS_DEBUG("[>] if-end\n");
-
+    OPENNODE(if-end) {
         ExpDesc* test = js_stack_top(0);
+
         jmp_tohere(fs, test->f);
 
         js_stack_pop();
     }
 
-    if (my_streq(type, "ternary-consequent")) {
+    OPENNODE(ternary-consequent) {
         js_ismethod = 0;
-        JS_DEBUG("[>] ternary-consequent\n");
-
         ExpDesc* test = js_stack_top(0);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        ExpDesc* consequent = js_stack_push();
-        (void)consequent;
+        js_stack_push(); // consequent
     }
 
-    if (my_streq(type, "ternary-alternate")) {
-        js_ismethod = 0;
-        JS_DEBUG("[>] ternary-alternate\n");
-
+    OPENNODE(ternary-alternate) {
+        ExpDesc* test = js_stack_top(-1);
         ExpDesc* expr = js_stack_top(0);
+        js_ismethod = 0;
+
         expr_tonextreg(fs, expr);
 
-        ExpDesc* test = js_stack_top(-1);
         BCPos escapelist = NO_JMP;
         BCPos flist = test->f;
         jmp_append(fs, &escapelist, bcemit_jmp(fs));
@@ -685,21 +641,19 @@ void my_onopennode(const char* type)
         // (void) alternate;
     }
 
-    if (my_streq(type, "return-no-argument")) {
-        JS_DEBUG("[>] return-no-argument\n");
+    OPENNODE(return-no-argument) {
         bcemit_INS(fs, BCINS_AD(BC_RET0, 0, 1));
     }
 
-    if (my_streq(type, "return-argument")) {
-        JS_DEBUG("[>] return-no-argument\n");
+    OPENNODE(return-argument) {
+        INPUT(ExpDesc expr);
 
-        ExpDesc* expr = js_stack_top(0);
-        bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, expr), 2));
+        bcemit_INS(fs, BCINS_AD(BC_RET1, expr_toanyreg(fs, &s.expr), 2));
+
+        OUTPUT(ExpDesc expr) { s.expr };
     }
 
-    if (my_streq(type, "array-literal-open")) {
-        JS_DEBUG("[>] array-literal-open\n");
-
+    OPENNODE(array-literal-open) {
         ExpDesc* e = js_stack_top(0);
 
         FuncState* fs = ls->fs;
@@ -724,47 +678,44 @@ void my_onopennode(const char* type)
 
         js_stack_push(); // value
     }
-    if (my_streq(type, "parseExprList-next") && is_arrayliteral > 0) {
+
+    OPENNODE_IF(parseExprList-next, is_arrayliteral > 0) {
         JS_DEBUG("[>] array-literal-next\n");
-        ExpDesc* obj = js_stack_top(-2);
-        ExpDesc* key = js_stack_top(-1);
-        ExpDesc* val = js_stack_top(0);
+        
+        INPUT(ExpDesc obj; ExpDesc key; ExpDesc val);
 
-        expr_toanyreg(fs, val);
-        if (expr_isk(key))
-            expr_index(fs, obj, key);
-        bcemit_store(fs, obj, val);
+        expr_toanyreg(fs, &s.val);
+        if (expr_isk(&s.key))
+            expr_index(fs, &s.obj, &s.key);
+        bcemit_store(fs, &s.obj, &s.val);
 
-        expr_free(fs, val);
-        expr_free(fs, key);
+        expr_free(fs, &s.val);
+        expr_free(fs, &s.key);
 
-        expr_init(key, VKNUM, 0);
-        setintV(&key->u.nval, is_arrayliteral++);
+        expr_init(&s.key, VKNUM, 0);
+        setintV(&s.key.u.nval, is_arrayliteral++);
+
+        OUTPUT(ExpDesc obj; ExpDesc key; ExpDesc val) { s.obj, s.key, s.val };
     }
-    if (my_streq(type, "array-literal-close")) {
-        JS_DEBUG("[>] array-literal-close\n");
-        ExpDesc* obj = js_stack_top(-2);
-        ExpDesc* key = js_stack_top(-1);
-        ExpDesc* val = js_stack_top(0);
 
-        expr_toanyreg(fs, val);
-        if (expr_isk(key))
-            expr_index(fs, obj, key);
-        bcemit_store(fs, obj, val);
-
-        obj->k = VNONRELOC;
-        obj->u.s.info = 2;
-
-        // js_ismethod = 4;
-        js_stack_pop();
-        js_stack_pop();
+    OPENNODE(array-literal-close) {
+        INPUT(ExpDesc obj; ExpDesc key; ExpDesc val);
+        
         is_arrayliteral = 0;
+
+        expr_toanyreg(fs, &s.val);
+        if (expr_isk(&s.key))
+            expr_index(fs, &s.obj, &s.key);
+        bcemit_store(fs, &s.obj, &s.val);
+
+        s.obj.k = VNONRELOC;
+        s.obj.u.s.info = 2;
+
+        OUTPUT(ExpDesc obj) { s.obj };
     }
 
-    if (my_streq(type, "object-literal")) {
-        JS_DEBUG("[>] object-literal\n");
-
-        ExpDesc* e = js_stack_top(0);
+    OPENNODE(object-literal) {
+        INPUT(ExpDesc expr);
 
         FuncState* fs = ls->fs;
         BCLine line = ls->linenumber;
@@ -774,39 +725,35 @@ void my_onopennode(const char* type)
         uint32_t nhash = 0; /* Number of hash entries. */
         BCReg freg = fs->freereg;
         BCPos pc = bcemit_AD(fs, BC_TNEW, freg, 0);
-        expr_init(e, VNONRELOC, freg);
+        expr_init(&s.expr, VNONRELOC, freg);
         bcreg_reserve(fs, 1);
         freg++;
 
-        e->u.s.aux = pc;
-        JS_DEBUG("EUSAUX PC %p %d\n", e, pc);
+        s.expr.u.s.aux = pc;
+        JS_DEBUG("EUSAUX PC %p %d\n", s.expr, pc);
+
+        OUTPUT(ExpDesc expr) { s.expr };
     }
 
-    if (my_streq(type, "object-literal-key")) {
-        JS_DEBUG("[>] object-literal-key\n");
-
+    OPENNODE(object-literal-key) {
         js_ismethod = 4;
         js_stack_push();
     }
 
-    if (my_streq(type, "object-literal-value")) {
+    OPENNODE(object-literal-value) {
         js_ismethod = 0;
-        JS_DEBUG("[>] object-literal-value\n");
         js_stack_push();
     }
 
-    if (my_streq(type, "object-literal-push")) {
-        JS_DEBUG("[>] object-literal-push\n");
-        ExpDesc* obj = js_stack_top(-2);
-        ExpDesc* key = js_stack_top(-1);
-        ExpDesc* val = js_stack_top(0);
+    OPENNODE(object-literal-push) {
+        INPUT(ExpDesc obj; ExpDesc key; ExpDesc val);
 
-        expr_toanyreg(fs, val);
-        if (expr_isk(key))
-            expr_index(fs, obj, key);
-        bcemit_store(fs, obj, val);
+        expr_toanyreg(fs, &s.val);
+        if (expr_isk(&s.key))
+            expr_index(fs, &s.obj, &s.key);
+        bcemit_store(fs, &s.obj, &s.val);
 
-        expr_free(fs, val);
+        expr_free(fs, &s.val);
         // expr_free(fs, key);
 
         // expr_toanyreg(fs, obj);
@@ -819,8 +766,7 @@ void my_onopennode(const char* type)
         // int nhash = 2;
         // setbc_d(ip, 0|(hsize2hbits(nhash)<<11));
 
-        js_stack_pop();
-        js_stack_pop();
+        OUTPUT(ExpDesc obj) { s.obj };
     }
 }
 
@@ -853,8 +799,8 @@ void my_onclosenode(struct Node_C C)
             var_add(fs->ls, 1);
 
             // JS_DEBUG("HIHIHIHIHIHIHI %d\n", fs->nactvar-1);
-            if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
-                bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
+            if (val->k == VNONRELOC && val->u.s.info != fs->nactvar - 1) {
+                bcemit_AD(fs, BC_MOV, fs->nactvar - 1, val->u.s.info);
                 // exit(1);
             }
         } else {
@@ -1112,8 +1058,9 @@ void my_onclosenode(struct Node_C C)
         *e1 = *e2;
 
         if (my_streq(C._operator, "-")) {
-            if (expr_isnumk(e1) && !expr_numiszero(e1)) {  /* Avoid folding to -0. */
-                TValue *o = expr_numtv(e1);
+            if (expr_isnumk(e1)
+                && !expr_numiszero(e1)) { /* Avoid folding to -0. */
+                TValue* o = expr_numtv(e1);
                 if (tvisint(o)) {
                     int32_t k = intV(o);
                     if (k == -k)
@@ -1121,7 +1068,7 @@ void my_onclosenode(struct Node_C C)
                     else
                         setintV(o, -k);
                 } else {
-                    o->u64 ^= U64x(80000000,00000000);
+                    o->u64 ^= U64x(80000000, 00000000);
                 }
             } else {
                 expr_toanyreg(fs, e1);
