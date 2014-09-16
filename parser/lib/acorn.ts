@@ -1527,7 +1527,7 @@ var loopLabel:Label = {kind: "loop"}, switchLabel:Label = {kind: "switch"};
 // does not help.
 
 function parseStatement() {
-  //C jsparse_callback_open("parseStatement");
+  //C jsparse_callback_open("statement");
   if (tokType === _slash || tokType === _assign && tokVal == "/=")
     readToken(true);
 
@@ -2066,7 +2066,7 @@ function parseExprSubscripts() {
 }
 
 function parseSubscripts(base:Node, noCalls?:boolean):Node {
-  //C jsparse_callback_open("parseSubscripts");
+  //C jsparse_callback_open("subscripts");
   if (eat(_dot)) {
     var node = startNodeFrom(base);
     enterNode(node, "MemberExpression");
