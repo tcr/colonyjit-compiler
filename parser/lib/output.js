@@ -3,7 +3,6 @@
 std::string version = "0.6.1"; 
 options_t options = {ecmaVersion: 5, strictSemicolons: false, allowTrailingCommas: true, forbidReserved: "", allowReturnOutsideFunction: false, locations: false, ranges: false, program: null, sourceFile: "", directSourceFile: ""};  std::string input = std::string();  int inputLen = 0;  std::string sourceFile = std::string(); 
 auto parse(auto inpt, auto opts) {
-     jsparse_callback_open("parse"); 
     input = String(inpt);
     inputLen = input.length();
     setOptions(opts);
@@ -902,7 +901,6 @@ unexpected(node->start);
 
 
 Node* parseTopLevel(Node* program) {
-     jsparse_callback_open("parseTopLevel"); 
     lastStart = lastEnd = tokPos;
     
     inFunction = inGenerator = strict = false;
@@ -978,7 +976,6 @@ return parseLabeledStatement(node, maybeName, expr);
     }
 }
 Node* parseBreakContinueStatement(Node* node, std::string keyword) {
-     jsparse_callback_open("parseBreakContinueStatement"); 
     bool isBreak = keyword == "break"; 
     next();
     if (LOGICALOR(eat(_semi),canInsertSemicolon())) {
@@ -1010,14 +1007,12 @@ raise(node->start, std::string("Unsyntactic ") + keyword);
     return finishNode(node);
 }
 Node* parseDebuggerStatement(Node* node) {
-     jsparse_callback_open("parseDebuggerStatement"); 
     next();
     semicolon();
     enterNode(node, "DebuggerStatement");
     return finishNode(node);
 }
 Node* parseDoStatement(Node* node) {
-     jsparse_callback_open("parseDoStatement"); 
     next();
     push(labels, loopLabel);
     node->body = parseStatement();
@@ -1029,7 +1024,6 @@ Node* parseDoStatement(Node* node) {
     return finishNode(node);
 }
 Node* parseForStatement(Node* node) {
-     jsparse_callback_open("parseForStatement"); 
     next();
     push(labels, loopLabel);
     expect(_parenL);
@@ -1060,7 +1054,6 @@ return parseForIn(node, init);
     return parseFor(node, init);
 }
 Node* parseFunctionStatement(Node* node) {
-     jsparse_callback_open("parseFunctionStatement"); 
     next();
     return parseFunction(node, true);
 }
@@ -1107,7 +1100,6 @@ node->argument = null;
     return finishNode(node);
 }
 Node* parseSwitchStatement(Node* node) {
-     jsparse_callback_open("parseSwitchStatement"); 
     next();
     node->discriminant = parseParenExpression();
     node->cases = std::vector<Node*>({});
@@ -1157,7 +1149,6 @@ unexpected();
     return finishNode(node);
 }
 Node* parseThrowStatement(Node* node) {
-     jsparse_callback_open("parseThrowStatement"); 
     next();
     if (test(newline, slice(input, lastEnd, tokStart))) {
 raise(lastEnd, "Illegal newline after throw");
@@ -1168,7 +1159,6 @@ raise(lastEnd, "Illegal newline after throw");
     return finishNode(node);
 }
 Node* parseTryStatement(Node* node) {
-     jsparse_callback_open("parseTryStatement"); 
     next();
     node->block = parseBlock();
     node->handler = null;
@@ -1197,7 +1187,6 @@ raise(node->start, "Missing catch or finally clause");
     return finishNode(node);
 }
 Node* parseVarStatement(Node* node, std::string kind) {
-     jsparse_callback_open("parseVarStatement"); 
     next();
     parseVar(node, false, kind);
     semicolon();
@@ -1205,7 +1194,6 @@ Node* parseVarStatement(Node* node, std::string kind) {
     return finishNode(node);
 }
 Node* parseWhileStatement(Node* node) {
-     jsparse_callback_open("parseWhileStatement"); 
     next();
      jsparse_callback_open("while-test"); 
     node->test = parseParenExpression();
@@ -1218,7 +1206,6 @@ Node* parseWhileStatement(Node* node) {
     return finishNode(node);
 }
 Node* parseWithStatement(Node* node) {
-     jsparse_callback_open("parseWithStatement"); 
     if (strict) {
 raise(tokStart, "'with' in strict mode");
 }
@@ -1229,13 +1216,11 @@ raise(tokStart, "'with' in strict mode");
     return finishNode(node);
 }
 Node* parseEmptyStatement(Node* node) {
-     jsparse_callback_open("parseEmptyStatement"); 
     next();
     enterNode(node, "EmptyStatement");
     return finishNode(node);
 }
 Node* parseLabeledStatement(Node* node, std::string maybeName, Node* expr) {
-     jsparse_callback_open("parseLabeledStatement"); 
     int i = 0; ; for (; i < labels.size();)
 if (labels[i].name==maybeName) {
 raise(expr->start, std::string("Label '") + maybeName + std::string("' is already declared"));
@@ -1249,21 +1234,18 @@ raise(expr->start, std::string("Label '") + maybeName + std::string("' is alread
     return finishNode(node);
 }
 Node* parseExpressionStatement(Node* node, Node* expr) {
-     jsparse_callback_open("parseExpressionStatement"); 
     node->expression = expr;
     semicolon();
     enterNode(node, "ExpressionStatement");
     return finishNode(node);
 }
 Node* parseParenExpression() {
-     jsparse_callback_open("parseParenExpression"); 
     expect(_parenL);
     Node* val = parseExpression(); 
     expect(_parenR);
     return val;
 }
 Node* parseBlock(bool allowStrict) {
-     jsparse_callback_open("parseBlock"); 
     Node* node = startNode();  bool first = true;  bool strict = false;  bool oldStrict = 0; 
     node->bodylist = std::vector<Node*>({});
     expect(_braceL);
@@ -1285,7 +1267,6 @@ setStrict(false);
     return finishNode(node);
 }
 Node* parseFor(Node* node, Node* init) {
-     jsparse_callback_open("parseFor"); 
     node->init = init;
     expect(_semi);
      jsparse_callback_open("for-test"); 
@@ -1302,7 +1283,6 @@ Node* parseFor(Node* node, Node* init) {
     return finishNode(node);
 }
 Node* parseForIn(Node* node, Node* init) {
-     jsparse_callback_open("parseForIn"); 
     std::string type = tokType==_in ? "ForInStatement" : "ForOfStatement"; 
     next();
     node->left = init;
@@ -1314,7 +1294,6 @@ Node* parseForIn(Node* node, Node* init) {
     return finishNode(node);
 }
 Node* parseVar(Node* node, bool noIn, std::string kind) {
-     jsparse_callback_open("parseVar"); 
     node->declarations = std::vector<Node*>({});
     node->kind = kind;
     ; for (; ;)
@@ -1361,7 +1340,6 @@ Node* parseExpression(bool noComma, bool noIn) {
     return expr;
 }
 Node* parseMaybeAssign(bool noIn) {
-     jsparse_callback_open("parseMaybeAssign"); 
     Node* left = parseMaybeConditional(noIn); 
     if (tokType.isAssign) {
 {
@@ -1380,7 +1358,6 @@ Node* parseMaybeAssign(bool noIn) {
     return left;
 }
 Node* parseMaybeConditional(bool noIn) {
-     jsparse_callback_open("parseMaybeConditional"); 
     Node* expr = parseExprOps(noIn); 
     if (eat(_question)) {
 {
@@ -1398,11 +1375,9 @@ Node* parseMaybeConditional(bool noIn) {
     return expr;
 }
 Node* parseExprOps(bool noIn) {
-     jsparse_callback_open("parseExprOps"); 
     return parseExprOp(parseMaybeUnary(), -1, noIn);
 }
 Node* parseExprOp(Node* left, int minPrec, bool noIn) {
-     jsparse_callback_open("parseExprOp"); 
     int prec = tokType.binop; 
     if (ISNOTNULL(prec) && (LOGICALOR(!noIn,tokType!=_in))) {
 {
@@ -1425,9 +1400,10 @@ Node* parseExprOp(Node* left, int minPrec, bool noIn) {
     return left;
 }
 Node* parseMaybeUnary() {
-     jsparse_callback_open(tokVal.value_string.c_str()); 
+     if (tokVal.value_string == "function") jsparse_callback_open(tokVal.value_string.c_str()); 
     if (tokType.prefix) {
 {
+         jsparse_callback_open(tokVal.value_string.c_str()); 
         Node* node = startNode();  bool update = tokType.isUpdate; 
         node->_operator = tokVal;
         node->prefix = true;
@@ -1445,6 +1421,7 @@ raise(node->start, "Deleting local variable in strict mode");
 }
     Node* expr = parseExprSubscripts(); 
     while (tokType.postfix && !canInsertSemicolon()) {
+         jsparse_callback_open(tokVal.value_string.c_str()); 
         Node* node = startNodeFrom(expr); 
         node->_operator = tokVal;
         node->prefix = false;
@@ -1458,11 +1435,10 @@ raise(node->start, "Deleting local variable in strict mode");
     return expr;
 }
 Node* parseExprSubscripts() {
-     jsparse_callback_open("parseExprSubscripts"); 
     return parseSubscripts(parseExprAtom());
 }
 Node* parseSubscripts(Node* base, bool noCalls) {
-     jsparse_callback_open("parseSubscripts"); 
+     jsparse_callback_open("subscripts"); 
     if (eat(_dot)) {
 {
         Node* node = startNodeFrom(base); 
@@ -1505,7 +1481,6 @@ Node* parseSubscripts(Node* base, bool noCalls) {
     return base;
 }
 Node* parseExprAtom() {
-     jsparse_callback_open("parseExprAtom"); 
     switch (tokType._id) {
         case 29:{
             Node* node = startNode(); 
@@ -1633,7 +1608,6 @@ node->arguments = parseExprList(_parenR, false);
     return finishNode(node);
 }
 Node* parseSpread() {
-     jsparse_callback_open("parseSpread"); 
     Node* node = startNode(); 
     next();
     node->argument = parseExpression(true);
@@ -1703,7 +1677,6 @@ unexpected();
     return finishNode(node);
 }
 int parsePropertyName(Node* prop) {
-     jsparse_callback_open("parsePropertyName"); 
     if (options.ecmaVersion >= 6) {
 {
         if (eat(_bracketL)) {
@@ -1750,7 +1723,6 @@ Node* parseFunction(Node* node, bool isStatement, bool allowExpressionBody) {
     return finishNode(node);
 }
 Node* parseMethod(bool isGenerator) {
-     jsparse_callback_open("parseMethod"); 
     Node* node = startNode(); 
     initFunction(node);
     parseFunctionParams(node);
@@ -1768,7 +1740,6 @@ Node* parseMethod(bool isGenerator) {
     return finishNode(node);
 }
 Node* parseArrowExpression(Node* node, std::vector<Node*> params) {
-     jsparse_callback_open("parseArrowExpression"); 
     initFunction(node);
     std::vector<Node*> defaults = node->defaults;  bool hasDefaults = false; 
     int i = 0;  int lastI = params.size() - 1; ; for (; i <= lastI;)
@@ -1801,7 +1772,6 @@ node->defaults = std::vector<Node*>({});
     return finishNode(node);
 }
 int parseFunctionParams(Node* node) {
-     jsparse_callback_open("parseFunctionParams"); 
     std::vector<Node*> defaults = std::vector<Node*>({});  bool hasDefaults = false; 
     expect(_parenL);
     ; for (; ;)
@@ -1840,7 +1810,6 @@ node->defaults = defaults;
 }
 }
 int parseFunctionBody(Node* node, bool allowExpression) {
-     jsparse_callback_open("parseFunctionBody"); 
     bool isExpression = allowExpression && tokType!=_braceL; 
     if (isExpression) {
 {
@@ -1874,7 +1843,6 @@ int parseFunctionBody(Node* node, bool allowExpression) {
 }
 }
 Node* parseClass(Node* node, bool isStatement) {
-     jsparse_callback_open("parseClass"); 
     next();
     if (tokType==_name) {
 {
@@ -1927,7 +1895,6 @@ unexpected();
     return finishNode(node);
 }
 std::vector<Node*> parseExprList(keyword_t close, bool allowTrailingComma, bool allowEmpty) {
-     jsparse_callback_open("parseExprList"); 
     std::vector<Node*> elts = std::vector<Node*>({});  bool first = true; 
     while (!eat(close)) {
         if (!first) {
@@ -1946,7 +1913,6 @@ push(elts, null);
     return elts;
 }
 Node* parseIdent(bool liberal) {
-     jsparse_callback_open("parseIdent"); 
     Node* node = startNode(); 
     if (liberal && options.forbidReserved == "everywhere") {
 liberal = false;
@@ -1971,7 +1937,6 @@ raise(tokStart, std::string("The keyword '") + tokVal + std::string("' is reserv
     return finishNode(node);
 }
 Node* parseExport(Node* node) {
-     jsparse_callback_open("parseExport"); 
     next();
     if (LOGICALOR(LOGICALOR(LOGICALOR(LOGICALOR(tokType==_var,tokType==_const),tokType==_let),tokType==_function),tokType==_class)) {
 {
@@ -2014,7 +1979,6 @@ unexpected();
     return finishNode(node);
 }
 std::vector<Node*> parseExportSpecifiers() {
-     jsparse_callback_open("parseExportSpecifiers"); 
     std::vector<Node*> nodes = std::vector<Node*>({});  bool first = true; 
     if (tokType==_star) {
 {
@@ -2050,7 +2014,6 @@ break;
     return nodes;
 }
 Node* parseImport(Node* node) {
-     jsparse_callback_open("parseImport"); 
     next();
     if (tokType==_string) {
 {
@@ -2076,7 +2039,6 @@ unexpected();
     return finishNode(node);
 }
 std::vector<Node*> parseImportSpecifiers() {
-     jsparse_callback_open("parseImportSpecifiers"); 
     std::vector<Node*> nodes = std::vector<Node*>({});  bool first = true; 
     if (tokType==_star) {
 {
@@ -2136,7 +2098,6 @@ break;
     return nodes;
 }
 Node* parseYield() {
-     jsparse_callback_open("parseYield"); 
     Node* node = startNode(); 
     next();
     if (LOGICALOR(eat(_semi),canInsertSemicolon())) {
@@ -2152,7 +2113,6 @@ Node* parseYield() {
     return finishNode(node);
 }
 Node* parseComprehension(Node* node, bool isGenerator) {
-     jsparse_callback_open("parseComprehension"); 
     node->blocks = std::vector<Node*>({});
     while (tokType==_for) {
         Node* block = startNode(); 
