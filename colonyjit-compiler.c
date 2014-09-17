@@ -11,8 +11,8 @@
 #include "parser/out/jsparser.h"
 
 #include "stack.h"
-#define _stacktype_int
 #define _stacktype_ExpDesc
+#define _stacktype_BCPos
 
 #define JS_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #include "colonyjit-parser.c"
@@ -222,6 +222,18 @@ static BCReg fnparams = 0;
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 #define OPENNODE(T) if (my_streq(type, #T))
 
+void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
+{
+    ExpDesc str;
+    expr_init(&str, VKSTR, 0);
+    str.u.sval = lj_str_new(fs->L, label, strlen(label));
+
+    var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
+    expr_tonextreg(fs, ident);
+    expr_index(fs, ident, &str);
+    expr_tonextreg(fs, ident);
+}
+
 void my_onopennode(const char* type)
 {
     FuncState* fs = js_fs_top(0);
@@ -327,19 +339,12 @@ void my_onopennode(const char* type)
     OPENNODE(new-open) {
         READ(ExpDesc* ident);
 
-        ExpDesc str;
-        expr_init(&str, VKSTR, 0);
-        str.u.sval = lj_str_new(fs->L, "new", strlen("new"));
-
-        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-        expr_tonextreg(fs, ident);
-        expr_index(fs, ident, &str);
-        expr_tonextreg(fs, ident);
+        internal_ref(fs, ident, "new");
 
         PUSH(ExpDesc* args);
     }
 
-    if (my_streq(type, "call-open") || my_streq(type, "new-args")) {
+    if (my_streq(type, "call-open")) {
         READ(ExpDesc* ident);
         js_ismethod = 0;
 
@@ -356,24 +361,30 @@ void my_onopennode(const char* type)
         else {
             expr_tonextreg(fs, ident);
 
-            // expr_init(&global, VGLOBAL, 0);
-            // global.u.sval = lj_str_new(fs->L, "_G", strlen("_G"));
-            // expr_tonextreg(fs, &global);
-
-            if (!my_streq(type, "new-args")) {
-                ExpDesc str;
-                expr_init(&str, VKSTR, 0);
-                str.u.sval = lj_str_new(fs->L, "global", strlen("global"));
-
-                ExpDesc global;
-                expr_init(&global, VINDEXED, 0);
-                global.u.s.aux = ~(const_str(fs, &str));
-                expr_tonextreg(fs, &global);
-            }
+            ExpDesc global;
+            internal_ref(fs, &global, "global");
+            expr_tonextreg(fs, &global);
         }
 
-        if (!my_streq(type, "new-args")) {
-            PUSH(ExpDesc* args);
+        PUSH(ExpDesc* args);
+    }
+
+    if (my_streq(type, "new-args")) {
+        READ(ExpDesc* ident);
+        js_ismethod = 0;
+
+        if (ident->k == VINDEXED) {
+            // rewrite
+            // bcreg_reserve(fs, 1);
+            uint32_t source = ident->u.s.info;
+            expr_tonextreg(fs, ident);
+            bcemit_AD(fs, BC_MOV, fs->freereg, source);
+            bcreg_reserve(fs, 1);
+            // bcemit_method(fs, ident, &key);
+        }
+
+        else {
+            expr_tonextreg(fs, ident);
         }
     }
 
@@ -390,15 +401,7 @@ void my_onopennode(const char* type)
     OPENNODE(typeof) {
         READ(ExpDesc* ident);
 
-        ExpDesc str;
-        expr_init(&str, VKSTR, 0);
-        str.u.sval = lj_str_new(fs->L, type, strlen(type));
-
-
-        var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-        expr_tonextreg(fs, ident);
-        expr_index(fs, ident, &str);
-        expr_tonextreg(fs, ident);
+        internal_ref(fs, ident, "typeof");
 
         PUSH(ExpDesc* args);
     }
@@ -471,8 +474,8 @@ void my_onopennode(const char* type)
     if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
         js_ismethod = 0;
 
-        PUSH(int* start);
-        PUSH(int* loop);
+        PUSH(BCPos* start);
+        PUSH(BCPos* loop);
 
         // js_loop_push();
 
@@ -488,7 +491,7 @@ void my_onopennode(const char* type)
     }
 
     OPENNODE(for-update) {
-        READ(int* start, int* loop, ExpDesc* test);
+        READ(BCPos* start, BCPos* loop, ExpDesc* test);
         js_ismethod = 0;
 
         // if (v.k == VKNIL) v.k = VKFALSE;
@@ -496,29 +499,31 @@ void my_onopennode(const char* type)
 
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
-        PUSH(ExpDesc* dummy);
-        dummy->t = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-        dummy->f = fs->pc;
+        PUSH(BCPos* jmpins);
+        *jmpins = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
+
+        PUSH(BCPos* preupdate);
+        *preupdate = fs->pc;
 
         PUSH(ExpDesc* update);
     }
 
     OPENNODE(for-body) {
-        READ(int* start, int* loop, ExpDesc* test, ExpDesc* dummy, ExpDesc* update);
+        READ(BCPos* start, BCPos* loop, ExpDesc* test, BCPos* jmpins, BCPos* preupdate, ExpDesc* update);
 
         BCPos reloop = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
         jmp_patchins(fs, reloop, *start);
 
         expr_tonextreg(fs, update);
 
-        jmp_patchins(fs, dummy->t, fs->pc);
-        *start = dummy->f;
+        jmp_patchins(fs, *jmpins, fs->pc);
+        *start = *preupdate;
 
-        POP(dummy, update);
+        POP(jmpins, preupdate, update);
     }
 
     OPENNODE(while-body) {
-        READ(int* start, int* loop, ExpDesc* test);
+        READ(BCPos* start, BCPos* loop, ExpDesc* test);
 
         if (test->k == VKNIL) test->k = VKFALSE;
         bcemit_branch_t(fs, test);
@@ -528,7 +533,7 @@ void my_onopennode(const char* type)
     }
 
     if (my_streq(type, "while-end") || my_streq(type, "for-end")) {
-        READ(int* start, int* loop, ExpDesc* test);
+        READ(BCPos* start, BCPos* loop, ExpDesc* test);
 
         // jmp_tohere(fs, test->f);
 
