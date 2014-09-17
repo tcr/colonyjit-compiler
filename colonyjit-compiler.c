@@ -206,11 +206,15 @@ static void increment_registers(BCIns* ins, int pos)
     }
 }
 
-GCstr* create_str (FuncState* fs, const char *label) {
+static int streq(const char* A, const char* T) {
+    return strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T);
+}
+
+static GCstr* create_str (FuncState* fs, const char *label) {
     return lj_str_new(fs->L, label, strlen(label));
 }
 
-void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
+static void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
 {
     ExpDesc str;
     expr_init(&str, VKSTR, 0);
@@ -235,37 +239,10 @@ static int is_statement;
 static int is_arrayliteral = 0;
 static BCReg fnparams = 0;
 
-#define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
-#define OPENNODE(T) if (my_streq(type, #T))
+#define OPENNODE(T) if (streq(type, #T))
 
-void my_onopennode(const char* type)
+void handle_node (FuncState* fs, const char* type, struct Node_C C)
 {
-    FuncState* fs = js_fs_top(0);
-
-    JS_DEBUG("[>] %s\n", type);
-    // JS_DEBUG("well %s\n", type);
-
-    // Conditions.
-    if (my_streq(type, "parseExpression") && is_statement) {
-        type = "expression-statement";
-    }
-
-    if (my_streq(type, "parseStatement")) {
-        is_statement = 1;
-        js_ismethod = 0;
-    } else {
-        is_statement = 0;
-    }
-
-    if (my_streq(type, "parseExprList-next") && is_arrayliteral == 0) {
-        type = "args-next";
-    }
-    if (my_streq(type, "parseExprList-next") && is_arrayliteral > 0) {
-        type = "array-literal-next";
-    }
-
-    // Begin.
-
     OPENNODE(expression-statement) {
         PUSH(ExpDesc* expr);
     }
@@ -348,7 +325,7 @@ void my_onopennode(const char* type)
         PUSH(ExpDesc* args);
     }
 
-    if (my_streq(type, "call-open")) {
+    if (streq(type, "call-open")) {
         READ(ExpDesc* ident);
         js_ismethod = 0;
 
@@ -373,7 +350,7 @@ void my_onopennode(const char* type)
         PUSH(ExpDesc* args);
     }
 
-    if (my_streq(type, "new-args")) {
+    if (streq(type, "new-args")) {
         READ(ExpDesc* ident);
         js_ismethod = 0;
 
@@ -411,7 +388,7 @@ void my_onopennode(const char* type)
     }
 
 #define JS_OP_LEFT(OP, ID)                                                     \
-    if (my_streq(type, OP)) {                                                  \
+    if (streq(type, OP)) {                                                  \
         READ(ExpDesc* e);                                                      \
         js_ismethod = 0;                                                       \
         bcemit_binop_left(fs, ID, e);                                          \
@@ -445,8 +422,8 @@ void my_onopennode(const char* type)
         PUSH(ExpDesc* rval);
     }
 
-    if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=") ||
-        my_streq(type, "/=") || my_streq(type, "%=")) {
+    if (streq(type, "+=") || streq(type, "-=") || streq(type, "*=") ||
+        streq(type, "/=") || streq(type, "%=")) {
         READ(ExpDesc* expr);
         js_ismethod = 0;
 
@@ -475,7 +452,7 @@ void my_onopennode(const char* type)
         }
     }
 
-    if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
+    if (streq(type, "while-test") || streq(type, "for-test")) {
         js_ismethod = 0;
 
         PUSH(BCPos* start);
@@ -524,7 +501,7 @@ void my_onopennode(const char* type)
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
     }
 
-    if (my_streq(type, "while-end") || my_streq(type, "for-end")) {
+    if (streq(type, "while-end") || streq(type, "for-end")) {
         READ(BCPos* start, BCPos* loop, ExpDesc* test);
 
         // jmp_tohere(fs, test->f);
@@ -744,25 +721,8 @@ void my_onopennode(const char* type)
 
         POP(key, val);
     }
-}
 
-void my_onclosenode(struct Node_C C)
-{
-    FuncState* fs = js_fs_top(0);
-
-    JS_DEBUG("[<] %s\n", C.type);
-    // JS_DEBUG("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
-
-    // Workaround for typeof to act like a function.
-    if ((my_streq(C.type, "UnaryExpression")
-         && my_streq(C._operator, "typeof"))) {
-        READ(ExpDesc* args);
-
-        expr_tonextreg(fs, args);
-    }
-
-    // Switch statement.
-    if (my_streq(C.type, "VariableDeclarator")) {
+    OPENNODE(VariableDeclarator) {
         READ(ExpDesc* ident, ExpDesc* val);
 
         if (ident->u.s.aux == -1) {
@@ -782,7 +742,9 @@ void my_onclosenode(struct Node_C C)
         }
 
         POP(ident, val);
-    } else if (my_streq(C.type, "FunctionExpression")) {
+    }
+
+    OPENNODE(FunctionExpression) {
         READ(ExpDesc* expr);
 
         ptrdiff_t oldbase = 0;
@@ -807,7 +769,8 @@ void my_onclosenode(struct Node_C C)
         }
         js_fs_pop();
         fs = js_fs_top(0);
-    } else if (my_streq(C.type, "Identifier")) {
+    }
+    OPENNODE(Identifier) {
         READ(ExpDesc* ident);
 
         GCstr* s = create_str(fs, C.name);
@@ -871,8 +834,10 @@ void my_onclosenode(struct Node_C C)
         } else {
             assert(0);
         }
-    } else if (my_streq(C.type, "AssignmentExpression")) {
-        if (my_streq(C._operator, "=")) {
+    } 
+
+    OPENNODE(AssignmentExpression) {
+        if (streq(C._operator, "=")) {
             READ(ExpDesc* lval, ExpDesc* rval);
 
             bcemit_store(fs, lval, rval);
@@ -883,15 +848,15 @@ void my_onclosenode(struct Node_C C)
             READ(ExpDesc* expr, ExpDesc* key, ExpDesc* incr);
 
             BinOpr op;
-            if (my_streq(C._operator, "+=")) {
+            if (streq(C._operator, "+=")) {
                 op = OPR_ADD;
-            } else if (my_streq(C._operator, "-=")) {
+            } else if (streq(C._operator, "-=")) {
                 op = OPR_SUB;
-            } else if (my_streq(C._operator, "*=")) {
+            } else if (streq(C._operator, "*=")) {
                 op = OPR_MUL;
-            } else if (my_streq(C._operator, "/=")) {
+            } else if (streq(C._operator, "/=")) {
                 op = OPR_DIV;
-            } else if (my_streq(C._operator, "%=")) {
+            } else if (streq(C._operator, "%=")) {
                 op = OPR_MOD;
             } else {
                 assert(0);
@@ -931,7 +896,9 @@ void my_onclosenode(struct Node_C C)
 
             POP(key, incr);
         }
-    } else if (my_streq(C.type, "ConditionalExpression")) {
+    }
+
+    OPENNODE(ConditionalExpression) {
         READ(ExpDesc* test, ExpDesc* result);
 
         fs->freereg--;
@@ -940,7 +907,9 @@ void my_onclosenode(struct Node_C C)
         *test = *result;
 
         POP(result);
-    } else if (my_streq(C.type, "ExpressionStatement")) {
+    }
+
+    OPENNODE(ExpressionStatement) {
         READ(ExpDesc* expr);
         js_ismethod = 0;
 
@@ -957,10 +926,12 @@ void my_onclosenode(struct Node_C C)
         fs->freereg = fs->nactvar;
 
         POP(expr);
-    } else if (my_streq(C.type, "CallExpression")
-               || my_streq(C.type, "NewExpression")
-               || (my_streq(C.type, "UnaryExpression")
-                   && my_streq(C._operator, "typeof"))) {
+    }
+
+    if (streq(C.type, "CallExpression")
+               || streq(C.type, "NewExpression")
+               || (streq(C.type, "UnaryExpression")
+                   && streq(C._operator, "typeof"))) {
         READ(ExpDesc* ident, ExpDesc* args);
 
         if (C.arguments == 0) { // f().
@@ -982,7 +953,9 @@ void my_onclosenode(struct Node_C C)
         fs->freereg = base + 1; /* Leave one result by default. */
 
         POP(args);
-    } else if (my_streq(C.type, "Literal")) {
+    }
+
+    OPENNODE(Literal) {
         READ(ExpDesc* args);
 
         GCstr* str = NULL;
@@ -1004,22 +977,24 @@ void my_onclosenode(struct Node_C C)
 
         default:
             // TODO: Workaround for parser
-            if (my_streq(C.raw, "true")) {
+            if (streq(C.raw, "true")) {
                 expr_init(args, VKTRUE, 0);
-            } else if (my_streq(C.raw, "false")) {
+            } else if (streq(C.raw, "false")) {
                 expr_init(args, VKFALSE, 0);
-            } else if (my_streq(C.raw, "null")) {
+            } else if (streq(C.raw, "null")) {
                 expr_init(args, VKNIL, 0);
             } else {
                 assert(0);
             }
         }
-    } else if (my_streq(C.type, "UnaryExpression")) {
+    }
+
+    if (streq(C.type, "UnaryExpression") && !streq(C._operator, "typeof")) {
         READ(ExpDesc* e1, ExpDesc* e2);
 
         *e1 = *e2;
 
-        if (my_streq(C._operator, "-")) {
+        if (streq(C._operator, "-")) {
             if (expr_isnumk(e1) && !expr_numiszero(e1)) {  /* Avoid folding to -0. */
                 TValue *o = expr_numtv(e1);
                 if (tvisint(o)) {
@@ -1040,58 +1015,72 @@ void my_onclosenode(struct Node_C C)
         }
 
         POP(e2);
-    } else if (my_streq(C.type, "BinaryExpression")) {
+    }
+
+    OPENNODE(BinaryExpression) {
         READ(ExpDesc* e1, ExpDesc* e2);
 
-        if (my_streq(C._operator, "==")) {
+        if (streq(C._operator, "==")) {
             bcemit_binop(fs, OPR_EQ, e1, e2);
-        } else if (my_streq(C._operator, "!=")) {
+        } else if (streq(C._operator, "!=")) {
             bcemit_binop(fs, OPR_NE, e1, e2);
-        } else if (my_streq(C._operator, "<")) {
+        } else if (streq(C._operator, "<")) {
             bcemit_binop(fs, OPR_LT, e1, e2);
-        } else if (my_streq(C._operator, ">=")) {
+        } else if (streq(C._operator, ">=")) {
             bcemit_binop(fs, OPR_GE, e1, e2);
-        } else if (my_streq(C._operator, "<=")) {
+        } else if (streq(C._operator, "<=")) {
             bcemit_binop(fs, OPR_LE, e1, e2);
-        } else if (my_streq(C._operator, ">")) {
+        } else if (streq(C._operator, ">")) {
             bcemit_binop(fs, OPR_GT, e1, e2);
-        } else if (my_streq(C._operator, "+")) {
+        } else if (streq(C._operator, "+")) {
             bcemit_binop(fs, OPR_ADD, e1, e2);
-        } else if (my_streq(C._operator, "-")) {
+        } else if (streq(C._operator, "-")) {
             bcemit_binop(fs, OPR_SUB, e1, e2);
-        } else if (my_streq(C._operator, "*")) {
+        } else if (streq(C._operator, "*")) {
             bcemit_binop(fs, OPR_MUL, e1, e2);
-        } else if (my_streq(C._operator, "/")) {
+        } else if (streq(C._operator, "/")) {
             bcemit_binop(fs, OPR_DIV, e1, e2);
-        } else if (my_streq(C._operator, "%")) {
+        } else if (streq(C._operator, "%")) {
             bcemit_binop(fs, OPR_MOD, e1, e2);
         } else {
             assert(0);
         }
 
         POP(e2);
-    } else if (my_streq(C.type, "LogicalExpression")) {
+    }
+
+    OPENNODE(LogicalExpression) {
         READ(ExpDesc* e1, ExpDesc* e2);
 
-        if (my_streq(C._operator, "&&")) {
+        if (streq(C._operator, "&&")) {
             bcemit_binop(fs, OPR_AND, e1, e2);
-        } else if (my_streq(C._operator, "||")) {
+        } else if (streq(C._operator, "||")) {
             bcemit_binop(fs, OPR_OR, e1, e2);
         } else {
             assert(0);
         }
 
         POP(e2);
-    } else if (my_streq(C.type, "Program")) {
+    }
+
+    OPENNODE(Program) {
         js_fs_pop();
-    } else if (my_streq(C.type, "Property")) {
-    } else if (my_streq(C.type, "ThisExpression")) {
+    }
+    
+    OPENNODE(Property) {
+    }
+
+    OPENNODE(ThisExpression) {
         READ(ExpDesc* expr);
 
         GCstr* s = create_str(fs, "this");
         var_lookup_(fs, s, expr, 1);
-    } else if (my_streq(C.type, "ArrayExpression")) {
-    } else if (my_streq(C.type, "ObjectExpression")) {
+    }
+
+    OPENNODE(ArrayExpression) {
+    }
+
+    OPENNODE(ObjectExpression) {
         READ(ExpDesc* e);
 
         // lex_check(ls, '{');
@@ -1127,8 +1116,9 @@ void my_onclosenode(struct Node_C C)
         //   }
         //   lj_gc_check(fs->L);
         // }
+    }
 
-    } else if (my_streq(C.type, "UpdateExpression")) {
+    OPENNODE(UpdateExpression) {
         READ(ExpDesc* expr);
 
         if (expr->k == VINDEXED) {
@@ -1142,7 +1132,7 @@ void my_onclosenode(struct Node_C C)
             // Create increment value.
             ExpDesc incr;
             expr_init(&incr, VKNUM, 0);
-            setnumV(&incr.u.nval, my_streq(C._operator, "--") ? -1 : 1);
+            setnumV(&incr.u.nval, streq(C._operator, "--") ? -1 : 1);
 
             // Dispatch key to register.
             expr_tonextreg(fs, &key);
@@ -1186,7 +1176,7 @@ void my_onclosenode(struct Node_C C)
             // Create increment value.
             ExpDesc incr;
             expr_init(&incr, VKNUM, 0);
-            setnumV(&incr.u.nval, my_streq(C._operator, "--") ? -1 : 1);
+            setnumV(&incr.u.nval, streq(C._operator, "--") ? -1 : 1);
 
             // Add increment to key.
             bcemit_binop(fs, OPR_ADD, &key, &incr);
@@ -1209,21 +1199,69 @@ void my_onclosenode(struct Node_C C)
                 fs->freereg -= 1;
             }
         }
-    } else if (my_streq(C.type, "ReturnStatement")
-               || my_streq(C.type, "MemberExpression")
-               || my_streq(C.type, "VariableDeclaration")
-               || my_streq(C.type, "UpdateExpression")
-               || my_streq(C.type, "BlockStatement")
-               || my_streq(C.type, "IfStatement")
-               || my_streq(C.type, "NewExpression")
-               || my_streq(C.type, "WhileStatement")
-               || my_streq(C.type, "ForStatement")) {
-        // noop
-    } else {
-        assert(0);
     }
 
-    // js_ismethod = 0;
+    if (streq(C.type, "ReturnStatement")
+               || streq(C.type, "MemberExpression")
+               || streq(C.type, "VariableDeclaration")
+               || streq(C.type, "UpdateExpression")
+               || streq(C.type, "BlockStatement")
+               || streq(C.type, "IfStatement")
+               || streq(C.type, "NewExpression")
+               || streq(C.type, "WhileStatement")
+               || streq(C.type, "ForStatement")) {
+        // noop
+    }
+}
+
+
+
+void my_onopennode(const char* type)
+{
+    FuncState* fs = js_fs_top(0);
+
+    JS_DEBUG("[>] %s\n", type);
+
+    // Conditions.
+    if (streq(type, "parseExpression") && is_statement) {
+        type = "expression-statement";
+    }
+
+    if (streq(type, "parseStatement")) {
+        is_statement = 1;
+        js_ismethod = 0;
+    } else {
+        is_statement = 0;
+    }
+
+    if (streq(type, "parseExprList-next") && is_arrayliteral == 0) {
+        type = "args-next";
+    }
+    if (streq(type, "parseExprList-next") && is_arrayliteral > 0) {
+        type = "array-literal-next";
+    }
+
+    struct Node_C C = { 0 };
+    C.type = "lolno";
+    handle_node(fs, type, C);
+}
+
+void my_onclosenode(struct Node_C C)
+{
+    FuncState* fs = js_fs_top(0);
+
+    JS_DEBUG("[<] %s\n", C.type);
+    // JS_DEBUG("<- finish %s %s %s %d\n", C.type, C.name, C.raw, C.arguments);
+
+    // Workaround for typeof to act like a function.
+    if ((streq(C.type, "UnaryExpression")
+         && streq(C._operator, "typeof"))) {
+        READ(ExpDesc* args);
+
+        expr_tonextreg(fs, args);
+    }
+
+    handle_node(fs, C.type, C);
 }
 
 /*
