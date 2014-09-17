@@ -239,10 +239,18 @@ static int is_statement;
 static int is_arrayliteral = 0;
 static BCReg fnparams = 0;
 
-#define OPENNODE(T) if (streq(type, #T))
+#define OPENNODE_1(T1) else if (streq(type, #T1))
+#define OPENNODE_2(T1, T2) else if (streq(type, #T1) || streq(type, #T2))
+#define OPENNODE_3(T1, T2, T3) else if (streq(type, #T1) || streq(type, #T2) || streq(type, #T3))
+#define OPENNODE_4(T1, T2, T3, T4) else if (streq(type, #T1) || streq(type, #T2) || streq(type, #T3) || streq(type, #T4))
+#define OPENNODE_5(T1, T2, T3, T4, T5) else if (streq(type, #T1) || streq(type, #T2) || streq(type, #T3) || streq(type, #T4) || streq(type, #T5))
+#define OPENNODE_6(T1, T2, T3, T4, T5, T6) else if (streq(type, #T1) || streq(type, #T2) || streq(type, #T3) || streq(type, #T4) || streq(type, #T5) || streq(type, #T6))
+#define OPENNODE(...) CAT(CAT(OPENNODE, _), NARGS(__VA_ARGS__)) (__VA_ARGS__)
 
 void handle_node (FuncState* fs, const char* type, struct Node_C C)
 {
+    if (0) { }
+
     OPENNODE(expression-statement) {
         PUSH(ExpDesc* expr);
     }
@@ -325,7 +333,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         PUSH(ExpDesc* args);
     }
 
-    if (streq(type, "call-open")) {
+    OPENNODE(call-open) {
         READ(ExpDesc* ident);
         js_ismethod = 0;
 
@@ -350,7 +358,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         PUSH(ExpDesc* args);
     }
 
-    if (streq(type, "new-args")) {
+    OPENNODE(new-args) {
         READ(ExpDesc* ident);
         js_ismethod = 0;
 
@@ -379,6 +387,9 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         expr_tonextreg(fs, args);
     }
 
+    OPENNODE(new-close) {
+    }
+
     OPENNODE(typeof) {
         READ(ExpDesc* ident);
 
@@ -388,26 +399,26 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     }
 
 #define JS_OP_LEFT(OP, ID)                                                     \
-    if (streq(type, OP)) {                                                  \
+    OPENNODE(OP) {                                                  \
         READ(ExpDesc* e);                                                      \
         js_ismethod = 0;                                                       \
         bcemit_binop_left(fs, ID, e);                                          \
         PUSH(ExpDesc* op);                                                     \
     }
 
-    JS_OP_LEFT("==", OPR_EQ);
-    JS_OP_LEFT("!=", OPR_NE);
-    JS_OP_LEFT("+", OPR_ADD);
-    JS_OP_LEFT("-", OPR_SUB);
-    JS_OP_LEFT("*", OPR_MUL);
-    JS_OP_LEFT("/", OPR_DIV);
-    JS_OP_LEFT("%", OPR_MOD);
-    JS_OP_LEFT("<", OPR_LT);
-    JS_OP_LEFT(">=", OPR_GE);
-    JS_OP_LEFT("<=", OPR_LE);
-    JS_OP_LEFT(">", OPR_GT);
-    JS_OP_LEFT("&&", OPR_AND);
-    JS_OP_LEFT("||", OPR_OR);
+    JS_OP_LEFT(==, OPR_EQ)
+    JS_OP_LEFT(!=, OPR_NE)
+    JS_OP_LEFT(+, OPR_ADD)
+    JS_OP_LEFT(-, OPR_SUB)
+    JS_OP_LEFT(*, OPR_MUL)
+    JS_OP_LEFT(/, OPR_DIV)
+    JS_OP_LEFT(%, OPR_MOD)
+    JS_OP_LEFT(<, OPR_LT)
+    JS_OP_LEFT(>=, OPR_GE)
+    JS_OP_LEFT(<=, OPR_LE)
+    JS_OP_LEFT(>, OPR_GT)
+    JS_OP_LEFT(&&, OPR_AND)
+    JS_OP_LEFT(||, OPR_OR)
 
     OPENNODE(=) {
         js_ismethod = 0;
@@ -422,8 +433,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         PUSH(ExpDesc* rval);
     }
 
-    if (streq(type, "+=") || streq(type, "-=") || streq(type, "*=") ||
-        streq(type, "/=") || streq(type, "%=")) {
+    OPENNODE(+=, -=, *=, /=, %=) {
         READ(ExpDesc* expr);
         js_ismethod = 0;
 
@@ -452,7 +462,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         }
     }
 
-    if (streq(type, "while-test") || streq(type, "for-test")) {
+    OPENNODE(while-test, for-test) {
         js_ismethod = 0;
 
         PUSH(BCPos* start);
@@ -501,7 +511,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
     }
 
-    if (streq(type, "while-end") || streq(type, "for-end")) {
+    OPENNODE(while-end, for-end) {
         READ(BCPos* start, BCPos* loop, ExpDesc* test);
 
         // jmp_tohere(fs, test->f);
@@ -513,6 +523,9 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         jmp_patchins(fs, *loop, fs->pc);
         
         POP(start, loop, test);
+    }
+
+    OPENNODE(if-start) {
     }
 
     OPENNODE(if-test) {
@@ -770,6 +783,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         js_fs_pop();
         fs = js_fs_top(0);
     }
+
     OPENNODE(Identifier) {
         READ(ExpDesc* ident);
 
@@ -928,11 +942,12 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         POP(expr);
     }
 
-    if (streq(C.type, "CallExpression")
-               || streq(C.type, "NewExpression")
-               || (streq(C.type, "UnaryExpression")
-                   && streq(C._operator, "typeof"))) {
+    OPENNODE(CallExpression, NewExpression, UnaryExpression-typeof) {
         READ(ExpDesc* ident, ExpDesc* args);
+
+        if (streq(type, "UnaryExpression-typeof")) {
+            expr_tonextreg(fs, args);
+        }
 
         if (C.arguments == 0) { // f().
             args->k = VVOID;
@@ -989,7 +1004,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         }
     }
 
-    if (streq(C.type, "UnaryExpression") && !streq(C._operator, "typeof")) {
+    OPENNODE(UnaryExpression) {
         READ(ExpDesc* e1, ExpDesc* e2);
 
         *e1 = *e2;
@@ -1062,10 +1077,6 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
         POP(e2);
     }
-
-    OPENNODE(Program) {
-        js_fs_pop();
-    }
     
     OPENNODE(Property) {
     }
@@ -1116,6 +1127,9 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         //   }
         //   lj_gc_check(fs->L);
         // }
+    }
+
+    OPENNODE(++, --) {
     }
 
     OPENNODE(UpdateExpression) {
@@ -1201,20 +1215,50 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         }
     }
 
-    if (streq(C.type, "ReturnStatement")
-               || streq(C.type, "MemberExpression")
-               || streq(C.type, "VariableDeclaration")
-               || streq(C.type, "UpdateExpression")
-               || streq(C.type, "BlockStatement")
-               || streq(C.type, "IfStatement")
-               || streq(C.type, "NewExpression")
-               || streq(C.type, "WhileStatement")
-               || streq(C.type, "ForStatement")) {
-        // noop
+    OPENNODE(ReturnStatement) {
+    }
+
+    OPENNODE(MemberExpression) {
+    }
+
+    OPENNODE(VariableDeclaration) {
+    }
+
+    OPENNODE(UpdateExpression) {
+    }
+
+    OPENNODE(BlockStatement) {
+    }
+
+    OPENNODE(IfStatement) {
+    }
+
+    OPENNODE(NewExpression) {
+    }
+
+    OPENNODE(WhileStatement) {
+    }
+
+    OPENNODE(ForStatement) {
+    }
+
+    OPENNODE(Program) {
+        js_fs_pop();
+    }
+
+    OPENNODE(parseReturnStatement) {
+        // Needed for some test?
+    }
+
+    else {
+        JS_DEBUG("------------------> Section %s\n", type);
+        assert(0);
     }
 }
 
-
+/*
+ * Handlers
+ */
 
 void my_onopennode(const char* type)
 {
@@ -1223,13 +1267,18 @@ void my_onopennode(const char* type)
     JS_DEBUG("[>] %s\n", type);
 
     // Conditions.
-    if (streq(type, "parseExpression") && is_statement) {
-        type = "expression-statement";
+    if (streq(type, "parseExpression")) {
+        if (is_statement) {
+            type = "expression-statement";
+        } else {
+            return;
+        }
     }
 
     if (streq(type, "parseStatement")) {
         is_statement = 1;
         js_ismethod = 0;
+        return;
     } else {
         is_statement = 0;
     }
@@ -1256,9 +1305,7 @@ void my_onclosenode(struct Node_C C)
     // Workaround for typeof to act like a function.
     if ((streq(C.type, "UnaryExpression")
          && streq(C._operator, "typeof"))) {
-        READ(ExpDesc* args);
-
-        expr_tonextreg(fs, args);
+        C.type = "UnaryExpression-typeof";
     }
 
     handle_node(fs, C.type, C);
