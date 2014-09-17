@@ -34,4 +34,4 @@ size_t stack_ptr = 0;
 #define POP_8(h, g, f, d, c, b, a) POP_1(a); POP_7(h, g, f, e, d, c, b);
 #define POP(...) CAT(CAT(POP, _), NARGS(__VA_ARGS__)) (__VA_ARGS__)
 
-#define PUSH(A) (void*) &stack[stack_ptr]; stack_ptr += sizeof(A); assert(stack_ptr < sizeof(stack));
+#define PUSH(A) A = (void*) &stack[stack_ptr]; stack_ptr += sizeof(STACKTYPE(A)); assert(stack_ptr < sizeof(stack));

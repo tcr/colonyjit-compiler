@@ -251,7 +251,7 @@ void my_onopennode(const char* type)
     // Begin.
 
     OPENNODE(expression-statement) {
-        PUSH(ExpDesc); // expr
+        PUSH(ExpDesc* expr);
     }
 
     OPENNODE(function) {
@@ -312,7 +312,7 @@ void my_onopennode(const char* type)
     OPENNODE(member-var-open) {
         js_ismethod = 0;
 
-        PUSH(ExpDesc); // ident
+        PUSH(ExpDesc* ident);
     }
 
     OPENNODE(member-var-close) {
@@ -336,7 +336,7 @@ void my_onopennode(const char* type)
         expr_index(fs, ident, &str);
         expr_tonextreg(fs, ident);
 
-        PUSH(ExpDesc); // args
+        PUSH(ExpDesc* args);
     }
 
     if (my_streq(type, "call-open") || my_streq(type, "new-args")) {
@@ -373,7 +373,7 @@ void my_onopennode(const char* type)
         }
 
         if (!my_streq(type, "new-args")) {
-            PUSH(ExpDesc) // args
+            PUSH(ExpDesc* args);
         }
     }
 
@@ -400,7 +400,7 @@ void my_onopennode(const char* type)
         expr_index(fs, ident, &str);
         expr_tonextreg(fs, ident);
 
-        PUSH(ExpDesc); // args
+        PUSH(ExpDesc* args);
     }
 
 #define JS_OP_LEFT(OP, ID)                                                     \
@@ -408,7 +408,7 @@ void my_onopennode(const char* type)
         READ(ExpDesc* e);                                                      \
         js_ismethod = 0;                                                       \
         bcemit_binop_left(fs, ID, e);                                          \
-        PUSH(ExpDesc);                                                         \
+        PUSH(ExpDesc* op);                                                     \
     }
 
     JS_OP_LEFT("==", OPR_EQ);
@@ -435,7 +435,7 @@ void my_onopennode(const char* type)
         // expr_init(&e, VNONRELOC, ls->fs->freereg-1);
         // bcemit_store(ls->fs, &lh->v, &e);
 
-        PUSH(ExpDesc); // rval
+        PUSH(ExpDesc* rval);
     }
 
     if (my_streq(type, "+=") || my_streq(type, "-=") || my_streq(type, "*=") ||
@@ -453,8 +453,8 @@ void my_onopennode(const char* type)
         
         // expr_tonextreg(fs, expr);
 
-        ExpDesc* key = PUSH(ExpDesc);
-        ExpDesc* rval = PUSH(ExpDesc);
+        PUSH(ExpDesc* key);
+        PUSH(ExpDesc* rval);
 
         *key = *expr;
 
@@ -471,12 +471,12 @@ void my_onopennode(const char* type)
     if (my_streq(type, "while-test") || my_streq(type, "for-test")) {
         js_ismethod = 0;
 
-        int* start = PUSH(int);
-        int* loop = PUSH(int);
+        PUSH(int* start);
+        PUSH(int* loop);
 
         // js_loop_push();
 
-        PUSH(ExpDesc); // test
+        PUSH(ExpDesc* test);
 
         // lj_lex_next(ls);  /* Skip 'while'. */
         *start = fs->lasttarget = fs->pc;
@@ -496,13 +496,11 @@ void my_onopennode(const char* type)
 
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
 
-        ExpDesc* dummy = PUSH(ExpDesc);
+        PUSH(ExpDesc* dummy);
         dummy->t = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
         dummy->f = fs->pc;
 
-        js_ismethod = 0;
-
-        PUSH(ExpDesc); // update
+        PUSH(ExpDesc* update);
     }
 
     OPENNODE(for-body) {
@@ -522,7 +520,7 @@ void my_onopennode(const char* type)
     OPENNODE(while-body) {
         READ(int* start, int* loop, ExpDesc* test);
 
-        // if (v.k == VKNIL) v.k = VKFALSE;
+        if (test->k == VKNIL) test->k = VKFALSE;
         bcemit_branch_t(fs, test);
 
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
@@ -544,7 +542,7 @@ void my_onopennode(const char* type)
     }
 
     OPENNODE(if-test) {
-        PUSH(ExpDesc); // test
+        PUSH(ExpDesc* test);
     }
 
     OPENNODE(if-consequent) {
@@ -569,7 +567,7 @@ void my_onopennode(const char* type)
     OPENNODE(var-declarator) {
         js_ismethod = 2;
 
-        PUSH(ExpDesc); // ident
+        PUSH(ExpDesc* ident);
     }
 
     OPENNODE(var-declarator-assign) {
@@ -578,7 +576,7 @@ void my_onopennode(const char* type)
         
         bcreg_reserve(fs, 1);
         
-        PUSH(ExpDesc); // value
+        PUSH(ExpDesc* value);
     }
 
     OPENNODE(var-declarator-no-assign) {
@@ -587,8 +585,7 @@ void my_onopennode(const char* type)
 
         bcreg_reserve(fs, 1);
 
-
-        ExpDesc* e2 = PUSH(ExpDesc);
+        PUSH(ExpDesc* e2);
         *e2 = *e1;
         e2->t = NO_JMP;
         e2->f = NO_JMP;
@@ -619,7 +616,7 @@ void my_onopennode(const char* type)
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
 
-        PUSH(ExpDesc); // consequent
+        PUSH(ExpDesc* consequent);
     }
 
     OPENNODE(ternary-alternate) {
@@ -664,12 +661,11 @@ void my_onopennode(const char* type)
 
         // e->u.s.aux = pc;
 
-        ExpDesc* key = PUSH(ExpDesc);
+        PUSH(ExpDesc* key);
         expr_init(key, VKNUM, 0);
         setintV(&key->u.nval, (int)0);
 
-
-        PUSH(ExpDesc); // value
+        PUSH(ExpDesc* value);
     }
 
     OPENNODE(array-literal-next) {
@@ -686,7 +682,7 @@ void my_onopennode(const char* type)
         expr_init(key, VKNUM, 0);
         setintV(&key->u.nval, is_arrayliteral++);
     }
-    
+
     OPENNODE(array-literal-close) {
         READ(ExpDesc* obj, ExpDesc* key, ExpDesc* val);
         is_arrayliteral = 0;
@@ -699,7 +695,6 @@ void my_onopennode(const char* type)
         obj->k = VNONRELOC;
         obj->u.s.info = 2;
 
-        // js_ismethod = 4;
         POP(key, val);
     }
 
@@ -725,13 +720,13 @@ void my_onopennode(const char* type)
     OPENNODE(object-literal-key) {
         js_ismethod = 4;
 
-        PUSH(ExpDesc); // key
+        PUSH(ExpDesc* key);
     }
 
     OPENNODE(object-literal-value) {
         js_ismethod = 0;
 
-        PUSH(ExpDesc); // value
+        PUSH(ExpDesc* value);
     }
 
     OPENNODE(object-literal-push) {
