@@ -206,6 +206,22 @@ static void increment_registers(BCIns* ins, int pos)
     }
 }
 
+GCstr* create_str (FuncState* fs, const char *label) {
+    return lj_str_new(fs->L, label, strlen(label));
+}
+
+void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
+{
+    ExpDesc str;
+    expr_init(&str, VKSTR, 0);
+    str.u.sval = create_str(fs, label);
+
+    var_lookup_(fs, create_str(fs, ""), ident, 1);
+    expr_tonextreg(fs, ident);
+    expr_index(fs, ident, &str);
+    expr_tonextreg(fs, ident);
+}
+
 /*
  * Parsing
  */
@@ -221,18 +237,6 @@ static BCReg fnparams = 0;
 
 #define my_streq(A, T) (strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T))
 #define OPENNODE(T) if (my_streq(type, #T))
-
-void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
-{
-    ExpDesc str;
-    expr_init(&str, VKSTR, 0);
-    str.u.sval = lj_str_new(fs->L, label, strlen(label));
-
-    var_lookup_(fs, lj_str_new(fs->L, "", strlen("")), ident, 1);
-    expr_tonextreg(fs, ident);
-    expr_index(fs, ident, &str);
-    expr_tonextreg(fs, ident);
-}
 
 void my_onopennode(const char* type)
 {
@@ -286,7 +290,7 @@ void my_onopennode(const char* type)
         fs->numparams = 0;
 
         // Implicit "this".
-        var_new(ls, fs->numparams++, lj_str_new(fs->L, "this", strlen("this")));
+        var_new(ls, fs->numparams++, create_str(fs, "this"));
 
         // FuncState *fs;
         // ExpDesc v, b;
@@ -476,36 +480,25 @@ void my_onopennode(const char* type)
 
         PUSH(BCPos* start);
         PUSH(BCPos* loop);
-
-        // js_loop_push();
-
         PUSH(ExpDesc* test);
 
-        // lj_lex_next(ls);  /* Skip 'while'. */
         *start = fs->lasttarget = fs->pc;
-        // condexit = expr_cond(ls);
-        // // fscope_begin(fs, &bl, FSCOPE_LOOP);
-        // // lex_check(ls, TK_do);
-        // loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-        // parse_block(ls);
     }
 
     OPENNODE(for-update) {
         READ(BCPos* start, BCPos* loop, ExpDesc* test);
         js_ismethod = 0;
 
+        PUSH(BCPos* jmpins);
+        PUSH(BCPos* preupdate);
+        PUSH(ExpDesc* update);
+
         // if (v.k == VKNIL) v.k = VKFALSE;
         bcemit_branch_t(fs, test);
-
+       
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-
-        PUSH(BCPos* jmpins);
         *jmpins = bcemit_AJ(fs, BC_JMP, fs->freereg, NO_JMP);
-
-        PUSH(BCPos* preupdate);
         *preupdate = fs->pc;
-
-        PUSH(ExpDesc* update);
     }
 
     OPENNODE(for-body) {
@@ -529,7 +522,6 @@ void my_onopennode(const char* type)
         bcemit_branch_t(fs, test);
 
         *loop = bcemit_AD(fs, BC_LOOP, fs->nactvar, 0);
-
     }
 
     if (my_streq(type, "while-end") || my_streq(type, "for-end")) {
@@ -553,9 +545,8 @@ void my_onopennode(const char* type)
     OPENNODE(if-consequent) {
         READ(ExpDesc* test);
 
-        // if (v.k == VKNIL) v.k = VKFALSE;
+        if (test->k == VKNIL) test->k = VKFALSE;
         bcemit_branch_t(fs, test);
-
     }
 
     OPENNODE(if-alternate) {
@@ -577,7 +568,6 @@ void my_onopennode(const char* type)
 
     OPENNODE(var-declarator-assign) {
         js_ismethod = 0;
-        // fs->freereg += 1;
         
         bcreg_reserve(fs, 1);
         
@@ -594,8 +584,6 @@ void my_onopennode(const char* type)
         *e2 = *e1;
         e2->t = NO_JMP;
         e2->f = NO_JMP;
-        // expr_init(e, VKNIL, 0);
-        // expr_tonextreg(fs, e);
     }
 
     OPENNODE(if-no-alternate) {
@@ -618,7 +606,7 @@ void my_onopennode(const char* type)
         READ(ExpDesc* test);
         js_ismethod = 0;
 
-        // if (v.k == VKNIL) v.k = VKFALSE;
+        if (test->k == VKNIL) test->k = VKFALSE;
         bcemit_branch_t(fs, test);
 
         PUSH(ExpDesc* consequent);
@@ -719,7 +707,6 @@ void my_onopennode(const char* type)
         freg++;
 
         e->u.s.aux = pc;
-        JS_DEBUG("EUSAUX PC %p %d\n", e, pc);
     }
 
     OPENNODE(object-literal-key) {
@@ -787,10 +774,8 @@ void my_onclosenode(struct Node_C C)
             assign_adjust(fs->ls, 1, 1, val);
             var_add(fs->ls, 1);
 
-            // JS_DEBUG("HIHIHIHIHIHIHI %d\n", fs->nactvar-1);
             if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
                 bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
-                // exit(1);
             }
         } else {
             bcemit_store(fs, ident, val);
@@ -800,7 +785,6 @@ void my_onclosenode(struct Node_C C)
     } else if (my_streq(C.type, "FunctionExpression")) {
         READ(ExpDesc* expr);
 
-        // if (ls->token != TK_end) lex_match(ls, TK_end, TK_function, line);
         ptrdiff_t oldbase = 0;
 
         int line = 0;
@@ -826,7 +810,7 @@ void my_onclosenode(struct Node_C C)
     } else if (my_streq(C.type, "Identifier")) {
         READ(ExpDesc* ident);
 
-        GCstr* s = lj_str_new(fs->L, C.name, strlen(C.name));
+        GCstr* s = create_str(fs, C.name);
 
         JS_DEBUG("[ident] value: '%s'\n", C.name);
         JS_DEBUG("[ident] js_ismethod %d\n", js_ismethod);
@@ -1001,7 +985,7 @@ void my_onclosenode(struct Node_C C)
     } else if (my_streq(C.type, "Literal")) {
         READ(ExpDesc* args);
 
-        GCstr* s = NULL;
+        GCstr* str = NULL;
         switch (C.value_type) {
         case JS_BOOLEAN:
             expr_init(args, C.value_boolean ? VKTRUE : VKFALSE, 0);
@@ -1009,8 +993,8 @@ void my_onclosenode(struct Node_C C)
 
         case JS_STRING:
             expr_init(args, VKSTR, 0);
-            s = lj_str_new(fs->L, C.value_string, strlen(C.value_string));
-            args->u.sval = s;
+            str = create_str(fs, C.value_string);
+            args->u.sval = str;
             break;
 
         case JS_DOUBLE:
@@ -1104,7 +1088,7 @@ void my_onclosenode(struct Node_C C)
     } else if (my_streq(C.type, "ThisExpression")) {
         READ(ExpDesc* expr);
 
-        GCstr* s = lj_str_new(fs->L, "this", strlen("this"));
+        GCstr* s = create_str(fs, "this");
         var_lookup_(fs, s, expr, 1);
     } else if (my_streq(C.type, "ArrayExpression")) {
     } else if (my_streq(C.type, "ObjectExpression")) {
@@ -1289,7 +1273,7 @@ if (ls->token != TK_eof)
     // Reserve first register as argument.
     fs->numparams += 1;
     bcreg_reserve(fs, 1);
-    var_new(ls, 0, lj_str_new(fs->L, "", 0));
+    var_new(ls, 0, create_str(fs, ""));
     fs->nactvar += 1;
 
     // // Register "this" variable
