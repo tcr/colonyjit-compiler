@@ -1054,6 +1054,7 @@ return parseForIn(node, init);
     return parseFor(node, init);
 }
 Node* parseFunctionStatement(Node* node) {
+     jsparse_callback_open("function-declaration"); 
     next();
     return parseFunction(node, true);
 }
@@ -1716,6 +1717,7 @@ Node* parseFunction(Node* node, bool isStatement, bool allowExpressionBody) {
         node->id = parseIdent();
     }
 }
+     jsparse_callback_open("function-params"); 
     parseFunctionParams(node);
      jsparse_callback_open("function-body"); 
     parseFunctionBody(node, allowExpressionBody);

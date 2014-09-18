@@ -1649,7 +1649,7 @@ function parseForStatement(node:Node) {
 }
 
 function parseFunctionStatement(node:Node) {
-  // jsparse_callback_open("parseFunctionStatement");
+  //C jsparse_callback_open("function-declaration");
   next();
   return parseFunction(node, true);
 }
@@ -2366,6 +2366,7 @@ function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:bool
   if (isStatement || tokType === _name) {
     node.id = parseIdent();
   }
+  //C jsparse_callback_open("function-params");
   parseFunctionParams(node);
   //C jsparse_callback_open("function-body");
   parseFunctionBody(node, allowExpressionBody);
