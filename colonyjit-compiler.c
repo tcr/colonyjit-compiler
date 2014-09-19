@@ -364,7 +364,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         ExpDesc rval;
         ExpDesc* expr = ISNODE(FunctionDeclaration) ? &rval : basexpr;
         expr_init(
-            ident, VRELOCABLE,
+            expr, VRELOCABLE,
             bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
 #if LJ_HASFFI
         pfs->flags |= (fs->flags & PROTO_FFI);
@@ -379,6 +379,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         fs = js_fs_top(0);
 
         if (ISNODE(FunctionDeclaration)) {
+            ident->u.s.aux = -1;
             assign_ident(fs, ident, expr);
         }
 
@@ -386,7 +387,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
         POP(isdecl, ident);
         if (ISNODE(FunctionDeclaration)) {
-            // POP(basexpr);
+            POP(basexpr);
         }
     }
 
@@ -1011,6 +1012,8 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         fs->freereg = base + 1; /* Leave one result by default. */
 
         POP(args);
+
+        JS_DEBUG("typeof-----> %p\n", ident);
     }
 
     OPENNODE(Literal) {
@@ -1079,6 +1082,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         READ(ExpDesc* e1, ExpDesc* e2);
 
         if (streq(C._operator, "==")) {
+        JS_DEBUG("typeof!!!!-----> %p\n", e1);
             bcemit_binop(fs, OPR_EQ, e1, e2);
         } else if (streq(C._operator, "!=")) {
             bcemit_binop(fs, OPR_NE, e1, e2);
@@ -1454,6 +1458,7 @@ static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
     // js_fs_pop();
 
     assert(js_fs.idx == 0);
+    assert(stack_ptr == 0);
 
     lj_bcwrite(L, pt, js_bcdump, NULL, 0);
     return NULL;

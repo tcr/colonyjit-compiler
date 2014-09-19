@@ -2028,7 +2028,7 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
 // Parse unary operators, both prefix and postfix.
 
 function parseMaybeUnary() {
-  //C if (tokVal.value_string == "function") jsparse_callback_open(tokVal.value_string.c_str());
+  //C if (tokType.keyword == "function") jsparse_callback_open(tokVal.value_string.c_str());
   if (tokType.prefix) {
     //C jsparse_callback_open(tokVal.value_string.c_str());
     var node = startNode(), update = tokType.isUpdate;

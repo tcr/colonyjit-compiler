@@ -1401,7 +1401,7 @@ Node* parseExprOp(Node* left, int minPrec, bool noIn) {
     return left;
 }
 Node* parseMaybeUnary() {
-     if (tokVal.value_string == "function") jsparse_callback_open(tokVal.value_string.c_str()); 
+     if (tokType.keyword == "function") jsparse_callback_open(tokVal.value_string.c_str()); 
     if (tokType.prefix) {
 {
          jsparse_callback_open(tokVal.value_string.c_str()); 
