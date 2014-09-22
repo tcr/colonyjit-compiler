@@ -222,7 +222,9 @@ static void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
     str.u.sval = create_str(fs, label);
 
     var_lookup_(fs, create_str(fs, ""), ident, 1);
-    expr_tonextreg(fs, ident);
+    if (ident->k != VLOCAL) {
+        expr_tonextreg(fs, ident);
+    }
     expr_index(fs, ident, &str);
     expr_tonextreg(fs, ident);
 }
@@ -362,7 +364,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
         /* Store new prototype in the constant array of the parent. */
         ExpDesc rval;
-        ExpDesc* expr = ISNODE(FunctionDeclaration) ? &rval : basexpr;
+        ExpDesc* expr = ISNODE(FunctionDeclaration) ? &rval : ident;
         expr_init(
             expr, VRELOCABLE,
             bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
