@@ -6,7 +6,7 @@ var PI = 3.141592653589793;
 var SOLAR_MASS = 4 * PI * PI;
 var DAYS_PER_YEAR = 365.24;
 
-var Body = function (x,y,z,vx,vy,vz,mass){
+function Body (x,y,z,vx,vy,vz,mass){
    this.x = x;
    this.y = y;
    this.z = z;
@@ -23,7 +23,7 @@ Body.prototype.offsetMomentum = function(px,py,pz) {
    return this;
 }
 
-var Jupiter = function (){
+function Jupiter (){
    return new Body(
       4.84143144246472090e+00,
       -1.16032004402742839e+00,
@@ -35,7 +35,7 @@ var Jupiter = function (){
    );
 }
 
-var Saturn = function (){
+function Saturn (){
    return new Body(
       8.34336671824457987e+00,
       4.12479856412430479e+00,
@@ -47,7 +47,7 @@ var Saturn = function (){
    );
 }
 
-var Uranus = function (){
+function Uranus (){
    return new Body(
       1.28943695621391310e+01,
       -1.51111514016986312e+01,
@@ -59,7 +59,7 @@ var Uranus = function (){
    );
 }
 
-var Neptune = function (){
+function Neptune (){
    return new Body(
       1.53796971148509165e+01,
       -2.59193146099879641e+01,
@@ -71,19 +71,18 @@ var Neptune = function (){
    );
 }
 
-var Sun = function (){
+function Sun (){
    return new Body(0.0, 0.0, 0.0, 0.0, 0.0, 0.0, SOLAR_MASS);
 }
 
 
-var NBodySystem = function (bodies){
+function NBodySystem (bodies){
    this.bodies = bodies;
    var px = 0.0;
    var py = 0.0;
    var pz = 0.0;
    var size = this.bodies.length;
    for (var i=0; i<size; i++){
-      // console.log('i', i, size)
       var b = this.bodies[i];
       var m = b.mass;
       px += b.vx * m;
@@ -98,36 +97,31 @@ NBodySystem.prototype.advance = function(dt){
    var size = this.bodies.length;
 
    for (var i=0; i<size; i++) {
-      // console.log('i', i, size);
       var bodyi = this.bodies[i];
       for (var j=i+1; j<size; j++) {
-         // console.log('j', j, size);
          var bodyj = this.bodies[j];
          dx = bodyi.x - bodyj.x;
          dy = bodyi.y - bodyj.y;
          dz = bodyi.z - bodyj.z;
 
-         // console.log(bodyi.mass, bodyj.mass)
-
          distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
          mag = dt / (distance * distance * distance);
 
+         bodyi.vx -= dx * bodyj.mass * mag;
+         bodyi.vy -= dy * bodyj.mass * mag;
+         bodyi.vz -= dz * bodyj.mass * mag;
 
-         bodyi.vx = bodyi.vx - (dx * bodyj.mass * mag);
-         bodyi.vy = bodyi.vy - (dy * bodyj.mass * mag);
-         bodyi.vz = bodyi.vz - (dz * bodyj.mass * mag);
-
-         bodyj.vx = bodyj.vx + (dx * bodyi.mass * mag);
-         bodyj.vy = bodyj.vy + (dy * bodyi.mass * mag);
-         bodyj.vz = bodyj.vz + (dz * bodyi.mass * mag);
+         bodyj.vx += dx * bodyi.mass * mag;
+         bodyj.vy += dy * bodyi.mass * mag;
+         bodyj.vz += dz * bodyi.mass * mag;
       }
    }
 
    for (var i=0; i<size; i++) {
       var body = this.bodies[i];
-      body.x = body.x + (dt * body.vx);
-      body.y = body.y + (dt * body.vy);
-      body.z = body.z + (dt * body.vz);
+      body.x += dt * body.vx;
+      body.y += dt * body.vy;
+      body.z += dt * body.vz;
    }
 }
 
@@ -139,7 +133,7 @@ NBodySystem.prototype.energy = function(){
    for (var i=0; i<size; i++) {
       var bodyi = this.bodies[i];
 
-      e = e + 0.5 * bodyi.mass *
+      e += 0.5 * bodyi.mass *
          ( bodyi.vx * bodyi.vx
          + bodyi.vy * bodyi.vy
          + bodyi.vz * bodyi.vz );
@@ -151,10 +145,9 @@ NBodySystem.prototype.energy = function(){
          dz = bodyi.z - bodyj.z;
 
          distance = Math.sqrt(dx*dx + dy*dy + dz*dz);
-         e = e - ((bodyi.mass * bodyj.mass) / distance);
+         e -= (bodyi.mass * bodyj.mass) / distance;
       }
    }
-   // console.log('energy', e)
    return e;
 }
 
@@ -169,4 +162,3 @@ console.log('#', bodies.energy())
 for (var i=0; i<n; i++){ bodies.advance(0.01); }
 console.log('#', bodies.energy())
 console.log('ok')
-
