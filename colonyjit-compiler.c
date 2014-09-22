@@ -428,8 +428,14 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
             // rewrite
             // bcreg_reserve(fs, 1);
             uint32_t source = ident->u.s.info;
+            if (ident->u.s.info < fs->nactvar) {
+                // Reassign local var ref to new register.
+                bcemit_AD(fs, BC_MOV, fs->freereg + 1, source);
+            } else {
+                // Register already assigned.
+                bcemit_AD(fs, BC_MOV, fs->freereg, source);
+            }
             expr_tonextreg(fs, ident);
-            bcemit_AD(fs, BC_MOV, fs->freereg, source);
             bcreg_reserve(fs, 1);
             // bcemit_method(fs, ident, &key);
         }
@@ -546,6 +552,69 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
             // Dispatch key to register.
             expr_tonextreg(fs, key);
+        }
+    }
+
+    OPENNODE(AssignmentExpression) {
+        if (streq(C._operator, "=")) {
+            READ(ExpDesc* lval, ExpDesc* rval);
+
+            bcemit_store(fs, lval, rval);
+            *lval = *rval;
+
+            POP(rval);
+        } else {
+            READ(ExpDesc* expr, ExpDesc* key, ExpDesc* incr);
+
+            BinOpr op;
+            if (streq(C._operator, "+=")) {
+                op = OPR_ADD;
+            } else if (streq(C._operator, "-=")) {
+                op = OPR_SUB;
+            } else if (streq(C._operator, "*=")) {
+                op = OPR_MUL;
+            } else if (streq(C._operator, "/=")) {
+                op = OPR_DIV;
+            } else if (streq(C._operator, "%=")) {
+                op = OPR_MOD;
+            } else {
+                assert(0);
+            }
+
+            if (expr->k == VINDEXED) {
+                // key == expr value.
+                // (OP) increment with key and move back.
+                bcemit_binop(fs, op, key, incr);
+
+                // Store and save return value.
+                bcemit_store(fs, expr, key);
+                expr->k = VRELOCABLE;
+                expr->u.s.info = fs->pc;
+
+                // Free registers.
+                expr_free(fs, incr);
+                expr_free(fs, key);
+            } else {
+                BCPos dest = key->u.s.info;
+
+                // Add increment to key.
+                bcemit_binop(fs, op, key, incr);
+
+                if (expr->k == VLOCAL) {
+                    // Save in original location.
+                    expr_toreg(fs, key, dest);
+                } else if (expr->k == VGLOBAL) {
+                    // Store and save return value.
+                    bcemit_store(fs, expr, key);
+                    expr->k = VRELOCABLE;
+                    expr->u.s.info = fs->pc;
+
+                    // Free registers.
+                    expr_free(fs, key);
+                }
+            }
+
+            POP(key, incr);
         }
     }
 
@@ -895,68 +964,6 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
             assert(0);
         }
     } 
-
-    OPENNODE(AssignmentExpression) {
-        if (streq(C._operator, "=")) {
-            READ(ExpDesc* lval, ExpDesc* rval);
-
-            bcemit_store(fs, lval, rval);
-            *lval = *rval;
-
-            POP(rval);
-        } else {
-            READ(ExpDesc* expr, ExpDesc* key, ExpDesc* incr);
-
-            BinOpr op;
-            if (streq(C._operator, "+=")) {
-                op = OPR_ADD;
-            } else if (streq(C._operator, "-=")) {
-                op = OPR_SUB;
-            } else if (streq(C._operator, "*=")) {
-                op = OPR_MUL;
-            } else if (streq(C._operator, "/=")) {
-                op = OPR_DIV;
-            } else if (streq(C._operator, "%=")) {
-                op = OPR_MOD;
-            } else {
-                assert(0);
-            }
-
-            if (expr->k == VINDEXED) {
-                // Add increment to key. If not prefixed, do this in separate
-                // register.
-                bcemit_binop(fs, op, key, incr);
-                expr_free(fs, incr);
-
-                // Store and save return value.
-                bcemit_store(fs, expr, key);
-                expr->k = VRELOCABLE;
-                expr->u.s.info = fs->pc;
-
-                // Free registers.
-                expr_free(fs, key);
-            } else {
-                // Add increment to key.
-                bcemit_binop(fs, op, key, incr);
-                if (expr->k == VLOCAL) {
-                    // Save in original location.
-                    expr_toreg(fs, key, key->u.s.aux);
-                }
-
-                // Store and save return value.
-                if (expr->k == VGLOBAL) {
-                    bcemit_store(fs, expr, key);
-                    expr->k = VRELOCABLE;
-                    expr->u.s.info = fs->pc;
-
-                    // Free registers.
-                    expr_free(fs, key);
-                }
-            }
-
-            POP(key, incr);
-        }
-    }
 
     OPENNODE(ConditionalExpression) {
         READ(ExpDesc* test, ExpDesc* result);

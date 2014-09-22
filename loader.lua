@@ -31,7 +31,7 @@ debug.setmetatable(function () end, {
 })
 
 local num_proto = {
-	toFixed = function (_, this)
+	toFixed = function (this)
 		return tostring(this)
 	end
 }
