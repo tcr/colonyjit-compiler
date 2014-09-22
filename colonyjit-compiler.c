@@ -13,6 +13,7 @@
 #include "stack.h"
 #define _stacktype_ExpDesc
 #define _stacktype_BCPos
+#define _stacktype_uint8_t
 
 #define JS_DEBUG(...) fprintf(stderr, __VA_ARGS__)
 #include "colonyjit-parser.c"
@@ -221,9 +222,32 @@ static void internal_ref (FuncState* fs, ExpDesc* ident, const char *label)
     str.u.sval = create_str(fs, label);
 
     var_lookup_(fs, create_str(fs, ""), ident, 1);
-    expr_tonextreg(fs, ident);
+    if (ident->k != VLOCAL) {
+        expr_tonextreg(fs, ident);
+    }
     expr_index(fs, ident, &str);
     expr_tonextreg(fs, ident);
+}
+
+static void assign_ident (FuncState* fs, ExpDesc* ident, ExpDesc *val)
+{
+    if (ident->u.s.aux == -1) {
+        JS_DEBUG("declaring new value\n");
+        expr_discharge(fs, val);
+        expr_free(fs, val);
+        bcreg_reserve(fs, 1);
+        expr_toreg_nobranch(fs, val, fs->freereg - 1);
+
+        assign_adjust(fs->ls, 1, 1, val);
+        var_add(fs->ls, 1);
+
+        if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
+            bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
+        }
+    } else {
+        JS_DEBUG("else new value\n");
+        bcemit_store(fs, ident, val);
+    }
 }
 
 /*
@@ -239,7 +263,8 @@ static int is_statement;
 static int is_arrayliteral = 0;
 static BCReg fnparams = 0;
 
-#define OPENNODE_1(T1) else if (streq(type, #T1))
+#define ISNODE(T1) streq(type, #T1)
+#define OPENNODE_1(T1) else if (ISNODE(T1))
 #define OPENNODE_2(T1, T2) else if (streq(type, #T1) || streq(type, #T2))
 #define OPENNODE_3(T1, T2, T3) else if (streq(type, #T1) || streq(type, #T2) || streq(type, #T3))
 #define OPENNODE_4(T1, T2, T3, T4) else if (streq(type, #T1) || streq(type, #T2) || streq(type, #T3) || streq(type, #T4))
@@ -255,7 +280,28 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         PUSH(ExpDesc* expr);
     }
 
-    OPENNODE(function) {
+    OPENNODE(function, function-declaration) {
+        js_ismethod = 2;
+
+        ExpDesc* base;
+        if (ISNODE(function-declaration)) {
+            PUSH(ExpDesc* dummy);
+            expr_init(dummy, VKNIL, 0);
+            base = dummy;
+        } else {
+            READ(ExpDesc* expr);
+            base = expr;
+        }
+        PUSH(uint8_t* isdecl);
+        *isdecl = ISNODE(function-declaration);
+
+        PUSH(ExpDesc* ident);
+        *ident = *base;
+    }
+
+    OPENNODE(function-params) {
+        js_ismethod = 0;
+
         int line = 0;
         int needself = 0;
         FuncState* pfs = fs;
@@ -306,6 +352,47 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         bcreg_reserve(fs, fs->numparams);
     }
 
+    OPENNODE(FunctionExpression, FunctionDeclaration) {
+        READ(ExpDesc* basexpr, uint8_t* isdecl, ExpDesc* ident);
+
+        ptrdiff_t oldbase = 0;
+
+        int line = 0;
+        FuncState* pfs = js_fs_top(-1);
+        GCproto* pt = fs_finish(ls, (ls->lastline = ls->linenumber));
+        pfs->bcbase = ls->bcstack + oldbase; /* May have been reallocated. */
+        pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
+        /* Store new prototype in the constant array of the parent. */
+        ExpDesc rval;
+        ExpDesc* expr = ISNODE(FunctionDeclaration) ? &rval : ident;
+        expr_init(
+            expr, VRELOCABLE,
+            bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
+#if LJ_HASFFI
+        pfs->flags |= (fs->flags & PROTO_FFI);
+#endif
+        if (!(pfs->flags & PROTO_CHILD)) {
+            if (pfs->flags & PROTO_HAS_RETURN) {
+                pfs->flags |= PROTO_FIXUP_RETURN;
+            }
+            pfs->flags |= PROTO_CHILD;
+        }
+        js_fs_pop();
+        fs = js_fs_top(0);
+
+        if (ISNODE(FunctionDeclaration)) {
+            ident->u.s.aux = -1;
+            assign_ident(fs, ident, expr);
+        }
+
+        *basexpr = *ident;
+
+        POP(isdecl, ident);
+        if (ISNODE(FunctionDeclaration)) {
+            POP(basexpr);
+        }
+    }
+
     OPENNODE(subscripts) {
         js_ismethod = 1;
     }
@@ -341,8 +428,14 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
             // rewrite
             // bcreg_reserve(fs, 1);
             uint32_t source = ident->u.s.info;
+            if (ident->u.s.info < fs->nactvar) {
+                // Reassign local var ref to new register.
+                bcemit_AD(fs, BC_MOV, fs->freereg + 1, source);
+            } else {
+                // Register already assigned.
+                bcemit_AD(fs, BC_MOV, fs->freereg, source);
+            }
             expr_tonextreg(fs, ident);
-            bcemit_AD(fs, BC_MOV, fs->freereg, source);
             bcreg_reserve(fs, 1);
             // bcemit_method(fs, ident, &key);
         }
@@ -462,6 +555,69 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         }
     }
 
+    OPENNODE(AssignmentExpression) {
+        if (streq(C._operator, "=")) {
+            READ(ExpDesc* lval, ExpDesc* rval);
+
+            bcemit_store(fs, lval, rval);
+            *lval = *rval;
+
+            POP(rval);
+        } else {
+            READ(ExpDesc* expr, ExpDesc* key, ExpDesc* incr);
+
+            BinOpr op;
+            if (streq(C._operator, "+=")) {
+                op = OPR_ADD;
+            } else if (streq(C._operator, "-=")) {
+                op = OPR_SUB;
+            } else if (streq(C._operator, "*=")) {
+                op = OPR_MUL;
+            } else if (streq(C._operator, "/=")) {
+                op = OPR_DIV;
+            } else if (streq(C._operator, "%=")) {
+                op = OPR_MOD;
+            } else {
+                assert(0);
+            }
+
+            if (expr->k == VINDEXED) {
+                // key == expr value.
+                // (OP) increment with key and move back.
+                bcemit_binop(fs, op, key, incr);
+
+                // Store and save return value.
+                bcemit_store(fs, expr, key);
+                expr->k = VRELOCABLE;
+                expr->u.s.info = fs->pc;
+
+                // Free registers.
+                expr_free(fs, incr);
+                expr_free(fs, key);
+            } else {
+                BCPos dest = key->u.s.info;
+
+                // Add increment to key.
+                bcemit_binop(fs, op, key, incr);
+
+                if (expr->k == VLOCAL) {
+                    // Save in original location.
+                    expr_toreg(fs, key, dest);
+                } else if (expr->k == VGLOBAL) {
+                    // Store and save return value.
+                    bcemit_store(fs, expr, key);
+                    expr->k = VRELOCABLE;
+                    expr->u.s.info = fs->pc;
+
+                    // Free registers.
+                    expr_free(fs, key);
+                }
+            }
+
+            POP(key, incr);
+        }
+    }
+
     OPENNODE(while-test, for-test) {
         js_ismethod = 0;
 
@@ -574,6 +730,14 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         *e2 = *e1;
         e2->t = NO_JMP;
         e2->f = NO_JMP;
+    }
+
+    OPENNODE(VariableDeclarator) {
+        READ(ExpDesc* ident, ExpDesc* val);
+
+        assign_ident(fs, ident, val);
+
+        POP(ident, val);
     }
 
     OPENNODE(if-no-alternate) {
@@ -735,55 +899,6 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         POP(key, val);
     }
 
-    OPENNODE(VariableDeclarator) {
-        READ(ExpDesc* ident, ExpDesc* val);
-
-        if (ident->u.s.aux == -1) {
-            expr_discharge(fs, val);
-            expr_free(fs, val);
-            bcreg_reserve(fs, 1);
-            expr_toreg_nobranch(fs, val, fs->freereg - 1);
-
-            assign_adjust(fs->ls, 1, 1, val);
-            var_add(fs->ls, 1);
-
-            if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
-                bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
-            }
-        } else {
-            bcemit_store(fs, ident, val);
-        }
-
-        POP(ident, val);
-    }
-
-    OPENNODE(FunctionExpression) {
-        READ(ExpDesc* expr);
-
-        ptrdiff_t oldbase = 0;
-
-        int line = 0;
-        FuncState* pfs = js_fs_top(-1);
-        GCproto* pt = fs_finish(ls, (ls->lastline = ls->linenumber));
-        pfs->bcbase = ls->bcstack + oldbase; /* May have been reallocated. */
-        pfs->bclim = (BCPos)(ls->sizebcstack - oldbase);
-        /* Store new prototype in the constant array of the parent. */
-        expr_init(
-            expr, VRELOCABLE,
-            bcemit_AD(pfs, BC_FNEW, 0, const_gc(pfs, obj2gco(pt), LJ_TPROTO)));
-#if LJ_HASFFI
-        pfs->flags |= (fs->flags & PROTO_FFI);
-#endif
-        if (!(pfs->flags & PROTO_CHILD)) {
-            if (pfs->flags & PROTO_HAS_RETURN) {
-                pfs->flags |= PROTO_FIXUP_RETURN;
-            }
-            pfs->flags |= PROTO_CHILD;
-        }
-        js_fs_pop();
-        fs = js_fs_top(0);
-    }
-
     OPENNODE(Identifier) {
         READ(ExpDesc* ident);
 
@@ -850,68 +965,6 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         }
     } 
 
-    OPENNODE(AssignmentExpression) {
-        if (streq(C._operator, "=")) {
-            READ(ExpDesc* lval, ExpDesc* rval);
-
-            bcemit_store(fs, lval, rval);
-            *lval = *rval;
-
-            POP(rval);
-        } else {
-            READ(ExpDesc* expr, ExpDesc* key, ExpDesc* incr);
-
-            BinOpr op;
-            if (streq(C._operator, "+=")) {
-                op = OPR_ADD;
-            } else if (streq(C._operator, "-=")) {
-                op = OPR_SUB;
-            } else if (streq(C._operator, "*=")) {
-                op = OPR_MUL;
-            } else if (streq(C._operator, "/=")) {
-                op = OPR_DIV;
-            } else if (streq(C._operator, "%=")) {
-                op = OPR_MOD;
-            } else {
-                assert(0);
-            }
-
-            if (expr->k == VINDEXED) {
-                // Add increment to key. If not prefixed, do this in separate
-                // register.
-                bcemit_binop(fs, op, key, incr);
-                expr_free(fs, incr);
-
-                // Store and save return value.
-                bcemit_store(fs, expr, key);
-                expr->k = VRELOCABLE;
-                expr->u.s.info = fs->pc;
-
-                // Free registers.
-                expr_free(fs, key);
-            } else {
-                // Add increment to key.
-                bcemit_binop(fs, op, key, incr);
-                if (expr->k == VLOCAL) {
-                    // Save in original location.
-                    expr_toreg(fs, key, key->u.s.aux);
-                }
-
-                // Store and save return value.
-                if (expr->k == VGLOBAL) {
-                    bcemit_store(fs, expr, key);
-                    expr->k = VRELOCABLE;
-                    expr->u.s.info = fs->pc;
-
-                    // Free registers.
-                    expr_free(fs, key);
-                }
-            }
-
-            POP(key, incr);
-        }
-    }
-
     OPENNODE(ConditionalExpression) {
         READ(ExpDesc* test, ExpDesc* result);
 
@@ -968,6 +1021,8 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         fs->freereg = base + 1; /* Leave one result by default. */
 
         POP(args);
+
+        JS_DEBUG("typeof-----> %p\n", ident);
     }
 
     OPENNODE(Literal) {
@@ -1036,6 +1091,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         READ(ExpDesc* e1, ExpDesc* e2);
 
         if (streq(C._operator, "==")) {
+        JS_DEBUG("typeof!!!!-----> %p\n", e1);
             bcemit_binop(fs, OPR_EQ, e1, e2);
         } else if (streq(C._operator, "!=")) {
             bcemit_binop(fs, OPR_NE, e1, e2);
@@ -1411,6 +1467,7 @@ static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
     // js_fs_pop();
 
     assert(js_fs.idx == 0);
+    assert(stack_ptr == 0);
 
     lj_bcwrite(L, pt, js_bcdump, NULL, 0);
     return NULL;

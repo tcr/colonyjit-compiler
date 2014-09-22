@@ -1649,7 +1649,7 @@ function parseForStatement(node:Node) {
 }
 
 function parseFunctionStatement(node:Node) {
-  // jsparse_callback_open("parseFunctionStatement");
+  //C jsparse_callback_open("function-declaration");
   next();
   return parseFunction(node, true);
 }
@@ -2028,7 +2028,7 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
 // Parse unary operators, both prefix and postfix.
 
 function parseMaybeUnary() {
-  //C if (tokVal.value_string == "function") jsparse_callback_open(tokVal.value_string.c_str());
+  //C if (tokType.keyword == "function") jsparse_callback_open(tokVal.value_string.c_str());
   if (tokType.prefix) {
     //C jsparse_callback_open(tokVal.value_string.c_str());
     var node = startNode(), update = tokType.isUpdate;
@@ -2366,6 +2366,7 @@ function parseFunction(node:Node, isStatement:boolean, allowExpressionBody?:bool
   if (isStatement || tokType === _name) {
     node.id = parseIdent();
   }
+  //C jsparse_callback_open("function-params");
   parseFunctionParams(node);
   //C jsparse_callback_open("function-body");
   parseFunctionBody(node, allowExpressionBody);

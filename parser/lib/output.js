@@ -1054,6 +1054,7 @@ return parseForIn(node, init);
     return parseFor(node, init);
 }
 Node* parseFunctionStatement(Node* node) {
+     jsparse_callback_open("function-declaration"); 
     next();
     return parseFunction(node, true);
 }
@@ -1400,7 +1401,7 @@ Node* parseExprOp(Node* left, int minPrec, bool noIn) {
     return left;
 }
 Node* parseMaybeUnary() {
-     if (tokVal.value_string == "function") jsparse_callback_open(tokVal.value_string.c_str()); 
+     if (tokType.keyword == "function") jsparse_callback_open(tokVal.value_string.c_str()); 
     if (tokType.prefix) {
 {
          jsparse_callback_open(tokVal.value_string.c_str()); 
@@ -1716,6 +1717,7 @@ Node* parseFunction(Node* node, bool isStatement, bool allowExpressionBody) {
         node->id = parseIdent();
     }
 }
+     jsparse_callback_open("function-params"); 
     parseFunctionParams(node);
      jsparse_callback_open("function-body"); 
     parseFunctionBody(node, allowExpressionBody);

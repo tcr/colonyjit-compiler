@@ -11,7 +11,7 @@ size_t stack_ptr = 0;
 
 #define STACKTYPE(A) _stacktype_ ## A
 
-#define READ_AT(A, c) A = (void*) &stack[stack_ptr - sizeof(STACKTYPE(A)) - (c)]; assert(stack_ptr - sizeof(STACKTYPE(A)) - (c) >= 0);
+#define READ_AT(A, c) A = (void*) &stack[stack_ptr - sizeof(STACKTYPE(A)) - (c)]; assert(stack_ptr - sizeof(STACKTYPE(A)) - (c) >= 0); JS_DEBUG("\t\t[[READ]] %d " #A "\n", stack_ptr - sizeof(STACKTYPE(A)) - (c));
 
 #define READ_AT_1(A, c) 						READ_AT(A, c);
 #define READ_AT_2(B, A, c) 						READ_AT(A, c); READ_AT_1(B, c + sizeof(STACKTYPE(A)));
@@ -24,7 +24,7 @@ size_t stack_ptr = 0;
 
 #define READ(...) CAT(CAT(READ_AT, _), NARGS(__VA_ARGS__)) (__VA_ARGS__, 0)
 
-#define POP_1(a) assert(stack_ptr - sizeof(*a) >= 0); stack_ptr -= sizeof(*a);
+#define POP_1(a) assert(stack_ptr - sizeof(*a) >= 0); stack_ptr -= sizeof(*a); JS_DEBUG("\t\t[[POPP]] %d " #a "\n", stack_ptr);
 #define POP_2(b, a) POP_1(a); POP_1(b);
 #define POP_3(c, b, a) POP_1(a); POP_2(c, b);
 #define POP_4(d, c, b, a) POP_1(a); POP_3(d, c, b);
@@ -34,4 +34,4 @@ size_t stack_ptr = 0;
 #define POP_8(h, g, f, d, c, b, a) POP_1(a); POP_7(h, g, f, e, d, c, b);
 #define POP(...) CAT(CAT(POP, _), NARGS(__VA_ARGS__)) (__VA_ARGS__)
 
-#define PUSH(A) A = (void*) &stack[stack_ptr]; stack_ptr += sizeof(STACKTYPE(A)); assert(stack_ptr < sizeof(stack));
+#define PUSH(A) JS_DEBUG("\t\t[[PUSH]] %d " #A "\n", stack_ptr); A = (void*) &stack[stack_ptr]; stack_ptr += sizeof(STACKTYPE(A)); assert(stack_ptr < sizeof(stack));
