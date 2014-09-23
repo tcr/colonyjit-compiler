@@ -125,8 +125,23 @@ static void prepend_ins (FuncState* fs)
     // for (BCPos i = 1; i < pc; i++) {
     //     increment_pos(&fs->bcbase[i].ins);
     // }
-    memmove(&fs->bcbase[2], &fs->bcbase[1], (pc - 1) * sizeof(void *));
-    fs->bcbase[1].ins = ins;
+    memmove(&fs->bcbase[3], &fs->bcbase[2], (pc - 2) * sizeof(void *));
+    fs->bcbase[2].ins = ins;
+}
+
+static void null_vars (FuncState* fs)
+{
+    // Null vars.
+    if (fs->nactvar == fs->numparams) {
+        fs->bcbase[1].ins = BCINS_AD(BC_MOV, 0, 0);
+    } else {
+        fs->bcbase[1].ins = BCINS_AD(BC_KNIL, fs->numparams, fs->nactvar-1);
+    }
+}
+
+static void null_vars_insert (FuncState* fs)
+{
+    bcemit_INS(fs, BCINS_AD(BC_KNIL, 0, 0));
 }
 
 /*
@@ -229,14 +244,18 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         var_add(ls, fs->numparams);
         lua_assert(fs->nactvar == fs->numparams);
         bcreg_reserve(fs, fs->numparams);
+
+        null_vars_insert(fs);
     }
 
     OPENNODE(FunctionExpression, FunctionDeclaration) {
         READ(ExpDesc* basexpr, uint8_t* isdecl, ExpDesc* ident);
 
         ptrdiff_t oldbase = 0;
-
         int line = 0;
+
+        null_vars(fs);
+
         FuncState* pfs = js_fs_top(-1);
         GCproto* pt = fs_finish(ls, (ls->lastline = ls->linenumber));
         pfs->bcbase = ls->bcstack + oldbase; /* May have been reallocated. */
@@ -1183,6 +1202,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     }
 
     OPENNODE(Program) {
+        null_vars(fs);
         js_fs_pop();
     }
 
@@ -1313,6 +1333,8 @@ if (ls->token != TK_eof)
     // var_new_lit(ls, 0, "this");
     // var_add(ls, 1);
     // fs->nactvar += 1;
+
+    null_vars_insert(fs);
 
     jsparse(my_input, strlen(my_input), my_onopennode, my_onclosenode);
     synlevel_end(ls);
