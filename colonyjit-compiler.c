@@ -120,7 +120,6 @@ static void assign_ident (FuncState* fs, ExpDesc* ident, ExpDesc *val)
 
 static void sad_dump (FuncState* fs)
 {
-    // return;
     BCIns ins = fs->bcbase[fs->pc-1].ins;
     BCPos pc = fs->pc;
     for (BCPos i = 0; i < pc; i++) {
@@ -133,23 +132,18 @@ BCDEF(BCENUM)
 
 static void prepend_ins (FuncState* fs)
 {
-    // return;
     BCIns ins = fs->bcbase[fs->pc-1].ins;
     BCPos pc = fs->pc;
     // for (BCPos i = 1; i < pc; i++) {
     //     increment_pos(&fs->bcbase[i].ins);
     // }
-    // sad_dump(fs);
-    // JS_DEBUG("\t\t\t\t\tINSR %d\n", pc - 2);
     memmove(&fs->bcbase[3], &fs->bcbase[2], (pc - 2) * sizeof(fs->bcbase[0]));
-    // JS_DEBUG("\t\t\t\t\tNOW %d %d\n", bc_op(fs->bcbase[pc-1].ins), BC_FNEW);
     fs->bcbase[2].ins = ins;
 }
 
 static void null_vars (FuncState* fs)
 {
     // Null vars.
-    // return;
     if (fs->nactvar == fs->numparams) {
         fs->bcbase[1].ins = BCINS_AD(BC_MOV, 0, 0);
     } else {
@@ -159,10 +153,7 @@ static void null_vars (FuncState* fs)
 
 static void null_vars_insert (FuncState* fs)
 {
-    // return;
     bcemit_INS(fs, BCINS_AD(BC_KNIL, 0, 0));
-    // return;
-    // bcemit_INS(fs, BCINS_AD(BC_KNIL, 0, 0));
 }
 
 /*
@@ -305,7 +296,6 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
             assign_ident(fs, ident, expr);
             // expr_tonextreg(fs, ident);
             BCPos next = fs->pc;
-            JS_DEBUG("\t\t\t\t\t\tON %d OFF %d\n", init, next);
             while (init++ <= next) {
                 prepend_ins(fs);
             }
@@ -1400,7 +1390,6 @@ static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 
     assert(js_fs.idx == 0);
     assert(stack_ptr == 0);
-    lj_gc_check(L);
     lj_bcwrite(L, pt, js_bcdump, NULL, 1);
 
     return NULL;
@@ -1467,7 +1456,8 @@ int main(int argc, char** argv)
     fclose(fp);
 
     lua_State* L;
-    L = lua_newstate(l_alloc, NULL);
+    // L = lua_newstate(l_alloc, NULL);
+    L = luaL_newstate();
 
     js_loadx(L, js_luareader, NULL, "helloworld", "b");
 

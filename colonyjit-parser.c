@@ -428,8 +428,6 @@ static BCPos bcemit_INS(FuncState *fs, BCIns ins)
 #define bcemit_AD(fs, o, a, d)		bcemit_INS(fs, BCINS_AD(o, a, d))
 #define bcemit_AJ(fs, o, a, j)		bcemit_INS(fs, BCINS_AJ(o, a, j))
 
-#include <assert.h>
-
 #define bcptr(fs, e)			(assert((e)->u.s.info >= 0 && (e)->u.s.info < fs->bclim), &(fs)->bcbase[(e)->u.s.info].ins)
 
 /* -- Bytecode emitter for expressions ------------------------------------ */
