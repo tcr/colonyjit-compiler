@@ -1467,7 +1467,8 @@ int main(int argc, char** argv)
     fclose(fp);
 
     lua_State* L;
-    L = lua_newstate(l_alloc, NULL);
+    // L = lua_newstate(l_alloc, NULL);
+    L = luaL_newstate();
 
     js_loadx(L, js_luareader, NULL, "helloworld", "b");
 

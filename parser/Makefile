@@ -11,8 +11,8 @@ transpile:
 	clang-format -style=Mozilla -i out/compiled.c
 
 compile:
-	cd out; g++-4.9 -m32 jsparser.cpp -O0 -c -o jsparser.a -std=gnu++1y -g -ggdb 2>&1
-	cd out; g++-4.9 -m32 jsparser.a main.c -O0 -o main -g -ggdb 2>&1
+	cd out; g++-4.9 jsparser.cpp -O0 -c -o jsparser.a -std=gnu++1y -g -ggdb 2>&1
+	cd out; g++-4.9 jsparser.a main.c -O0 -o main -g -ggdb 2>&1
 
 compile-small:
 	cd out; g++-4.9 jsparser.cpp -O2 -c -o jsparser.a -std=gnu++1y -fno-exceptions -fno-rtti 2>&1
