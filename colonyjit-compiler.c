@@ -118,20 +118,38 @@ static void assign_ident (FuncState* fs, ExpDesc* ident, ExpDesc *val)
     }
 }
 
+static void sad_dump (FuncState* fs)
+{
+    // return;
+    BCIns ins = fs->bcbase[fs->pc-1].ins;
+    BCPos pc = fs->pc;
+    for (BCPos i = 0; i < pc; i++) {
+        JS_DEBUG("\t\t\t\tINS[%d] ", i);
+#define BCENUM(name, ma, mb, mc, mt)    if (bc_op(fs->bcbase[i].ins) == BC_##name) JS_DEBUG(#name "\n");
+BCDEF(BCENUM)
+#undef BCENUM
+    }
+}
+
 static void prepend_ins (FuncState* fs)
 {
+    // return;
     BCIns ins = fs->bcbase[fs->pc-1].ins;
     BCPos pc = fs->pc;
     // for (BCPos i = 1; i < pc; i++) {
     //     increment_pos(&fs->bcbase[i].ins);
     // }
-    memmove(&fs->bcbase[3], &fs->bcbase[2], (pc - 2) * sizeof(void *));
+    // sad_dump(fs);
+    // JS_DEBUG("\t\t\t\t\tINSR %d\n", pc - 2);
+    memmove(&fs->bcbase[3], &fs->bcbase[2], (pc - 2) * sizeof(fs->bcbase[0]));
+    // JS_DEBUG("\t\t\t\t\tNOW %d %d\n", bc_op(fs->bcbase[pc-1].ins), BC_FNEW);
     fs->bcbase[2].ins = ins;
 }
 
 static void null_vars (FuncState* fs)
 {
     // Null vars.
+    // return;
     if (fs->nactvar == fs->numparams) {
         fs->bcbase[1].ins = BCINS_AD(BC_MOV, 0, 0);
     } else {
@@ -141,7 +159,10 @@ static void null_vars (FuncState* fs)
 
 static void null_vars_insert (FuncState* fs)
 {
+    // return;
     bcemit_INS(fs, BCINS_AD(BC_KNIL, 0, 0));
+    // return;
+    // bcemit_INS(fs, BCINS_AD(BC_KNIL, 0, 0));
 }
 
 /*
@@ -200,11 +221,11 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         int needself = 0;
         FuncState* pfs = fs;
         fs = js_fs_push();
-        FuncScope bl;
+        FuncScope* bl = (FuncScope*) calloc(1, sizeof(FuncScope));
         ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
         fs_init(ls, fs);
         // JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
-        fscope_begin(fs, &bl, 0);
+        fscope_begin(fs, bl, 0);
         fs->linedefined = line;
         //(uint8_t)parse_params(ls, needself);
         fs->bcbase = pfs->bcbase + pfs->pc;
@@ -282,7 +303,9 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
             ident->u.s.aux = -1;
             BCPos init = fs->pc;
             assign_ident(fs, ident, expr);
+            // expr_tonextreg(fs, ident);
             BCPos next = fs->pc;
+            JS_DEBUG("\t\t\t\t\t\tON %d OFF %d\n", init, next);
             while (init++ <= next) {
                 prepend_ins(fs);
             }
@@ -994,7 +1017,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         READ(ExpDesc* e1, ExpDesc* e2);
 
         if (streq(C._operator, "==")) {
-        JS_DEBUG("typeof!!!!-----> %p\n", e1);
+        JS_DEBUG("typeof!!!!-----> %p %p %p\n", e1, e2, fs->kt);
             bcemit_binop(fs, OPR_EQ, e1, e2);
         } else if (streq(C._operator, "!=")) {
             bcemit_binop(fs, OPR_NE, e1, e2);
@@ -1121,6 +1144,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
             // Store and save return value.
             bcemit_store(fs, expr, &key);
+            expr_tonextreg(fs, expr);
             expr->k = VRELOCABLE;
             expr->u.s.info = fs->pc;
 
@@ -1302,6 +1326,7 @@ GCproto* js_parse(LexState* ls)
     fs->numparams = 0;
     fs->bcbase = NULL;
     fs->bclim = 0;
+    fs->prev = NULL;
     fs->flags |= PROTO_VARARG; /* Main chunk is always a vararg func. */
     fscope_begin(fs, &bl, 0);
     bcemit_AD(fs, BC_FUNCV, 0, 0); /* Placeholder. */
@@ -1320,6 +1345,7 @@ if (ls->token != TK_eof)
     bcreg_reserve(fs, 1);
     var_new(ls, 0, create_str(fs, ""));
     fs->nactvar += 1;
+    fs->nuv = 0;
 
     // // Register "this" variable
     // ExpDesc str;
@@ -1374,8 +1400,9 @@ static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 
     assert(js_fs.idx == 0);
     assert(stack_ptr == 0);
+    lj_gc_check(L);
+    lj_bcwrite(L, pt, js_bcdump, NULL, 1);
 
-    lj_bcwrite(L, pt, js_bcdump, NULL, 0);
     return NULL;
 }
 
@@ -1407,6 +1434,17 @@ const char* js_luareader(lua_State* L, void* data, size_t* size)
     return my_input;
 }
 
+static void *l_alloc (void *ud, void *ptr, size_t osize,
+size_t nsize) {
+    (void)ud;  (void)osize;  /* not used */
+    if (nsize == 0) {
+        free(ptr);
+        return NULL;
+    }
+    else
+        return realloc(ptr, nsize);
+}
+
 int main(int argc, char** argv)
 {
     if (argc < 1) {
@@ -1429,7 +1467,7 @@ int main(int argc, char** argv)
     fclose(fp);
 
     lua_State* L;
-    L = luaL_newstate();
+    L = lua_newstate(l_alloc, NULL);
 
     js_loadx(L, js_luareader, NULL, "helloworld", "b");
 

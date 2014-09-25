@@ -464,20 +464,30 @@ int Number (bool fact)
 }
 
 #include <string.h>
+#include <assert.h>
+
+const char* leak_clone (std::string str)
+{
+	char* newstr = (char*) calloc(1, str.size() + 1);
+	memcpy(newstr, str.c_str(), str.size());
+	return (const char*) newstr;
+}
 
 struct Node_C convert_to_Node_C (Node* node) {
+	assert(node->type.size() != 0);
+
 	struct Node_C C;
-	C.type = node->type.c_str();
+	C.type = leak_clone(node->type);
 	C.start = node->start;
 	C.end = node->end;
-	C.name = node->name.c_str();
-	C.raw = node->raw.c_str();
+	C.name = leak_clone(node->name);
+	C.raw = leak_clone(node->raw);
 	C.value_type = node->value.type;
-	C.value_string = node->value.value_string.c_str();
+	C.value_string = leak_clone(node->value.value_string);
 	C.value_double = node->value.value_double;
 	C.value_boolean = node->value.value_boolean;
 	C.arguments = node->arguments.size();
-	C._operator = node->_operator.c_str();
+	C._operator = leak_clone(node->_operator);
 	C.prefix = node->prefix;
 	return C;
 }

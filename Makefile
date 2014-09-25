@@ -1,7 +1,7 @@
 all: colonyjit-compiler
 
 colonyjit-compiler: colonyjit-compiler.c colonyjit-bcutil.c colonyjit-parser.c luajit/src/libluajit.a ./parser/out/jsparser.a
-	gcc-4.9 -o colonyjit-compiler -ggdb -pagezero_size 10000 -image_base 100000000 \
+	gcc-4.9 -m32 -o colonyjit-compiler -ggdb \
 	    -fstack-protector-all \
 		./luajit/src/libluajit.a ./parser/out/jsparser.a colonyjit-compiler.c -Iluajit/src -lstdc++ -std=c99
 
