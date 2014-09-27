@@ -71,141 +71,7 @@
  * Increment registers in written instructions.
  */
 
-static void increment_registers(BCIns* ins, int pos)
-{
-    switch (bc_op(*ins)) {
-    // A and B
-    case BC_ADDVN:
-    case BC_SUBVN:
-    case BC_MULVN:
-    case BC_DIVVN:
-    case BC_MODVN:
-    case BC_ADDNV:
-    case BC_SUBNV:
-    case BC_MULNV:
-    case BC_DIVNV:
-    case BC_MODNV:
-    case BC_TGETB:
-    case BC_TSETS:
-    case BC_TSETB:
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
-        break;
-
-    case BC_TGETS:
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
-        break;
-
-    // A and B and D
-    case BC_ADDVV:
-    case BC_SUBVV:
-    case BC_MULVV:
-    case BC_DIVVV:
-    case BC_MODVV:
-    case BC_POW:
-    case BC_CAT:
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
-        setbc_c(ins, bc_c(*ins) >= pos ? bc_c(*ins) + 1 : bc_c(*ins));
-        break;
-
-    case BC_TGETV:
-    case BC_TSETV:
-        // TODO C or D?
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        setbc_b(ins, bc_b(*ins) >= pos ? bc_b(*ins) + 1 : bc_b(*ins));
-        setbc_c(ins, bc_c(*ins) >= pos ? bc_c(*ins) + 1 : bc_c(*ins));
-        break;
-
-    // A and D
-    case BC_ISLT:
-    case BC_ISGE:
-    case BC_ISLE:
-    case BC_ISGT:
-    case BC_ISEQV:
-    case BC_ISNEV:
-    case BC_ISTC:
-    case BC_ISFC:
-    case BC_MOV:
-    case BC_NOT:
-    case BC_UNM:
-    case BC_LEN:
-    case BC_KNIL:
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        setbc_d(ins, bc_d(*ins) >= pos ? bc_d(*ins) + 1 : bc_d(*ins));
-        break;
-
-    // D
-    case BC_IST:
-    case BC_ISF:
-    case BC_USETV:
-        setbc_d(ins, bc_d(*ins) >= pos ? bc_d(*ins) + 1 : bc_d(*ins));
-        break;
-
-    // A
-    case BC_ISEQS:
-    case BC_ISNES:
-    case BC_ISEQN:
-    case BC_ISNEN:
-    case BC_ISEQP:
-    case BC_ISNEP:
-    case BC_KSTR:
-    case BC_KCDATA:
-    case BC_KSHORT:
-    case BC_KNUM:
-    case BC_KPRI:
-    case BC_UGET:
-    case BC_UCLO:
-    case BC_FNEW:
-    case BC_TNEW:
-    case BC_TDUP:
-    // case BC_GGET:
-    case BC_GSET:
-    case BC_TSETM:
-    case BC_CALLM:
-    case BC_CALL:
-    case BC_CALLMT:
-    case BC_CALLT:
-    case BC_ITERC:
-    case BC_ITERN:
-    case BC_VARG:
-    case BC_ISNEXT:
-    case BC_RETM:
-    case BC_RET:
-    case BC_RET0:
-    case BC_RET1:
-    case BC_FORI:
-    case BC_JFORI:
-    case BC_FORL:
-    case BC_IFORL:
-    case BC_JFORL:
-    case BC_ITERL:
-    case BC_IITERL:
-    case BC_JITERL:
-    case BC_LOOP:
-    case BC_ILOOP:
-    case BC_JLOOP:
-    case BC_JMP:
-    case BC_FUNCF:
-    case BC_IFUNCF:
-    case BC_JFUNCF:
-    case BC_FUNCV:
-    case BC_IFUNCV:
-    case BC_JFUNCV:
-    case BC_FUNCC:
-    case BC_FUNCCW:
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        break;
-
-    case BC_GGET:
-        setbc_a(ins, bc_a(*ins) >= pos ? bc_a(*ins) + 1 : bc_a(*ins));
-        break;
-
-    default:
-        assert(0);
-    }
-}
+#include "colonyjit-bcutil.c"
 
 static int streq(const char* A, const char* T) {
     return strncmp(A, T, strlen(T)) == 0 && strlen(A) == strlen(T);
@@ -241,6 +107,8 @@ static void assign_ident (FuncState* fs, ExpDesc* ident, ExpDesc *val)
         assign_adjust(fs->ls, 1, 1, val);
         var_add(fs->ls, 1);
 
+        // Move assignment value to ident position (if not
+        // created in that position).
         if (val->k == VNONRELOC && val->u.s.info != fs->nactvar-1) {
             bcemit_AD(fs, BC_MOV, fs->nactvar-1, val->u.s.info);
         }
@@ -248,6 +116,44 @@ static void assign_ident (FuncState* fs, ExpDesc* ident, ExpDesc *val)
         JS_DEBUG("else new value\n");
         bcemit_store(fs, ident, val);
     }
+}
+
+static void sad_dump (FuncState* fs)
+{
+    BCIns ins = fs->bcbase[fs->pc-1].ins;
+    BCPos pc = fs->pc;
+    for (BCPos i = 0; i < pc; i++) {
+        JS_DEBUG("\t\t\t\tINS[%d] ", i);
+#define BCENUM(name, ma, mb, mc, mt)    if (bc_op(fs->bcbase[i].ins) == BC_##name) JS_DEBUG(#name "\n");
+BCDEF(BCENUM)
+#undef BCENUM
+    }
+}
+
+static void prepend_ins (FuncState* fs)
+{
+    BCIns ins = fs->bcbase[fs->pc-1].ins;
+    BCPos pc = fs->pc;
+    // for (BCPos i = 1; i < pc; i++) {
+    //     increment_pos(&fs->bcbase[i].ins);
+    // }
+    memmove(&fs->bcbase[3], &fs->bcbase[2], (pc - 2) * sizeof(fs->bcbase[0]));
+    fs->bcbase[2].ins = ins;
+}
+
+static void null_vars (FuncState* fs)
+{
+    // Null vars.
+    if (fs->nactvar == fs->numparams) {
+        fs->bcbase[1].ins = BCINS_AD(BC_MOV, 0, 0);
+    } else {
+        fs->bcbase[1].ins = BCINS_AD(BC_KNIL, fs->numparams, fs->nactvar-1);
+    }
+}
+
+static void null_vars_insert (FuncState* fs)
+{
+    bcemit_INS(fs, BCINS_AD(BC_KNIL, 0, 0));
 }
 
 /*
@@ -306,11 +212,11 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         int needself = 0;
         FuncState* pfs = fs;
         fs = js_fs_push();
-        FuncScope bl;
+        FuncScope* bl = (FuncScope*) calloc(1, sizeof(FuncScope));
         ptrdiff_t oldbase = pfs->bcbase - ls->bcstack;
         fs_init(ls, fs);
         // JS_DEBUG("OOKKOKOK %p %p %p\n", pfs, fs, fs->L);
-        fscope_begin(fs, &bl, 0);
+        fscope_begin(fs, bl, 0);
         fs->linedefined = line;
         //(uint8_t)parse_params(ls, needself);
         fs->bcbase = pfs->bcbase + pfs->pc;
@@ -350,14 +256,18 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         var_add(ls, fs->numparams);
         lua_assert(fs->nactvar == fs->numparams);
         bcreg_reserve(fs, fs->numparams);
+
+        null_vars_insert(fs);
     }
 
     OPENNODE(FunctionExpression, FunctionDeclaration) {
         READ(ExpDesc* basexpr, uint8_t* isdecl, ExpDesc* ident);
 
         ptrdiff_t oldbase = 0;
-
         int line = 0;
+
+        null_vars(fs);
+
         FuncState* pfs = js_fs_top(-1);
         GCproto* pt = fs_finish(ls, (ls->lastline = ls->linenumber));
         pfs->bcbase = ls->bcstack + oldbase; /* May have been reallocated. */
@@ -382,7 +292,13 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
         if (ISNODE(FunctionDeclaration)) {
             ident->u.s.aux = -1;
+            BCPos init = fs->pc;
             assign_ident(fs, ident, expr);
+            // expr_tonextreg(fs, ident);
+            BCPos next = fs->pc;
+            while (init++ <= next) {
+                prepend_ins(fs);
+            }
         }
 
         *basexpr = *ident;
@@ -1091,7 +1007,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
         READ(ExpDesc* e1, ExpDesc* e2);
 
         if (streq(C._operator, "==")) {
-        JS_DEBUG("typeof!!!!-----> %p\n", e1);
+        JS_DEBUG("typeof!!!!-----> %p %p %p\n", e1, e2, fs->kt);
             bcemit_binop(fs, OPR_EQ, e1, e2);
         } else if (streq(C._operator, "!=")) {
             bcemit_binop(fs, OPR_NE, e1, e2);
@@ -1218,6 +1134,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
             // Store and save return value.
             bcemit_store(fs, expr, &key);
+            expr_tonextreg(fs, expr);
             expr->k = VRELOCABLE;
             expr->u.s.info = fs->pc;
 
@@ -1299,6 +1216,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     }
 
     OPENNODE(Program) {
+        null_vars(fs);
         js_fs_pop();
     }
 
@@ -1398,6 +1316,7 @@ GCproto* js_parse(LexState* ls)
     fs->numparams = 0;
     fs->bcbase = NULL;
     fs->bclim = 0;
+    fs->prev = NULL;
     fs->flags |= PROTO_VARARG; /* Main chunk is always a vararg func. */
     fscope_begin(fs, &bl, 0);
     bcemit_AD(fs, BC_FUNCV, 0, 0); /* Placeholder. */
@@ -1416,6 +1335,7 @@ if (ls->token != TK_eof)
     bcreg_reserve(fs, 1);
     var_new(ls, 0, create_str(fs, ""));
     fs->nactvar += 1;
+    fs->nuv = 0;
 
     // // Register "this" variable
     // ExpDesc str;
@@ -1429,6 +1349,8 @@ if (ls->token != TK_eof)
     // var_new_lit(ls, 0, "this");
     // var_add(ls, 1);
     // fs->nactvar += 1;
+
+    null_vars_insert(fs);
 
     jsparse(my_input, strlen(my_input), my_onopennode, my_onclosenode);
     synlevel_end(ls);
@@ -1468,8 +1390,8 @@ static TValue* js_cpparser(lua_State* L, lua_CFunction dummy, void* ud)
 
     assert(js_fs.idx == 0);
     assert(stack_ptr == 0);
+    lj_bcwrite(L, pt, js_bcdump, NULL, 1);
 
-    lj_bcwrite(L, pt, js_bcdump, NULL, 0);
     return NULL;
 }
 
@@ -1501,6 +1423,17 @@ const char* js_luareader(lua_State* L, void* data, size_t* size)
     return my_input;
 }
 
+static void *l_alloc (void *ud, void *ptr, size_t osize,
+size_t nsize) {
+    (void)ud;  (void)osize;  /* not used */
+    if (nsize == 0) {
+        free(ptr);
+        return NULL;
+    }
+    else
+        return realloc(ptr, nsize);
+}
+
 int main(int argc, char** argv)
 {
     if (argc < 1) {
@@ -1523,6 +1456,7 @@ int main(int argc, char** argv)
     fclose(fp);
 
     lua_State* L;
+    // L = lua_newstate(l_alloc, NULL);
     L = luaL_newstate();
 
     js_loadx(L, js_luareader, NULL, "helloworld", "b");
