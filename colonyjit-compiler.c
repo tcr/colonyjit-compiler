@@ -399,7 +399,7 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     OPENNODE(new-close) {
     }
 
-    OPENNODE(typeof) {
+    OPENNODE(unary-typeof) {
         READ(ExpDesc* ident);
 
         internal_ref(fs, ident, "typeof");
@@ -411,6 +411,11 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     OPENNODE(OP) {                                                  \
         READ(ExpDesc* e);                                                      \
         js_ismethod = 0;                                                       \
+        if (e->k == VLOCAL) { \
+            bcemit_AD(fs, BC_MOV, fs->freereg, e->u.s.info); \
+            e->u.s.info = fs->freereg; \
+            bcreg_reserve(fs, 1); \
+        } \
         bcemit_binop_left(fs, ID, e);                                          \
         PUSH(ExpDesc* op);                                                     \
     }
@@ -428,6 +433,13 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     JS_OP_LEFT(>, OPR_GT)
     JS_OP_LEFT(&&, OPR_AND)
     JS_OP_LEFT(||, OPR_OR)
+
+    OPENNODE(unary--) {
+        READ(ExpDesc* e);
+        js_ismethod = 0;
+        bcemit_binop_left(fs, OPR_SUB, e);
+        PUSH(ExpDesc* op);
+    }
 
     OPENNODE(=) {
         js_ismethod = 0;
@@ -468,6 +480,10 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
 
             // Dispatch key to register.
             expr_tonextreg(fs, key);
+        } else {
+            bcemit_AD(fs, BC_MOV, fs->freereg - 1, expr->u.s.info);
+            expr->u.s.info = fs->freereg - 1;
+            bcreg_reserve(fs, 1);
         }
     }
 
@@ -1102,6 +1118,9 @@ void handle_node (FuncState* fs, const char* type, struct Node_C C)
     }
 
     OPENNODE(++, --) {
+    }
+
+    OPENNODE(unary-++, unary---) {
     }
 
     OPENNODE(UpdateExpression) {

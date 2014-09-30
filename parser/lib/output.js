@@ -1404,7 +1404,7 @@ Node* parseMaybeUnary() {
      if (tokType.keyword == "function") jsparse_callback_open(tokVal.value_string.c_str()); 
     if (tokType.prefix) {
 {
-         jsparse_callback_open(tokVal.value_string.c_str()); 
+         jsparse_callback_open(("unary-" + tokVal.value_string).c_str()); 
         Node* node = startNode();  bool update = tokType.isUpdate; 
         node->_operator = tokVal;
         node->prefix = true;

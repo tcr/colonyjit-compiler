@@ -2030,7 +2030,7 @@ function parseExprOp(left:Node, minPrec:number, noIn:boolean):Node {
 function parseMaybeUnary() {
   //C if (tokType.keyword == "function") jsparse_callback_open(tokVal.value_string.c_str());
   if (tokType.prefix) {
-    //C jsparse_callback_open(tokVal.value_string.c_str());
+    //C jsparse_callback_open(("unary-" + tokVal.value_string).c_str());
     var node = startNode(), update = tokType.isUpdate;
     node.operator = tokVal;
     node.prefix = true;
