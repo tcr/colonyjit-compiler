@@ -1,7 +1,9 @@
+console.log('1..2')
+
 var a = 5;
-
 a *= a *= a;
-// a = a * (a = a * (a))
+console.log(a == 125 ? 'ok' : 'not ok', '#', a);
 
-console.log('1..1')
+var a = 5;
+a = a * (a = a * (a));
 console.log(a == 125 ? 'ok' : 'not ok', '#', a);
